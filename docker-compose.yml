@@ -1,0 +1,32 @@
+services:
+  sethsparts:
+    build: .
+    container_name: sethsparts
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Europe/London
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}
+      - DJANGO_DEBUG=false
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS must be set in .env}
+      - DJANGO_DB_PATH=/app/data/db.sqlite3
+      - DJANGO_MEDIA_ROOT=/app/data/media
+
+  # Cloudflare Tunnel -- exposes the app at your domain with no open ports.
+  # 1. In the Cloudflare Zero Trust dashboard: Networks -> Tunnels -> Create a
+  #    tunnel (Docker connector) -> name it e.g. "sethsparts".
+  # 2. Under that tunnel's Public Hostname tab, add your domain -> HTTP ->
+  #    http://sethsparts:3200
+  # 3. Copy the tunnel token into TUNNEL_TOKEN in .env.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: sethsparts-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?TUNNEL_TOKEN must be set in .env -- from the Cloudflare Zero Trust tunnel setup}
+    depends_on:
+      - sethsparts

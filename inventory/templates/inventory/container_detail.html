@@ -1,0 +1,55 @@
+{% extends "inventory/base.html" %}
+{% block title %}Container #{{ container.number }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Container #{{ container.number }}</h1>
+  <p class="muted">{{ container.container_type }}{% if container.dimensions %} · {{ container.dimensions }}{% endif %}{% if container.location %} · originally in {{ container.location }}{% endif %}</p>
+  {% if container.notes %}<p class="muted">{{ container.notes }}</p>{% endif %}
+  <p class="no-print"><a href="{% url 'inventory:delete_container' container.number %}" class="muted">Delete this container…</a></p>
+
+  {% if container.barcode_id %}
+    <p>Barcode: <span class="pill">{{ container.barcode_id }}</span></p>
+  {% else %}
+    <form method="post" action="{% url 'inventory:register_container_barcode' container.number %}">
+      {% csrf_token %}
+      <label class="muted">No barcode registered yet — scan or type its physical label code:</label>
+      <input type="text" name="code" value="{{ request.GET.code }}" autofocus autocomplete="off">
+      <p><button class="btn" type="submit">Register barcode</button></p>
+    </form>
+  {% endif %}
+</div>
+
+{% if drawers %}
+<div class="card">
+  <h2>Drawers ({{ drawers|length }})</h2>
+  <table>
+    <tr><th>Drawer</th><th>Barcode</th><th>Items</th></tr>
+    {% for d in drawers %}
+    <tr>
+      <td><a href="{% url 'inventory:drawer_detail' d.pk %}">{{ d.label }}</a></td>
+      <td>{{ d.barcode_id|default:"—" }}</td>
+      <td>{{ d.stock_items.count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Contents{% if drawers %} (not in a drawer){% endif %} ({{ stock_items|length }})</h2>
+  {% if stock_items %}
+  <table>
+    <tr><th>Part</th><th>Qty</th><th>Notes</th></tr>
+    {% for si in stock_items %}
+    <tr>
+      <td><a href="{% url 'inventory:part_detail' si.part.pk %}">{{ si.part.name }}</a></td>
+      <td>{{ si.quantity_raw|default:si.quantity }}</td>
+      <td class="muted">{{ si.source_notes }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nothing directly in this container{% if drawers %} — see the drawers above{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

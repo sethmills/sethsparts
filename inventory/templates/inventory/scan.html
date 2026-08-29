@@ -1,0 +1,14 @@
+{% extends "inventory/base.html" %}
+{% block title %}Scan — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Scan a barcode</h2>
+  {% include "inventory/_scan_widget.html" with autostart=True %}
+</div>
+
+<div class="card">
+  <h2>Browse</h2>
+  <p><a href="{% url 'inventory:parts_search' %}">Search parts by name →</a></p>
+  <p><a href="{% url 'inventory:labels' %}">Generate/print barcode labels →</a></p>
+</div>
+{% endblock %}

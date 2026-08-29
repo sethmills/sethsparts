@@ -1,0 +1,15 @@
+{% extends "inventory/base.html" %}
+{% block title %}Unknown code — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>No container or drawer has this code yet</h1>
+  <p class="muted">Scanned/entered code: <span class="pill">{{ code }}</span></p>
+  <p>If this is a physical label already on a container, type its container number below to open that container and register the code against it.</p>
+  <form method="get" action="{% url 'inventory:jump_to_container' %}">
+    <input type="hidden" name="code" value="{{ code }}">
+    <input type="text" name="number" inputmode="numeric" placeholder="Container number (e.g. 39)" autofocus>
+    <p><button class="btn" type="submit">Open container</button></p>
+  </form>
+  <p><a href="{% url 'inventory:parts_search' %}">Or search by part name →</a></p>
+</div>
+{% endblock %}

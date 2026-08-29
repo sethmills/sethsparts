@@ -1,0 +1,18 @@
+{% extends "inventory/base.html" %}
+{% block title %}Delete container #{{ container.number }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Delete container #{{ container.number }}?</h1>
+  <p class="muted">{{ container.container_type }}{% if container.location %} · originally in {{ container.location }}{% endif %}</p>
+  <p class="msg-error">This permanently deletes the container{% if drawer_count %}, all {{ drawer_count }} of its drawers,{% endif %} and every stock record in it ({{ direct_item_count }} direct item{{ direct_item_count|pluralize }}{% if drawer_count %} + {{ drawer_item_count }} item{{ drawer_item_count|pluralize }} across its drawers{% endif %}). The parts themselves stay in the catalog — only the record of them being <em>here</em> is removed.</p>
+  <p>To confirm, type the container number (<strong>{{ container.number }}</strong>) below:</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="text" name="confirm_number" inputmode="numeric" autofocus autocomplete="off">
+    <p>
+      <button class="btn" type="submit" style="background:var(--danger);">Delete container #{{ container.number }}</button>
+      <a class="btn secondary" href="{% url 'inventory:container_detail' container.number %}">Cancel</a>
+    </p>
+  </form>
+</div>
+{% endblock %}

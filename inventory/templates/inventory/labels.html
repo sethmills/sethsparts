@@ -1,0 +1,31 @@
+{% extends "inventory/base.html" %}
+{% block title %}Labels — Seth's Parts{% endblock %}
+{% block content %}
+<form method="post" action="{% url 'inventory:generate_labels' %}">
+  {% csrf_token %}
+  <div class="card">
+    <h2>Containers without a barcode ({{ unlabeled_containers|length }})</h2>
+    {% if unlabeled_containers %}
+      <p class="muted">Check the ones you want new printed labels for. Leave unchecked any that already have a physical barcode you'll register by scanning it instead.</p>
+      {% for c in unlabeled_containers %}
+        <p><label><input type="checkbox" name="container_ids" value="{{ c.pk }}"> #{{ c.number }} — {{ c.container_type }}</label></p>
+      {% endfor %}
+    {% else %}
+      <p class="muted">All containers have a barcode.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Drawers without a barcode ({{ unlabeled_drawers|length }})</h2>
+    {% if unlabeled_drawers %}
+      {% for d in unlabeled_drawers %}
+        <p><label><input type="checkbox" name="drawer_ids" value="{{ d.pk }}"> {{ d }}</label></p>
+      {% endfor %}
+    {% else %}
+      <p class="muted">All drawers have a barcode.</p>
+    {% endif %}
+  </div>
+
+  <button class="btn" type="submit">Generate codes &amp; print labels for checked items</button>
+</form>
+{% endblock %}

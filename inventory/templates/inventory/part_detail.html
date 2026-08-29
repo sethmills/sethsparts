@@ -1,0 +1,73 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ part.name }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ part.name }}</h1>
+  <p class="muted">
+    {% if part.category %}{{ part.category }}{% endif %}
+    {% if part.manufacturer %} · {{ part.manufacturer }}{% endif %}
+  </p>
+  {% if part.description %}<p>{{ part.description }}</p>{% endif %}
+  {% if part.reorder_url %}<p><a href="{{ part.reorder_url }}" target="_blank" rel="noopener">Buy / product page →</a></p>{% endif %}
+  {% if part.min_quantity %}<p class="muted">Reorder threshold: {{ part.min_quantity }}</p>{% endif %}
+</div>
+
+{% if attachments %}
+<div class="card">
+  <h2>Documentation</h2>
+  {% for a in attachments %}
+    <p>
+      <span class="pill">{{ a.get_doc_type_display }}</span>
+      <a href="{{ a.file.url }}" target="_blank" rel="noopener">{{ a.title|default:a.file.name }}</a>
+      {% if a.source_url %}<span class="muted">(<a href="{{ a.source_url }}" target="_blank" rel="noopener">source</a>)</span>{% endif %}
+    </p>
+    {% if a.doc_type == "image" or a.doc_type == "pinout" %}
+      <p><img src="{{ a.file.url }}" alt="{{ a.title }}" style="max-width:100%;border-radius:8px;"></p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Where it lives ({{ stock_items|length }})</h2>
+  <table>
+    <tr><th>Container</th><th>Drawer</th><th>Qty</th><th></th></tr>
+    {% for si in stock_items %}
+    <tr>
+      <td><a href="{% url 'inventory:container_detail' si.container.number %}">#{{ si.container.number }}</a></td>
+      <td>{% if si.drawer %}<a href="{% url 'inventory:drawer_detail' si.drawer.pk %}">{{ si.drawer.label }}</a>{% else %}—{% endif %}</td>
+      <td>
+        <form method="post" action="{% url 'inventory:update_stock_quantity' si.pk %}" style="display:flex;gap:6px;">
+          {% csrf_token %}
+          <input type="text" name="quantity" value="{{ si.quantity|default_if_none:'' }}" inputmode="numeric" style="width:70px;padding:6px 8px;">
+          <button class="btn secondary" type="submit" style="padding:6px 10px;">Save</button>
+        </form>
+        {% if si.quantity_raw and si.quantity is None %}<span class="muted">(was "{{ si.quantity_raw }}")</span>{% endif %}
+      </td>
+      <td>
+        <form method="post" action="{% url 'inventory:delete_stock_item' si.pk %}" onsubmit="return confirm('Remove this location entirely?');">
+          {% csrf_token %}
+          <button class="btn secondary" type="submit" style="padding:6px 10px;">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>Add to a location</h2>
+  <form method="post" action="{% url 'inventory:add_stock_item' part.pk %}">
+    {% csrf_token %}
+    <p style="display:flex;gap:10px;flex-wrap:wrap;">
+      <select name="location" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+        {% for value, label in location_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="quantity" placeholder="Qty" inputmode="numeric" style="width:90px;">
+      <button class="btn" type="submit">Add</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "inventory/base.html" %}
+{% block title %}Reorder — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Needs reorder</h1>
+  <form method="get">
+    <select name="category" onchange="this.form.submit()" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+      <option value="">All categories</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if selected_category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="card">
+  {% if needs_reorder %}
+  <table>
+    <tr><th>Part</th><th>Have</th><th>Min</th><th></th></tr>
+    {% for row in needs_reorder %}
+    <tr>
+      <td><a href="{% url 'inventory:part_detail' row.part.pk %}">{{ row.part.name }}</a></td>
+      <td class="msg-error">{{ row.have }}</td>
+      <td>{{ row.min_quantity }}</td>
+      <td><a href="{{ row.reorder_link }}" target="_blank" rel="noopener">order →</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">Nothing below its reorder threshold right now. Set a "min quantity" on parts in <a href="/admin/inventory/part/">the admin</a> (list is editable inline) to start tracking them here.</p>
+  {% endif %}
+</div>
+{% endblock %}
