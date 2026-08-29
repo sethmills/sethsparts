@@ -143,6 +143,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# Shared secret for the machine-to-machine voice-search API (Home Assistant Assist calls
+# it directly, so it can't use session login). Empty means the endpoint always rejects.
+VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
+
+# LED "find the part" indicator controller (Phase 8 backlog item — the Pi host doesn't exist
+# yet). Empty URL means the locate button just reports "not configured" instead of erroring.
+LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")
+LED_CONTROLLER_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

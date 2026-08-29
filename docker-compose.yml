@@ -14,6 +14,13 @@ services:
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS must be set in .env}
       - DJANGO_DB_PATH=/app/data/db.sqlite3
       - DJANGO_MEDIA_ROOT=/app/data/media
+      # Optional -- only needed for the Home Assistant voice-search API (/api/locate/).
+      # Leave unset in .env and the endpoint just rejects every request.
+      - VOICE_SEARCH_API_KEY=${VOICE_SEARCH_API_KEY:-}
+      # Optional -- only needed once the LED "find the part" Pi controller exists (Phase 8).
+      # Leave unset in .env and the Locate button just reports "not configured".
+      - LED_CONTROLLER_URL=${LED_CONTROLLER_URL:-}
+      - LED_CONTROLLER_KEY=${LED_CONTROLLER_KEY:-}
 
   # Cloudflare Tunnel -- exposes the app at your domain with no open ports.
   # 1. In the Cloudflare Zero Trust dashboard: Networks -> Tunnels -> Create a

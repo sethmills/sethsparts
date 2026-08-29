@@ -1,8 +1,10 @@
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -176,6 +178,69 @@ def _location_choices():
 
 
 @login_required
+def part_intake(request):
+    container_number = request.GET.get("container") or request.POST.get("container")
+    drawer_pk = request.GET.get("drawer") or request.POST.get("drawer")
+
+    drawer = get_object_or_404(Drawer, pk=drawer_pk) if drawer_pk else None
+    container = drawer.container if drawer else (
+        get_object_or_404(Container, number=container_number) if container_number else None
+    )
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        if not name:
+            messages.error(request, "Part name is required.")
+        elif not container:
+            messages.error(request, "No location selected — go back to a container or drawer page and use \"Add a part here\".")
+        else:
+            raw_min_qty = (request.POST.get("min_quantity") or "").strip()
+            min_quantity = None
+            min_qty_error = False
+            if raw_min_qty:
+                try:
+                    min_quantity = max(0, int(raw_min_qty))
+                except ValueError:
+                    min_qty_error = True
+                    messages.error(request, f"'{raw_min_qty}' isn't a whole number for reorder threshold.")
+
+            if not min_qty_error:
+                category_id = request.POST.get("category") or None
+                part = Part.objects.create(
+                    name=name,
+                    category_id=category_id,
+                    manufacturer=(request.POST.get("manufacturer") or "").strip(),
+                    description=(request.POST.get("description") or "").strip(),
+                    is_electronic=bool(request.POST.get("is_electronic")),
+                    reorder_url=(request.POST.get("reorder_url") or "").strip(),
+                    datasheet_url=(request.POST.get("datasheet_url") or "").strip(),
+                    min_quantity=min_quantity,
+                )
+
+                raw_qty = (request.POST.get("quantity") or "").strip()
+                quantity = None
+                if raw_qty:
+                    try:
+                        quantity = max(0, int(raw_qty))
+                    except ValueError:
+                        quantity = None
+                StockItem.objects.create(
+                    part=part, container=container, drawer=drawer, quantity=quantity, quantity_raw=raw_qty
+                )
+
+                messages.success(request, f"Added {part.name} at {drawer or container}.")
+                if drawer:
+                    return redirect("inventory:drawer_detail", pk=drawer.pk)
+                return redirect("inventory:container_detail", number=container.number)
+
+    return render(
+        request,
+        "inventory/part_intake.html",
+        {"container": container, "drawer": drawer, "categories": Category.objects.all()},
+    )
+
+
+@login_required
 def part_detail(request, pk):
     part = get_object_or_404(Part, pk=pk)
     stock_items = part.stock_items.select_related("container", "drawer")
@@ -294,6 +359,147 @@ def parts_search(request):
             "selected_has_docs": has_docs,
         },
     )
+
+
+def _tagging_location_choices(queue_qs):
+    """(value, label, count) for locations currently holding a part in the given queryset,
+    value format matching `_location_choices`'s 'container:<number>' / 'drawer:<pk>' convention."""
+    counts = {}
+    labels = {}
+    stock_items = StockItem.objects.filter(part__in=queue_qs).select_related("container", "drawer__container")
+    for si in stock_items:
+        if si.drawer:
+            value = f"drawer:{si.drawer.pk}"
+            labels[value] = str(si.drawer)
+        else:
+            value = f"container:{si.container.number}"
+            labels[value] = str(si.container)
+        counts[value] = counts.get(value, 0) + 1
+    return sorted(((value, labels[value], count) for value, count in counts.items()), key=lambda t: t[1])
+
+
+@login_required
+def tagging_list(request):
+    status = request.GET.get("status") or ""
+    location = request.GET.get("location") or ""
+    query = (request.GET.get("q") or "").strip()
+
+    queue_statuses = [Part.ENRICHMENT_NEEDS_REVIEW, Part.ENRICHMENT_NEEDS_CLARIFICATION]
+    base_qs = Part.objects.filter(enrichment_status__in=queue_statuses)
+
+    parts = base_qs.select_related("category").prefetch_related("stock_items__container", "stock_items__drawer__container")
+    if status in dict(Part.ENRICHMENT_CHOICES):
+        parts = parts.filter(enrichment_status=status)
+    if query:
+        parts = parts.filter(Q(name__icontains=query) | Q(description__icontains=query))
+    if location:
+        kind, _, value = location.partition(":")
+        if kind == "container":
+            parts = parts.filter(stock_items__container__number=value)
+        elif kind == "drawer":
+            parts = parts.filter(stock_items__drawer__pk=value)
+        parts = parts.distinct()
+
+    parts = list(parts.order_by("name"))
+    for part in parts:
+        locations = {str(si.drawer) if si.drawer else str(si.container) for si in part.stock_items.all()}
+        part.location_summary = ", ".join(sorted(locations)) or "no location recorded"
+
+    return render(
+        request,
+        "inventory/tagging.html",
+        {
+            "parts": parts,
+            "categories": Category.objects.all(),
+            "status_choices": Part.ENRICHMENT_CHOICES,
+            "selected_status": status,
+            "selected_location": location,
+            "query": query,
+            "location_options": _tagging_location_choices(base_qs),
+        },
+    )
+
+
+@login_required
+def tagging_update(request, pk):
+    part = get_object_or_404(Part, pk=pk)
+    if request.method == "POST":
+        part.manufacturer = (request.POST.get("manufacturer") or "").strip()
+        part.description = (request.POST.get("description") or "").strip()
+        part.reorder_url = (request.POST.get("reorder_url") or "").strip()
+        category_id = request.POST.get("category") or None
+        part.category_id = category_id
+        status = request.POST.get("enrichment_status") or part.enrichment_status
+        if status in dict(Part.ENRICHMENT_CHOICES):
+            part.enrichment_status = status
+        part.save()
+        messages.success(request, f"Updated {part.name}.")
+
+    next_url = request.POST.get("next") or ""
+    if not next_url.startswith("/"):
+        next_url = reverse("inventory:tagging_list")
+    return redirect(next_url)
+
+
+@login_required
+def locate_drawer_led(request, pk):
+    """Fires the "find the part" LED indicator for one drawer — POSTs to the Pi controller
+    (Phase 8 backlog item, not built yet) using the drawer's configured strip/index mapping."""
+    drawer = get_object_or_404(Drawer, pk=pk)
+    if request.method == "POST":
+        if not drawer.led_strip or drawer.led_start_index is None:
+            messages.error(request, "This drawer has no LED mapping configured yet (set it in /admin/).")
+        elif not settings.LED_CONTROLLER_URL:
+            messages.error(request, "No LED controller configured yet (LED_CONTROLLER_URL is unset).")
+        else:
+            import requests
+
+            payload = {
+                "strip": drawer.led_strip,
+                "start_index": drawer.led_start_index,
+                "count": drawer.led_count or 1,
+            }
+            headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+            try:
+                resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
+                resp.raise_for_status()
+                messages.success(request, f"Lit up the indicator for {drawer}.")
+            except requests.RequestException as exc:
+                messages.error(request, f"Couldn't reach the LED controller: {exc}")
+    return redirect("inventory:drawer_detail", pk=drawer.pk)
+
+
+def api_locate_part(request):
+    """Machine-to-machine search for Home Assistant Assist voice queries — not @login_required,
+    since HA has no browser session; a shared secret (VOICE_SEARCH_API_KEY) stands in for auth."""
+    provided_key = request.headers.get("X-Api-Key") or request.GET.get("key") or ""
+    if not settings.VOICE_SEARCH_API_KEY or provided_key != settings.VOICE_SEARCH_API_KEY:
+        return JsonResponse({"error": "unauthorized"}, status=403)
+
+    query = (request.GET.get("q") or "").strip()
+    if not query:
+        return JsonResponse({"error": "missing q"}, status=400)
+
+    parts = Part.objects.filter(build_search_query(query)).prefetch_related(
+        "stock_items__container", "stock_items__drawer__container"
+    )[:5]
+
+    matches = []
+    for part in parts:
+        locations = sorted({str(si.drawer) if si.drawer else str(si.container) for si in part.stock_items.all()})
+        matches.append(
+            {
+                "name": part.name,
+                "manufacturer": part.manufacturer,
+                "locations": locations,
+                "quantity_summary": ", ".join(
+                    si.quantity_raw or (str(si.quantity) if si.quantity is not None else "unknown qty")
+                    for si in part.stock_items.all()
+                ),
+            }
+        )
+
+    return JsonResponse({"query": query, "count": len(matches), "matches": matches})
 
 
 @login_required

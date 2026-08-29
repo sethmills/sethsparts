@@ -1,0 +1,47 @@
+{% extends "inventory/base.html" %}
+{% block title %}Add a part — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Add a part</h1>
+  {% if drawer %}
+    <p class="muted">Going into <a href="{% url 'inventory:drawer_detail' drawer.pk %}">{{ drawer }}</a></p>
+  {% elif container %}
+    <p class="muted">Going into <a href="{% url 'inventory:container_detail' container.number %}">#{{ container.number }} ({{ container.container_type }})</a></p>
+  {% else %}
+    <p class="msg-error">No location selected — go back to a container or drawer page and use "Add a part here".</p>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    {% if drawer %}<input type="hidden" name="drawer" value="{{ drawer.pk }}">
+    {% elif container %}<input type="hidden" name="container" value="{{ container.number }}">{% endif %}
+
+    <p><label>Name *<br><input type="text" name="name" value="{{ request.POST.name|default:'' }}" autofocus required style="width:100%;max-width:420px;"></label></p>
+
+    <p style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <label>Category<br>
+        <select name="category" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+          <option value="">—</option>
+          {% for c in categories %}
+            <option value="{{ c.pk }}" {% if request.POST.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Manufacturer<br><input type="text" name="manufacturer" value="{{ request.POST.manufacturer|default:'' }}"></label>
+      <label><input type="checkbox" name="is_electronic" {% if request.POST.is_electronic %}checked{% endif %}> Electronic</label>
+    </p>
+
+    <p><label>Description / specs<br><textarea name="description" rows="3" style="width:100%;max-width:520px;background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">{{ request.POST.description|default:'' }}</textarea></label></p>
+
+    <p style="display:flex;gap:10px;flex-wrap:wrap;">
+      <label>Quantity here<br><input type="text" name="quantity" value="{{ request.POST.quantity|default:'' }}" inputmode="numeric" style="width:110px;" placeholder="e.g. 10"></label>
+      <label>Reorder threshold<br><input type="text" name="min_quantity" value="{{ request.POST.min_quantity|default:'' }}" inputmode="numeric" style="width:130px;"></label>
+    </p>
+
+    <p><label>Reorder / buy link<br><input type="url" name="reorder_url" value="{{ request.POST.reorder_url|default:'' }}" style="width:100%;max-width:520px;"></label></p>
+    <p><label>Datasheet link<br><input type="url" name="datasheet_url" value="{{ request.POST.datasheet_url|default:'' }}" style="width:100%;max-width:520px;"></label></p>
+
+    <p><button class="btn" type="submit" {% if not container %}disabled{% endif %}>Add part</button></p>
+  </form>
+</div>
+{% endblock %}

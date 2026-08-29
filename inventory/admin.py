@@ -37,7 +37,7 @@ class ContainerAdmin(admin.ModelAdmin):
 
 @admin.register(Drawer)
 class DrawerAdmin(admin.ModelAdmin):
-    list_display = ["container", "label", "barcode_id"]
+    list_display = ["container", "label", "barcode_id", "led_strip", "led_start_index", "led_count"]
     list_filter = ["container"]
     search_fields = ["label", "barcode_id"]
 
