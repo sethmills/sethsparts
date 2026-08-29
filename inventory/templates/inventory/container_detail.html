@@ -5,6 +5,7 @@
   <h1>Container #{{ container.number }}</h1>
   <p class="muted">{{ container.container_type }}{% if container.dimensions %} · {{ container.dimensions }}{% endif %}{% if container.location %} · originally in {{ container.location }}{% endif %}</p>
   {% if container.notes %}<p class="muted">{{ container.notes }}</p>{% endif %}
+  <p class="no-print"><a href="{% url 'inventory:part_intake' %}?container={{ container.number }}" class="btn">+ Add a part here</a></p>
   <p class="no-print"><a href="{% url 'inventory:delete_container' container.number %}" class="muted">Delete this container…</a></p>
 
   {% if container.barcode_id %}

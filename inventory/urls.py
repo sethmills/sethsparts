@@ -10,6 +10,9 @@ urlpatterns = [
     path("go/", views.go, name="go"),
     path("jump/", views.jump_to_container, name="jump_to_container"),
     path("search/", views.parts_search, name="parts_search"),
+    path("tagging/", views.tagging_list, name="tagging_list"),
+    path("tagging/<int:pk>/update/", views.tagging_update, name="tagging_update"),
+    path("api/locate/", views.api_locate_part, name="api_locate_part"),
     path("containers/<int:number>/", views.container_detail, name="container_detail"),
     path(
         "containers/<int:number>/register-barcode/",
@@ -18,6 +21,8 @@ urlpatterns = [
     ),
     path("drawers/<int:pk>/", views.drawer_detail, name="drawer_detail"),
     path("drawers/<int:pk>/register-barcode/", views.register_drawer_barcode, name="register_drawer_barcode"),
+    path("drawers/<int:pk>/locate-led/", views.locate_drawer_led, name="locate_drawer_led"),
+    path("intake/", views.part_intake, name="part_intake"),
     path("parts/<int:pk>/", views.part_detail, name="part_detail"),
     path("parts/<int:pk>/add-stock/", views.add_stock_item, name="add_stock_item"),
     path("stock/<int:pk>/update-quantity/", views.update_stock_quantity, name="update_stock_quantity"),

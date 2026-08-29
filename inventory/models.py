@@ -37,6 +37,13 @@ class Drawer(models.Model):
     label = models.CharField(max_length=100, help_text="e.g. 'drawer b2'")
     barcode_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
 
+    # "Find the part" LED indicator (Phase 8 backlog item) — logical strip name + index range,
+    # so the mapping can be filled in via admin once the physical wiring is actually decided,
+    # independent of whatever strip topology turns out to be true.
+    led_strip = models.CharField(max_length=100, blank=True, help_text="Logical WS2812B strip name/ID this drawer's indicator LEDs are on, e.g. 'cabinet1'")
+    led_start_index = models.PositiveIntegerField(null=True, blank=True, help_text="First LED index (0-based) for this drawer on that strip")
+    led_count = models.PositiveIntegerField(null=True, blank=True, default=1, help_text="Number of LEDs marking this drawer")
+
     class Meta:
         ordering = ["container__number", "label"]
         unique_together = [("container", "label")]
@@ -78,6 +85,7 @@ class Part(models.Model):
     description = models.TextField(blank=True)
     min_quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Reorder threshold (Phase 5)")
     reorder_url = models.URLField(blank=True)
+    datasheet_url = models.URLField(blank=True, help_text="Quick reference link — not a locally cached copy, see Attachments for that")
     enrichment_status = models.CharField(max_length=20, choices=ENRICHMENT_CHOICES, default=ENRICHMENT_NOT_NEEDED)
 
     class Meta:

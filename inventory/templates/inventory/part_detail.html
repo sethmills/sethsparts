@@ -9,6 +9,7 @@
   </p>
   {% if part.description %}<p>{{ part.description }}</p>{% endif %}
   {% if part.reorder_url %}<p><a href="{{ part.reorder_url }}" target="_blank" rel="noopener">Buy / product page →</a></p>{% endif %}
+  {% if part.datasheet_url %}<p><a href="{{ part.datasheet_url }}" target="_blank" rel="noopener">Datasheet →</a></p>{% endif %}
   {% if part.min_quantity %}<p class="muted">Reorder threshold: {{ part.min_quantity }}</p>{% endif %}
 </div>
 
