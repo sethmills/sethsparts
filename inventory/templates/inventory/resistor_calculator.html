@@ -1,0 +1,154 @@
+{% extends "inventory/base.html" %}
+{% block title %}Resistor decoder — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Resistor color-code decoder</h1>
+  <p class="muted">Pick the number of bands, then click each band's color left to right.</p>
+  <p id="band-count-toggle" style="display:flex;gap:8px;">
+    <button class="btn secondary" data-bands="4">4-band</button>
+    <button class="btn secondary" data-bands="5">5-band</button>
+    <button class="btn secondary" data-bands="6">6-band</button>
+  </p>
+</div>
+
+<div class="card">
+  <div id="bands-container"></div>
+</div>
+
+<div class="card">
+  <h2>Result</h2>
+  <p style="font-size:1.8rem;font-weight:700;" id="result-value">— select all bands —</p>
+  <p class="muted" id="result-detail"></p>
+</div>
+
+<script>
+const COLORS = {
+  black:  {digit: 0, mult: 1,    tol: null, temp: 250, hex: '#1a1a1a'},
+  brown:  {digit: 1, mult: 1e1,  tol: 1,    temp: 100, hex: '#7b4a12'},
+  red:    {digit: 2, mult: 1e2,  tol: 2,    temp: 50,  hex: '#d21f1f'},
+  orange: {digit: 3, mult: 1e3,  tol: null, temp: 15,  hex: '#f2811d'},
+  yellow: {digit: 4, mult: 1e4,  tol: null, temp: 25,  hex: '#f2e21d'},
+  green:  {digit: 5, mult: 1e5,  tol: 0.5,  temp: 20,  hex: '#1f9c4a'},
+  blue:   {digit: 6, mult: 1e6,  tol: 0.25, temp: 10,  hex: '#1f5fd2'},
+  violet: {digit: 7, mult: 1e7,  tol: 0.1,  temp: 5,   hex: '#8a3fc9'},
+  grey:   {digit: 8, mult: 1e8,  tol: 0.05, temp: 1,   hex: '#8c8c8c'},
+  white:  {digit: 9, mult: 1e9,  tol: null, temp: null,hex: '#f2f2f2'},
+  gold:   {digit: null, mult: 0.1,  tol: 5,  temp: null, hex: '#c9a227'},
+  silver: {digit: null, mult: 0.01, tol: 10, temp: null, hex: '#bfbfbf'},
+  none:   {digit: null, mult: null, tol: 20, temp: null, hex: 'transparent'},
+};
+const DIGIT_COLORS = ['black','brown','red','orange','yellow','green','blue','violet','grey','white'];
+const MULT_COLORS = ['silver','gold','black','brown','red','orange','yellow','green','blue','violet','grey','white'];
+const TOL_COLORS = ['brown','red','green','blue','violet','grey','gold','silver','none'];
+const TEMP_COLORS = ['black','brown','red','orange','yellow','blue','violet','grey'];
+
+let bandCount = 4;
+let selected = [];
+
+function roleForBand(i, total) {
+  const digitCount = total === 4 ? 2 : 3;
+  if (i < digitCount) return 'digit';
+  if (i === digitCount) return 'mult';
+  if (i === digitCount + 1) return 'tol';
+  return 'temp';
+}
+function colorsForRole(role) {
+  if (role === 'digit') return DIGIT_COLORS;
+  if (role === 'mult') return MULT_COLORS;
+  if (role === 'tol') return TOL_COLORS;
+  return TEMP_COLORS;
+}
+function roleLabel(role) {
+  return {digit: 'Digit', mult: 'Multiplier', tol: 'Tolerance', temp: 'Temp. coefficient'}[role];
+}
+
+function render() {
+  const container = document.getElementById('bands-container');
+  container.innerHTML = '';
+  selected = new Array(bandCount).fill(null);
+
+  for (let i = 0; i < bandCount; i++) {
+    const role = roleForBand(i, bandCount);
+    const row = document.createElement('div');
+    row.style.marginBottom = '14px';
+    const label = document.createElement('div');
+    label.className = 'muted';
+    label.style.marginBottom = '6px';
+    label.textContent = `Band ${i + 1} — ${roleLabel(role)}`;
+    row.appendChild(label);
+
+    const swatches = document.createElement('div');
+    swatches.style.display = 'flex';
+    swatches.style.flexWrap = 'wrap';
+    swatches.style.gap = '6px';
+
+    colorsForRole(role).forEach(colorName => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = colorName;
+      btn.dataset.band = i;
+      btn.dataset.color = colorName;
+      const c = COLORS[colorName];
+      btn.style.cssText = `
+        padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+        border: 2px solid ${colorName === 'none' ? '#8b93a1' : c.hex};
+        background: ${c.hex}; color: ${['white','yellow','silver','gold'].includes(colorName) ? '#111' : '#fff'};
+      `;
+      btn.addEventListener('click', () => {
+        selected[i] = colorName;
+        [...swatches.children].forEach(b => b.style.outline = 'none');
+        btn.style.outline = '3px solid var(--accent2)';
+        compute();
+      });
+      swatches.appendChild(btn);
+    });
+    row.appendChild(swatches);
+    container.appendChild(row);
+  }
+  compute();
+}
+
+function formatOhms(ohms) {
+  if (ohms >= 1e9) return (ohms / 1e9).toFixed(ohms % 1e9 ? 2 : 0) + ' GΩ';
+  if (ohms >= 1e6) return (ohms / 1e6).toFixed(ohms % 1e6 ? 2 : 0) + ' MΩ';
+  if (ohms >= 1e3) return (ohms / 1e3).toFixed(ohms % 1e3 ? 2 : 0) + ' kΩ';
+  return ohms.toFixed(2).replace(/\.00$/, '') + ' Ω';
+}
+
+function compute() {
+  const valueEl = document.getElementById('result-value');
+  const detailEl = document.getElementById('result-detail');
+  if (selected.some(s => s === null)) {
+    valueEl.textContent = '— select all bands —';
+    detailEl.textContent = '';
+    return;
+  }
+  const digitCount = bandCount === 4 ? 2 : 3;
+  const digits = selected.slice(0, digitCount).map(c => COLORS[c].digit);
+  const multColor = selected[digitCount];
+  const tolColor = selected[digitCount + 1];
+  const tempColor = bandCount === 6 ? selected[digitCount + 2] : null;
+
+  const base = parseInt(digits.join(''), 10);
+  const ohms = base * COLORS[multColor].mult;
+  const tol = COLORS[tolColor].tol;
+
+  valueEl.textContent = formatOhms(ohms) + (tol !== null ? ` ±${tol}%` : '');
+  let detail = `Base digits: ${digits.join('')} · Multiplier: ×${COLORS[multColor].mult}`;
+  if (tempColor) {
+    detail += ` · Temp. coefficient: ${COLORS[tempColor].temp} ppm/K`;
+  }
+  detailEl.textContent = detail;
+}
+
+document.querySelectorAll('#band-count-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    bandCount = parseInt(btn.dataset.bands, 10);
+    document.querySelectorAll('#band-count-toggle button').forEach(b => b.style.outline = 'none');
+    btn.style.outline = '3px solid var(--accent2)';
+    render();
+  });
+});
+document.querySelector('#band-count-toggle button[data-bands="4"]').click();
+</script>
+{% endblock %}

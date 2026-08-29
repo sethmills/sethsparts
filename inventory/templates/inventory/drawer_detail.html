@@ -1,0 +1,37 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ drawer }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ drawer.label }}</h1>
+  <p class="muted">In <a href="{% url 'inventory:container_detail' drawer.container.number %}">container #{{ drawer.container.number }}</a> ({{ drawer.container.container_type }})</p>
+
+  {% if drawer.barcode_id %}
+    <p>Barcode: <span class="pill">{{ drawer.barcode_id }}</span></p>
+  {% else %}
+    <form method="post" action="{% url 'inventory:register_drawer_barcode' drawer.pk %}">
+      {% csrf_token %}
+      <label class="muted">No barcode registered yet — scan or type its physical label code:</label>
+      <input type="text" name="code" value="{{ request.GET.code }}" autofocus autocomplete="off">
+      <p><button class="btn" type="submit">Register barcode</button></p>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Contents ({{ stock_items|length }})</h2>
+  {% if stock_items %}
+  <table>
+    <tr><th>Part</th><th>Qty</th><th>Notes</th></tr>
+    {% for si in stock_items %}
+    <tr>
+      <td><a href="{% url 'inventory:part_detail' si.part.pk %}">{{ si.part.name }}</a></td>
+      <td>{{ si.quantity_raw|default:si.quantity }}</td>
+      <td class="muted">{{ si.source_notes }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Empty.</p>
+  {% endif %}
+</div>
+{% endblock %}

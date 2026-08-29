@@ -1,0 +1,35 @@
+{% extends "inventory/base.html" %}
+{% block title %}Browse — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="Filter by container number, name, or type…">
+    <p>
+      <select name="type" onchange="this.form.submit()" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+        <option value="">All container types</option>
+        {% for t in all_types %}
+          <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </p>
+  </form>
+</div>
+
+{% for c in containers %}
+<div class="card">
+  <h2><a href="{% url 'inventory:container_detail' c.number %}">#{{ c.number }}</a> — {{ c.container_type }}
+    <span class="pill">{{ c.item_count }} item{{ c.item_count|pluralize }}</span>
+  </h2>
+  {% if c.location %}<p class="muted">Originally in {{ c.location }}</p>{% endif %}
+  {% if c.drawers.all %}
+    <p>
+      {% for d in c.drawers.all %}
+        <a class="pill" href="{% url 'inventory:drawer_detail' d.pk %}" style="margin-right:6px;">{{ d.label }}</a>
+      {% endfor %}
+    </p>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card"><p class="muted">No containers match.</p></div>
+{% endfor %}
+{% endblock %}

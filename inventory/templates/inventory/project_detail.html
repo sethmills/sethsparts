@@ -1,0 +1,60 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ project.name }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ project.name }} <span class="pill">{{ project.get_status_display }}</span></h1>
+  <p class="muted">{{ project.description }}</p>
+  <p class="muted">Edit the BOM (parts &amp; quantities) in <a href="/admin/inventory/bomrevision/">the admin</a>.</p>
+</div>
+
+{% if revision %}
+<div class="card">
+  <h2>BOM rev {{ revision.version }} — coverage</h2>
+  <table>
+    <tr><th>Part</th><th>Need</th><th>Have</th><th>Shortfall</th><th></th></tr>
+    {% for row in coverage %}
+    <tr>
+      <td><a href="{% url 'inventory:part_detail' row.line.part.pk %}">{{ row.line.part.name }}</a></td>
+      <td>{{ row.need }}</td>
+      <td>{{ row.have }}</td>
+      <td>{% if row.shortfall %}<span class="msg-error">{{ row.shortfall }}</span>{% else %}—{% endif %}</td>
+      <td>{% if row.reorder_link %}<a href="{{ row.reorder_link }}" target="_blank" rel="noopener">order →</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>Build</h2>
+  <form method="post" action="{% url 'inventory:build_project' project.pk %}">
+    {% csrf_token %}
+    <label class="muted">Quantity to build</label>
+    <input type="text" inputmode="numeric" name="quantity_built" value="1">
+    <p><button class="btn" type="submit">Build (deducts stock)</button></p>
+  </form>
+</div>
+{% else %}
+<div class="card"><p class="muted">No BOM revision yet — add one in the admin.</p></div>
+{% endif %}
+
+<div class="card">
+  <h2>Build history</h2>
+  {% for b in builds %}
+    <p><strong>{{ b.built_at|date:"Y-m-d H:i" }}</strong> — built {{ b.quantity_built }}x (rev {{ b.revision.version }})
+      {% if b.notes %}<br><span class="muted">{{ b.notes }}</span>{% endif %}
+    </p>
+    <table>
+      <tr><th>Part</th><th>Requested</th><th>Consumed</th></tr>
+      {% for c in b.consumptions.all %}
+      <tr>
+        <td>{{ c.part.name }}</td>
+        <td>{{ c.quantity_requested }}</td>
+        <td{% if c.short %} class="msg-error"{% endif %}>{{ c.quantity_consumed }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% empty %}
+    <p class="muted">No builds yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

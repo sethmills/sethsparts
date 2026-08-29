@@ -1,0 +1,17 @@
+{% extends "inventory/base.html" %}
+{% block title %}Print labels — Seth's Parts{% endblock %}
+{% block content %}
+<p class="no-print"><button class="btn" onclick="window.print()">Print this page</button></p>
+<div class="label-sheet">
+  {% for l in labels_data %}
+    <div class="label-tile">
+      <div class="title">{{ l.title }}</div>
+      {% if l.subtitle %}<div>{{ l.subtitle }}</div>{% endif %}
+      <img src="{% url 'inventory:barcode_svg' l.code %}" alt="{{ l.code }}" style="width:100%;">
+      <div class="code">{{ l.code }}</div>
+    </div>
+  {% empty %}
+    <p class="muted">Nothing selected.</p>
+  {% endfor %}
+</div>
+{% endblock %}

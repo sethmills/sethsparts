@@ -1,0 +1,45 @@
+<div id="reader" style="width:100%;{% if not autostart %}min-height:80px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;{% endif %}"></div>
+<p class="muted" id="scan-status" style="{% if not autostart %}cursor:pointer;{% endif %}">{% if autostart %}Starting camera…{% else %}Camera off — tap here to start it.{% endif %}</p>
+
+<form method="get" action="{% url 'inventory:go' %}" style="margin-top:10px;">
+  <input type="text" name="code" id="code-input" autocomplete="off" placeholder="Or type / scan with a USB scanner">
+</form>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function () {
+  const statusEl = document.getElementById('scan-status');
+  let started = false;
+
+  function onScanSuccess(decodedText) {
+    statusEl.textContent = 'Found: ' + decodedText;
+    window.location.href = "{% url 'inventory:go' %}?code=" + encodeURIComponent(decodedText);
+  }
+
+  function startScanner() {
+    if (started) return;
+    started = true;
+    try {
+      const scanner = new Html5Qrcode("reader");
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 260, height: 150 } },
+        onScanSuccess
+      ).then(() => {
+        statusEl.textContent = 'Point the camera at a barcode.';
+      }).catch((err) => {
+        statusEl.textContent = 'Camera unavailable (' + err + ') — use the text field below instead.';
+      });
+    } catch (e) {
+      statusEl.textContent = 'Camera scanning not supported in this browser — use the text field below.';
+    }
+  }
+
+  {% if autostart %}
+    startScanner();
+  {% else %}
+    document.getElementById('reader').addEventListener('click', startScanner);
+    statusEl.addEventListener('click', startScanner);
+  {% endif %}
+})();
+</script>
