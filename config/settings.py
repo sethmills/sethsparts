@@ -143,6 +143,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# Long-lived sessions -- the Pi kiosk display logs in once and should stay logged in
+# indefinitely rather than getting kicked back to the login page after Django's
+# 2-week default. Doesn't weaken anything meaningfully since this is a single-operator
+# site behind its own login already.
+SESSION_COOKIE_AGE = int(os.environ.get("SESSION_COOKIE_AGE", 60 * 60 * 24 * 365))
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 # Shared secret for the machine-to-machine voice-search API (Home Assistant Assist calls
 # it directly, so it can't use session login). Empty means the endpoint always rejects.
 VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
