@@ -1,0 +1,15 @@
+[Unit]
+Description=Seth's Parts LED "find the part" controller
+After=network.target
+
+[Service]
+Type=simple
+User=seth
+WorkingDirectory=/home/seth/led-controller
+EnvironmentFile=/etc/led-controller/env
+ExecStart=/usr/bin/python3 /home/seth/led-controller/server.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
