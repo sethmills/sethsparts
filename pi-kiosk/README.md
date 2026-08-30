@@ -9,20 +9,30 @@ changes to the Pi manually (scp + the relevant `systemctl`/`lightdm` restart).
   `https://sethsparts.com`, with a persistent profile (`~/.config/chromium-kiosk`)
   so the login session survives reboots, and
   `--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:9091` so the
-  page's "Keyboard" button can call the local keyboard-toggle service despite
-  being served over HTTPS (mixed-content would otherwise block it — safe here
-  since this Chromium instance only ever visits our own site).
+  page's touch-only header buttons can call the local kiosk-helper service
+  despite being served over HTTPS (mixed-content would otherwise block it —
+  safe here since this Chromium instance only ever visits our own site).
 - `sethsparts-kiosk.desktop` → `/home/seth/.config/autostart/sethsparts-kiosk.desktop`.
   The actual autostart mechanism Raspberry Pi OS's default `/etc/xdg/labwc/autostart`
   already runs `lxsession-xdg-autostart` for — **don't** put this in
   `~/.config/labwc/autostart` instead, that file fully replaces (rather than
   extends) the system default and would kill the panel/wallpaper.
-- `keyboard-toggle/server.py` → `/home/seth/keyboard-toggle/server.py`, run as
-  the systemd **user** service `keyboard-toggle/keyboard-toggle.service` →
-  `~/.config/systemd/user/keyboard-toggle.service` (needs the graphical
-  session's DBus bus, hence a user unit; `loginctl enable-linger seth` keeps
-  it running independent of active login state). Toggles squeekboard (already
-  installed and running on this Pi) via its `sm.puri.OSK0.SetVisible` DBus
-  method — squeekboard normally toggles from the taskbar, which kiosk mode
-  hides, so this gives the page's own "Keyboard" button something to call.
-  Listens on `127.0.0.1:9091` only.
+- `sethsparts-kiosk-relaunch.desktop` → `/home/seth/Desktop/sethsparts-kiosk-relaunch.desktop`.
+  A double-clickable icon on the Pi's actual desktop that re-runs
+  `kiosk-launch.sh` — the way back in after using the header's "⏻ Desktop"
+  button to exit the kiosk. May need `chmod +x` and a one-time "Trust this
+  launcher" click in the file manager before it'll run without a warning.
+- `kiosk-helper/server.py` → `/home/seth/kiosk-helper/server.py`, run as the
+  systemd **user** service `kiosk-helper/kiosk-helper.service` →
+  `~/.config/systemd/user/kiosk-helper.service` (needs the graphical
+  session's DBus bus for the keyboard route, hence a user unit;
+  `loginctl enable-linger seth` keeps it running independent of active login
+  state). Listens on `127.0.0.1:9091` only. Two routes, both called from
+  touch-only buttons in the site's own header (invisible on desktop/mouse):
+  - `POST /toggle` — show/hide squeekboard (already installed and running on
+    this Pi) via its `sm.puri.OSK0.SetVisible` DBus method — squeekboard
+    normally toggles from the taskbar, which kiosk mode hides.
+  - `POST /exit-browser` — kills Chromium, revealing the desktop underneath
+    (pcmanfm-pi/wf-panel-pi keep running regardless; only the kiosk browser
+    is fullscreen over them). Use the relaunch desktop icon above to get
+    back into the kiosk afterward.
