@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from .models import (
+    Attachment,
     BOMRevision,
     Build,
     BuildConsumption,
@@ -255,6 +256,19 @@ def part_detail(request, pk):
             "location_choices": _location_choices(),
         },
     )
+
+
+@login_required
+def add_part_photo(request, pk):
+    part = get_object_or_404(Part, pk=pk)
+    if request.method == "POST":
+        photo = request.FILES.get("photo")
+        if not photo:
+            messages.error(request, "No photo received.")
+        else:
+            Attachment.objects.create(part=part, file=photo, doc_type=Attachment.IMAGE, title="Product photo")
+            messages.success(request, "Photo added.")
+    return redirect("inventory:part_detail", pk=part.pk)
 
 
 @login_required

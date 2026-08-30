@@ -21,6 +21,7 @@
       </svg>
       Seth's Parts
     </a>
+    <button type="button" class="btn secondary touch-only" onclick="fetch('http://127.0.0.1:9091/toggle', {method: 'POST', mode: 'no-cors'}).catch(function(){})" title="Show/hide the on-screen keyboard">⌨ Keyboard</button>
     <nav>
       <a href="{% url 'inventory:browse' %}">Browse</a>
       <a href="{% url 'inventory:scan' %}">Scan</a>
