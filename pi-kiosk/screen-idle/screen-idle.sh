@@ -9,7 +9,7 @@
 export XDG_RUNTIME_DIR=/run/user/1000
 export WAYLAND_DISPLAY=wayland-0
 
-IDLE_SECONDS=180
+IDLE_SECONDS=600
 DIR="$(dirname "$(readlink -f "$0")")"
 
 exec swayidle -w \
