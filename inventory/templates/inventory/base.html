@@ -21,8 +21,8 @@
       </svg>
       Seth's Parts
     </a>
-    <button type="button" class="btn secondary touch-only" onclick="fetch('http://127.0.0.1:9091/toggle', {method: 'POST', mode: 'no-cors'}).catch(function(){})" title="Show/hide the on-screen keyboard">⌨ Keyboard</button>
-    <button type="button" class="btn secondary touch-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop">⏻ Desktop</button>
+    <button type="button" class="btn secondary pi-only" onclick="fetch('http://127.0.0.1:9091/toggle', {method: 'POST', mode: 'no-cors'}).catch(function(){})" title="Show/hide the on-screen keyboard">⌨ Keyboard</button>
+    <button type="button" class="btn secondary pi-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop">⏻ Desktop</button>
     <nav>
       <a href="{% url 'inventory:browse' %}">Browse</a>
       <a href="{% url 'inventory:scan' %}">Scan</a>
@@ -36,6 +36,24 @@
       <a href="/admin/">Admin</a>
     </nav>
   </header>
+  <script>
+    // Reveals .pi-only elements only when the Pi kiosk's local helper service
+    // is actually reachable -- that service only ever runs on the Pi itself,
+    // so this correctly stays true across display/touchscreen swaps and never
+    // shows these buttons on someone's phone (unlike a screen-size or
+    // touch-capability check, which can't tell "the Pi" apart from "any
+    // touchscreen").
+    (function () {
+      const controller = new AbortController();
+      const timeout = setTimeout(function () { controller.abort(); }, 800);
+      fetch('http://127.0.0.1:9091/health', { signal: controller.signal })
+        .then(function (resp) {
+          if (resp.ok) document.documentElement.classList.add('pi-kiosk');
+        })
+        .catch(function () {})
+        .finally(function () { clearTimeout(timeout); });
+    })();
+  </script>
   <main>
     {% if messages %}
       {% for message in messages %}

@@ -7,7 +7,14 @@ session's DBus bus), listening on 127.0.0.1 only -- the page calls it
 directly since it and the kiosk browser share the same machine.
 
 Routes:
-  POST /toggle        -- show/hide squeekboard (already running on this Pi,
+  GET  /health         -- 200 if this service is reachable. The page's own JS
+                          uses this at load time to detect "am I actually
+                          running on the Pi kiosk" (this service only ever
+                          runs there) and reveal Pi-only buttons accordingly
+                          -- independent of screen size/touch capability, so
+                          it keeps working correctly across display swaps and
+                          never shows those buttons on someone's phone.
+  POST /toggle          -- show/hide squeekboard (already running on this Pi,
                           normally toggled from the taskbar, which kiosk mode
                           hides) via its sm.puri.OSK0.SetVisible DBus method.
   POST /exit-browser   -- kill kiosk Chromium, revealing the desktop
@@ -52,9 +59,19 @@ class Handler(BaseHTTPRequestHandler):
     def _respond(self, status, body=b""):
         self.send_response(status)
         self.send_header("Content-Length", str(len(body)))
+        # The page (https://sethsparts.com) fetches this cross-origin to detect
+        # "am I on the Pi" -- needs to actually read the response, not just
+        # trigger the request, so a plain no-cors fetch won't do.
+        self.send_header("Access-Control-Allow-Origin", "https://sethsparts.com")
         self.end_headers()
         if body:
             self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path == "/health":
+            self._respond(200, b"ok")
+            return
+        self._respond(404)
 
     def do_POST(self):
         if self.path == "/toggle":
