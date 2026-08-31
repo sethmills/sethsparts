@@ -142,6 +142,18 @@ This is exactly why `Drawer` LED info became a separate `DrawerLedSegment` relat
 10. USB barcode scanner(s) + new USB camera: just plug in, should be plug-and-play (HID keyboard emulation for the scanner, standard UVC webcam for the camera) — nothing to pre-configure.
 11. Once confirmed working end-to-end, decommission the Pi 4 (or repurpose — Seth's call, not assumed here).
 
+### 12. Real LED data seeded + two led-controller bugs found and fixed (2026-08-31)
+
+Seth stuck the LEDs down and measured. **Corrected channel mapping** (differs from the earlier guess in item 11 — he'd had cabinets 1 and 3 backwards): channel 0/1 = cabinet 3 (drawers 19-27) left/right, 2/3 = cabinet 2 (10-18), 4/5 = cabinet 1 (1-9), 6 = cabinet 4 (28-36) **left only, intentionally no right strip**. Updated in `led-controller/pi/strip_map.json.example` and deployed to the live Pi's `/home/seth/led-controller/strip_map.json`.
+
+Real per-drawer LED ranges captured in `inventory/management/commands/seed_led_segments.py` (`STANDARD_PATTERN` for cabinets 1-3's six strips, `CABINET4_LEFT_PATTERN` for channel 6's own measured layout) — idempotent (`update_or_create`), run with `python manage.py seed_led_segments` (add `--dry-run` to preview). **Already run against both local dev and production** — 63 `DrawerLedSegment` rows created in each.
+
+**Two real bugs in `led-controller/pi/server.py` found and fixed while verifying this end-to-end** (both deployed to the live Pi):
+1. It only bound `127.0.0.1` (IPv4). cloudflared's ingress target is the hostname `localhost`, which it can resolve to `::1` (IPv6) — an IPv4-only bind then looks exactly like "connection refused" to the tunnel even though the service is genuinely up and healthy. Symptom was oddly specific: GETs worked (hit whichever pooled connection happened to be fine), POSTs reliably failed. Fixed by binding both loopback families (two `ThreadingHTTPServer` instances, one `AF_INET` one `AF_INET6`, same `Handler`).
+2. `termios.error` (raised when writing to a USB serial device that's vanished mid-session) isn't reliably a `serial.SerialException`/`OSError` subclass, so it went uncaught and crashed the request-handling thread with **no HTTP response at all** — looked like a dead/hung server from any client's perspective (and Cloudflare's edge additionally swaps *any* 5xx from the origin for its own generic error page, which is why `curl` showed a bare Cloudflare 502 with no detail even after the first fix). Broadened to catch any `Exception` in that one narrow serial-I/O boundary (deliberate, documented in the code — this is exactly the kind of place a broad except is correct: a hardware I/O boundary where any failure should uniformly degrade to "couldn't reach the Scorpio"), and now discards the cached connection object on any failure so the next request reopens fresh instead of repeatedly hitting the same broken file descriptor.
+
+**Current hardware state:** the Scorpio is physically disconnected right now (Seth mid-installation — confirmed via `lsusb` showing no USB devices at all, not even the mouse/keyboard). Once it's reconnected, `POST /locate` should work end-to-end immediately — the mapping, seed data, and both server fixes are already live. Worth a real end-to-end test (a "Locate" click from a real drawer page) once the hardware's back, since everything so far has only been verified with the Scorpio unplugged (i.e. verified it *fails cleanly*, not yet verified it *lights something up*).
+
 ## Files Seth has shared, still relevant
 
 - `/Users/seth/Downloads/amazon_order_history.xlsx` — for backlog item 6, later.
