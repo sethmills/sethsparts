@@ -188,13 +188,19 @@ select { cursor: pointer; }
   header.topbar { padding: 10px 14px; }
 }
 
-/* Shown only on touch devices (the Pi kiosk) -- keeps the mouse/desktop nav uncluttered.
-   Placed after .btn/.card etc so display:none reliably wins the cascade regardless of
-   what other classes an element also carries. */
-.touch-only { display: none; }
+/* .touch-only: shown on any touch device (phone or the Pi) -- e.g. the photo
+   capture button, which genuinely works on either. .pi-only: shown only when
+   the Pi's local kiosk-helper service answers at page load (see the <script>
+   in base.html) -- for things that only function on the Pi specifically
+   (on-screen keyboard, exit-to-desktop), regardless of screen size or touch
+   capability, so a phone or a differently-sized future display never shows
+   them. Both placed after .btn/.card etc so display:none reliably wins the
+   cascade regardless of what other classes an element also carries. */
+.touch-only, .pi-only { display: none; }
 @media (pointer: coarse) {
   .touch-only { display: inline-flex; }
 }
+html.pi-kiosk .pi-only { display: inline-flex; }
 
 @media print {
   header.topbar, .no-print { display: none !important; }

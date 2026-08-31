@@ -1,0 +1,12 @@
+[Unit]
+Description=Seth's Parts kiosk screen blanking (idle timeout, wake on any input)
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/home/seth/screen-idle/screen-idle.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
