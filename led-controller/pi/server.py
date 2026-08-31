@@ -52,13 +52,22 @@ def _get_serial():
 
 def _send_command(payload):
     """Send one JSON line to the Scorpio and read back its single-line reply."""
+    global _serial_conn
     line = (json.dumps(payload) + "\n").encode("utf-8")
     with _serial_lock:
-        conn = _get_serial()
-        conn.reset_input_buffer()
-        conn.write(line)
-        conn.flush()
-        response = conn.readline().decode("utf-8", errors="replace").strip()
+        try:
+            conn = _get_serial()
+            conn.reset_input_buffer()
+            conn.write(line)
+            conn.flush()
+            response = conn.readline().decode("utf-8", errors="replace").strip()
+        except Exception:
+            # Discard a possibly-stale connection (e.g. the Scorpio was unplugged
+            # mid-session -- termios raises its own error type here, not always a
+            # serial.SerialException/OSError) so the next request reopens fresh
+            # instead of repeatedly hitting the same broken file descriptor.
+            _serial_conn = None
+            raise
     return response
 
 
@@ -120,7 +129,12 @@ class Handler(BaseHTTPRequestHandler):
         }
         try:
             reply = _send_command(command)
-        except (serial.SerialException, OSError) as exc:
+        except Exception as exc:
+            # Broad on purpose: this is a narrow hardware I/O boundary (USB serial
+            # to the Scorpio) where the failure mode should always just be "couldn't
+            # reach it" regardless of the exact underlying exception type -- e.g.
+            # termios.error (device unplugged mid-session) isn't reliably a
+            # serial.SerialException/OSError subclass across platforms.
             self._json_response(502, {"error": f"couldn't reach the Scorpio: {exc}"})
             return
 
