@@ -13,6 +13,7 @@ guessing.
 """
 import json
 import os
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -129,7 +130,17 @@ class Handler(BaseHTTPRequestHandler):
         pass  # journald captures the startup print(); per-request logging would just be noise
 
 
+class ThreadingHTTPServerV6(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
+
+
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", LISTEN_PORT), Handler)
-    print(f"LED controller listening on 127.0.0.1:{LISTEN_PORT}, serial={SERIAL_PORT}", flush=True)
-    server.serve_forever()
+    # Bind both loopback families -- cloudflared's ingress target is the hostname
+    # "localhost", which it can resolve to ::1 (IPv6) rather than 127.0.0.1, and an
+    # IPv4-only bind then looks like "connection refused" to it even though the
+    # service is actually up (confirmed: this exact symptom broke the tunnel).
+    v4 = ThreadingHTTPServer(("127.0.0.1", LISTEN_PORT), Handler)
+    v6 = ThreadingHTTPServerV6(("::1", LISTEN_PORT), Handler)
+    threading.Thread(target=v6.serve_forever, daemon=True).start()
+    print(f"LED controller listening on 127.0.0.1:{LISTEN_PORT} and [::1]:{LISTEN_PORT}, serial={SERIAL_PORT}", flush=True)
+    v4.serve_forever()
