@@ -1,1 +1,9 @@
-{}
+{
+  "cabinet1-left": 0,
+  "cabinet1-right": 1,
+  "cabinet2-left": 2,
+  "cabinet2-right": 3,
+  "cabinet3-left": 4,
+  "cabinet3-right": 5,
+  "cabinet4-left": 6
+}
