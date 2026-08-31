@@ -458,28 +458,37 @@ def tagging_update(request, pk):
 @login_required
 def locate_drawer_led(request, pk):
     """Fires the "find the part" LED indicator for one drawer — POSTs to the Pi controller
-    (Phase 8 backlog item, not built yet) using the drawer's configured strip/index mapping."""
+    once per configured segment (a drawer can have more than one, e.g. a cabinet's left- and
+    right-side strips both covering the same drawer range, both should light up together)."""
     drawer = get_object_or_404(Drawer, pk=pk)
     if request.method == "POST":
-        if not drawer.led_strip or drawer.led_start_index is None:
+        segments = list(drawer.led_segments.all())
+        if not segments:
             messages.error(request, "This drawer has no LED mapping configured yet (set it in /admin/).")
         elif not settings.LED_CONTROLLER_URL:
             messages.error(request, "No LED controller configured yet (LED_CONTROLLER_URL is unset).")
         else:
             import requests
 
-            payload = {
-                "strip": drawer.led_strip,
-                "start_index": drawer.led_start_index,
-                "count": drawer.led_count or 1,
-            }
             headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
-            try:
-                resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
-                resp.raise_for_status()
-                messages.success(request, f"Lit up the indicator for {drawer}.")
-            except requests.RequestException as exc:
-                messages.error(request, f"Couldn't reach the LED controller: {exc}")
+            lit, errors = 0, []
+            for segment in segments:
+                payload = {
+                    "strip": segment.led_strip,
+                    "start_index": segment.led_start_index,
+                    "count": segment.led_count,
+                }
+                try:
+                    resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
+                    resp.raise_for_status()
+                    lit += 1
+                except requests.RequestException as exc:
+                    errors.append(f"{segment.led_strip}: {exc}")
+
+            if lit:
+                messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}.")
+            if errors:
+                messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
     return redirect("inventory:drawer_detail", pk=drawer.pk)
 
 

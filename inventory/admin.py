@@ -9,6 +9,7 @@ from .models import (
     Category,
     Container,
     Drawer,
+    DrawerLedSegment,
     Location,
     Part,
     Project,
@@ -35,11 +36,17 @@ class ContainerAdmin(admin.ModelAdmin):
     inlines = [DrawerInline]
 
 
+class DrawerLedSegmentInline(admin.TabularInline):
+    model = DrawerLedSegment
+    extra = 0
+
+
 @admin.register(Drawer)
 class DrawerAdmin(admin.ModelAdmin):
-    list_display = ["container", "label", "barcode_id", "led_strip", "led_start_index", "led_count"]
+    list_display = ["container", "label", "barcode_id"]
     list_filter = ["container"]
     search_fields = ["label", "barcode_id"]
+    inlines = [DrawerLedSegmentInline]
 
 
 @admin.register(Category)

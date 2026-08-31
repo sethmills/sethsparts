@@ -6,7 +6,7 @@
   <p class="muted">In <a href="{% url 'inventory:container_detail' drawer.container.number %}">container #{{ drawer.container.number }}</a> ({{ drawer.container.container_type }})</p>
   <p class="no-print"><a href="{% url 'inventory:part_intake' %}?drawer={{ drawer.pk }}" class="btn">+ Add a part here</a></p>
 
-  {% if drawer.led_strip and drawer.led_start_index is not None %}
+  {% if drawer.led_segments.all %}
   <form method="post" action="{% url 'inventory:locate_drawer_led' drawer.pk %}" class="no-print">
     {% csrf_token %}
     <button class="btn secondary" type="submit">💡 Locate (light up this drawer)</button>
