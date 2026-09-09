@@ -6,6 +6,7 @@ app_name = "inventory"
 
 urlpatterns = [
     path("", views.browse, name="browse"),
+    path("kiosk-autologin/", views.kiosk_autologin, name="kiosk_autologin"),
     path("scan/", views.scan, name="scan"),
     path("go/", views.go, name="go"),
     path("jump/", views.jump_to_container, name="jump_to_container"),

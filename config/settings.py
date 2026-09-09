@@ -163,6 +163,12 @@ VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
 LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")
 LED_CONTROLLER_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
 
+# Lets the Pi kiosk's own launch script auto-establish a real, properly-issued session
+# on every boot (device-pairing style) without ever storing or typing Seth's account
+# password anywhere. Empty means the endpoint always rejects.
+KIOSK_AUTOLOGIN_TOKEN = os.environ.get("KIOSK_AUTOLOGIN_TOKEN", "")
+KIOSK_AUTOLOGIN_USERNAME = os.environ.get("KIOSK_AUTOLOGIN_USERNAME", "seth")
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
