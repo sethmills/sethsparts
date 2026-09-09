@@ -42,7 +42,9 @@ DEFAULT_LOCATE_DURATION_MS = 30000
 
 # Demo mode timing.
 DEFAULT_DEMO_DURATION_MS = 15000
-DEMO_SPEED = 1.4  # chase speed, in "channels per second"
+DEMO_CHANNEL_TRAVEL_TIME = 1.8  # seconds for the comet to sweep one full strip
+DEMO_COMET_TAIL = 12  # pixels of fading tail behind the comet's bright head
+DEMO_HUE_SPEED = 60  # degrees/sec the comet's own color cycles while it travels
 
 pixels = NeoPxl8(
     board.NEOPIXEL0, NUM_STRANDS * STRAND_LENGTH, num_strands=NUM_STRANDS, auto_write=False
@@ -138,14 +140,26 @@ def render_locate(anim, now):
 
 
 def render_demo(now):
+    """A single bright comet with a fading tail sweeps down channel 0, then back up
+    channel 1, then down channel 2, etc. (serpentine) -- one strip lit at a time,
+    not all of them at once. Its color slowly cycles as it travels."""
     t = now - demo["start"]
-    for ch in range(NUM_STRANDS):
-        base = ch * STRAND_LENGTH
-        offset = ch * 0.6
-        for i in range(STRAND_LENGTH):
-            hue = (t * DEMO_SPEED * 40 + i * 6 + offset * 60) % 360
-            rgb = _hsv_to_rgb_int(hue, 1.0, brightness)
-            pixels[base + i] = rgb
+    cycle_len = NUM_STRANDS * DEMO_CHANNEL_TRAVEL_TIME
+    t_in_cycle = t % cycle_len
+    channel = int(t_in_cycle // DEMO_CHANNEL_TRAVEL_TIME)
+    frac = (t_in_cycle % DEMO_CHANNEL_TRAVEL_TIME) / DEMO_CHANNEL_TRAVEL_TIME
+
+    forward = (channel % 2 == 0)
+    head = frac * (STRAND_LENGTH - 1) if forward else (1 - frac) * (STRAND_LENGTH - 1)
+    hue = (t * DEMO_HUE_SPEED) % 360
+
+    pixels.fill(0)
+    base = channel * STRAND_LENGTH
+    for offset in range(-DEMO_COMET_TAIL, 1):
+        i = int(head) + (offset if forward else -offset)
+        if 0 <= i < STRAND_LENGTH:
+            level = 1.0 - (-offset / DEMO_COMET_TAIL)
+            pixels[base + i] = _hsv_to_rgb_int(hue, 1.0, brightness * level)
 
 
 def _hsv_to_rgb_int(h, s, v):
