@@ -108,45 +108,44 @@
 
 <div class="card">
   <h2>Where it lives ({{ stock_items|length }})</h2>
-  <table>
-    <tr><th>Container</th><th>Drawer</th><th>Qty</th><th>Bin</th><th></th><th></th></tr>
-    {% for si in stock_items %}
-    <tr>
-      <td><a href="{% url 'inventory:container_detail' si.container.number %}">#{{ si.container.number }}</a></td>
-      <td>{% if si.drawer %}<a href="{% url 'inventory:drawer_detail' si.drawer.pk %}">{{ si.drawer.label }}</a>{% else %}—{% endif %}</td>
-      <td>
-        <form method="post" action="{% url 'inventory:update_stock_quantity' si.pk %}" style="display:flex;gap:6px;">
-          {% csrf_token %}
-          <input type="text" name="quantity" value="{{ si.quantity|default_if_none:'' }}" inputmode="numeric" style="width:70px;padding:6px 8px;">
-          <button class="btn secondary" type="submit" style="padding:6px 10px;">Save</button>
-        </form>
-        {% if si.quantity_raw and si.quantity is None %}<span class="muted">(was "{{ si.quantity_raw }}")</span>{% endif %}
-      </td>
-      <td>
-        <form method="post" action="{% url 'inventory:update_stock_bin' si.pk %}" style="display:flex;gap:6px;">
-          {% csrf_token %}
-          <input type="text" name="bin_number" value="{{ si.bin_number|default_if_none:'' }}" inputmode="numeric" placeholder="1-16" style="width:60px;padding:6px 8px;">
-          <button class="btn secondary" type="submit" style="padding:6px 10px;">Save</button>
-        </form>
-        {% if si.bin_number %}<span class="muted">row {{ si.bin_row }}</span>{% endif %}
-      </td>
-      <td>
-        {% if si.drawer %}
-        <form method="post" action="{% url 'inventory:locate_stock_item' si.pk %}">
-          {% csrf_token %}
-          <button class="btn secondary" type="submit" style="padding:6px 10px;">💡 Locate</button>
-        </form>
-        {% endif %}
-      </td>
-      <td>
-        <form method="post" action="{% url 'inventory:delete_stock_item' si.pk %}" onsubmit="return confirm('Remove this location entirely?');">
-          {% csrf_token %}
-          <button class="btn secondary" type="submit" style="padding:6px 10px;">Remove</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
+  {% for si in stock_items %}
+  <div class="location-card">
+    <div class="location-card-header">
+      <span>
+        <a href="{% url 'inventory:container_detail' si.container.number %}">#{{ si.container.number }}</a>
+        {% if si.drawer %} / <a href="{% url 'inventory:drawer_detail' si.drawer.pk %}">{{ si.drawer.label }}</a>{% endif %}
+      </span>
+      {% if si.drawer %}
+      <form method="post" action="{% url 'inventory:locate_stock_item' si.pk %}">
+        {% csrf_token %}
+        <button class="btn secondary btn-sm" type="submit">💡 Locate</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="location-card-fields">
+      <form method="post" action="{% url 'inventory:update_stock_quantity' si.pk %}" class="field-group">
+        {% csrf_token %}
+        <label for="qty-{{ si.pk }}">Qty</label>
+        <input id="qty-{{ si.pk }}" type="text" name="quantity" value="{{ si.quantity|default_if_none:'' }}" inputmode="numeric">
+        <button class="btn secondary btn-sm" type="submit">✓</button>
+      </form>
+      {% if si.quantity_raw and si.quantity is None %}<span class="muted">(was "{{ si.quantity_raw }}")</span>{% endif %}
+      <form method="post" action="{% url 'inventory:update_stock_bin' si.pk %}" class="field-group">
+        {% csrf_token %}
+        <label for="bin-{{ si.pk }}">Bin</label>
+        <input id="bin-{{ si.pk }}" type="text" name="bin_number" value="{{ si.bin_number|default_if_none:'' }}" inputmode="numeric" placeholder="1-16">
+        <button class="btn secondary btn-sm" type="submit">✓</button>
+      </form>
+      {% if si.bin_number %}<span class="muted">row {{ si.bin_row }}</span>{% endif %}
+    </div>
+    <div class="location-card-remove">
+      <form method="post" action="{% url 'inventory:delete_stock_item' si.pk %}" onsubmit="return confirm('Remove this location entirely?');">
+        {% csrf_token %}
+        <button class="btn secondary btn-sm" type="submit">Remove</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 
 <div class="card">
