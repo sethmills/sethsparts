@@ -32,11 +32,13 @@ NUM_STRANDS = 8
 STRAND_LENGTH = 100
 
 # Locate animation timing (seconds).
-BREATHE_DURATION = 3.6
+BREATHE_DURATION = 3.6  # one breathe pulse
+BREATHE_CYCLES = 3  # how many pulses before flashing the bin row
+BREATHE_SEGMENT = BREATHE_DURATION * BREATHE_CYCLES
 FLASH_ON = 0.18
 FLASH_OFF = 0.15
 PAUSE = 0.4
-DEFAULT_LOCATE_DURATION_MS = 20000
+DEFAULT_LOCATE_DURATION_MS = 30000
 
 # Demo mode timing.
 DEFAULT_DEMO_DURATION_MS = 15000
@@ -103,23 +105,24 @@ def start_locate(channel, start, count, color, row, duration_ms):
 
 def pattern_length(anim):
     if anim["row"]:
-        return BREATHE_DURATION + anim["row"] * (FLASH_ON + FLASH_OFF) + PAUSE
-    return BREATHE_DURATION + PAUSE
+        return BREATHE_SEGMENT + anim["row"] * (FLASH_ON + FLASH_OFF) + PAUSE
+    return BREATHE_SEGMENT + PAUSE
 
 
 def render_locate(anim, now):
     elapsed = (now - anim["cycle_start"]) % pattern_length(anim)
     base, start, count, color = anim["base"], anim["start"], anim["count"], anim["color"]
 
-    if elapsed < BREATHE_DURATION:
-        # Smooth 0->1->0 breathe over one full period.
-        level = (1 - math.cos(2 * math.pi * elapsed / BREATHE_DURATION)) / 2
+    if elapsed < BREATHE_SEGMENT:
+        # Smooth 0->1->0 breathe, repeated BREATHE_CYCLES times before flashing.
+        phase = elapsed % BREATHE_DURATION
+        level = (1 - math.cos(2 * math.pi * phase / BREATHE_DURATION)) / 2
         rgb = _rgb_int(color, level * brightness)
         for i in range(count):
             pixels[base + start + i] = rgb
         return
 
-    t = elapsed - BREATHE_DURATION
+    t = elapsed - BREATHE_SEGMENT
     if anim["row"]:
         flash_cycle = FLASH_ON + FLASH_OFF
         if t < anim["row"] * flash_cycle:
