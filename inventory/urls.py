@@ -27,6 +27,8 @@ urlpatterns = [
     path("parts/<int:pk>/add-stock/", views.add_stock_item, name="add_stock_item"),
     path("parts/<int:pk>/add-photo/", views.add_part_photo, name="add_part_photo"),
     path("stock/<int:pk>/update-quantity/", views.update_stock_quantity, name="update_stock_quantity"),
+    path("stock/<int:pk>/update-bin/", views.update_stock_bin, name="update_stock_bin"),
+    path("stock/<int:pk>/locate/", views.locate_stock_item, name="locate_stock_item"),
     path("stock/<int:pk>/delete/", views.delete_stock_item, name="delete_stock_item"),
     path("containers/<int:number>/delete/", views.delete_container, name="delete_container"),
     path("labels/", views.labels, name="labels"),
@@ -40,4 +42,8 @@ urlpatterns = [
     path("export/", views.export_inventory, name="export_inventory"),
     path("reference/", views.reference_list, name="reference_list"),
     path("reference/resistor-calculator/", views.resistor_calculator, name="resistor_calculator"),
+    path("lights/", views.light_controls, name="light_controls"),
+    path("lights/set-defaults/", views.led_set_defaults, name="led_set_defaults"),
+    path("lights/room-light/", views.led_room_light, name="led_room_light"),
+    path("lights/demo/", views.led_demo, name="led_demo"),
 ]

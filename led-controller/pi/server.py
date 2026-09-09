@@ -27,7 +27,8 @@ SERIAL_BAUD = int(os.environ.get("SCORPIO_SERIAL_BAUD", "115200"))
 API_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
 LISTEN_PORT = int(os.environ.get("LED_CONTROLLER_PORT", "9000"))
 DEFAULT_COLOR = [255, 255, 255]
-DEFAULT_DURATION_MS = 12000
+DEFAULT_LOCATE_DURATION_MS = 20000
+DEFAULT_DEMO_DURATION_MS = 15000
 
 _serial_lock = threading.Lock()
 _serial_conn = None
@@ -87,11 +88,22 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._json_response(404, {"error": "not found"})
 
-    def do_POST(self):
-        if self.path != "/locate":
-            self._json_response(404, {"error": "not found"})
+    def _relay(self, command):
+        """POST a command to the Scorpio and write the HTTP response. Shared by every
+        POST route below."""
+        try:
+            reply = _send_command(command)
+        except Exception as exc:
+            # Broad on purpose: this is a narrow hardware I/O boundary (USB serial
+            # to the Scorpio) where the failure mode should always just be "couldn't
+            # reach it" regardless of the exact underlying exception type -- e.g.
+            # termios.error (device unplugged mid-session) isn't reliably a
+            # serial.SerialException/OSError subclass across platforms.
+            self._json_response(502, {"error": f"couldn't reach the Scorpio: {exc}"})
             return
+        self._json_response(200, {"ok": True, "scorpio_reply": reply})
 
+    def do_POST(self):
         if not API_KEY or self.headers.get("X-Api-Key") != API_KEY:
             self._json_response(403, {"error": "unauthorized"})
             return
@@ -103,12 +115,28 @@ class Handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "invalid json"})
             return
 
+        if self.path == "/locate":
+            self._handle_locate(payload)
+        elif self.path == "/room_light":
+            self._handle_room_light(payload)
+        elif self.path == "/demo":
+            self._handle_demo(payload)
+        elif self.path == "/set_defaults":
+            self._handle_set_defaults(payload)
+        else:
+            self._json_response(404, {"error": "not found"})
+
+    def _handle_locate(self, payload):
         strip_name = payload.get("strip")
         start_index = payload.get("start_index")
         count = payload.get("count", 1)
+        row = payload.get("row")  # optional, 1-4 -- which bin-row within the drawer
 
         if not strip_name or start_index is None:
             self._json_response(400, {"error": "strip and start_index are required"})
+            return
+        if row is not None and (not isinstance(row, int) or not (1 <= row <= 4)):
+            self._json_response(400, {"error": "row must be 1-4"})
             return
 
         strip_map = _load_strip_map()
@@ -124,21 +152,31 @@ class Handler(BaseHTTPRequestHandler):
             "channel": strip_map[strip_name],
             "start": start_index,
             "count": count,
-            "color": DEFAULT_COLOR,
-            "duration_ms": DEFAULT_DURATION_MS,
+            "duration_ms": payload.get("duration_ms", DEFAULT_LOCATE_DURATION_MS),
         }
-        try:
-            reply = _send_command(command)
-        except Exception as exc:
-            # Broad on purpose: this is a narrow hardware I/O boundary (USB serial
-            # to the Scorpio) where the failure mode should always just be "couldn't
-            # reach it" regardless of the exact underlying exception type -- e.g.
-            # termios.error (device unplugged mid-session) isn't reliably a
-            # serial.SerialException/OSError subclass across platforms.
-            self._json_response(502, {"error": f"couldn't reach the Scorpio: {exc}"})
-            return
+        if "color" in payload:
+            command["color"] = payload["color"]
+        if row is not None:
+            command["row"] = row
+        self._relay(command)
 
-        self._json_response(200, {"ok": True, "scorpio_reply": reply})
+    def _handle_room_light(self, payload):
+        command = {"cmd": "room_light", "on": payload.get("on", True)}
+        if "color" in payload:
+            command["color"] = payload["color"]
+        self._relay(command)
+
+    def _handle_demo(self, payload):
+        command = {"cmd": "demo", "duration_ms": payload.get("duration_ms", DEFAULT_DEMO_DURATION_MS)}
+        self._relay(command)
+
+    def _handle_set_defaults(self, payload):
+        command = {"cmd": "set_defaults"}
+        if "brightness" in payload:
+            command["brightness"] = payload["brightness"]
+        if "color" in payload:
+            command["color"] = payload["color"]
+        self._relay(command)
 
     def log_message(self, format, *args):
         pass  # journald captures the startup print(); per-request logging would just be noise

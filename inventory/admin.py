@@ -84,7 +84,8 @@ class StockItemInline(admin.TabularInline):
 
 @admin.register(StockItem)
 class StockItemAdmin(admin.ModelAdmin):
-    list_display = ["part", "container", "drawer", "quantity", "quantity_raw"]
+    list_display = ["part", "container", "drawer", "quantity", "quantity_raw", "bin_number"]
+    list_editable = ["bin_number"]
     list_filter = ["container", "drawer"]
     search_fields = ["part__name", "source_notes"]
     autocomplete_fields = ["part", "container", "drawer"]
