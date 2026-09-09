@@ -28,13 +28,18 @@
       <a href="{% url 'inventory:scan' %}">Scan</a>
       <a href="{% url 'inventory:parts_search' %}">Search</a>
       <a href="{% url 'inventory:tagging_list' %}">Tagging</a>
-      <a href="{% url 'inventory:project_list' %}">Projects</a>
-      <a href="{% url 'inventory:reorder' %}">Reorder</a>
-      <a href="{% url 'inventory:labels' %}">Labels</a>
-      <a href="{% url 'inventory:reference_list' %}">Reference</a>
       <a href="{% url 'inventory:light_controls' %}">💡 Lights</a>
-      <a href="{% url 'inventory:export_inventory' %}">Export</a>
-      <a href="/admin/">Admin</a>
+      <details class="nav-more">
+        <summary>More ▾</summary>
+        <div class="nav-more-menu">
+          <a href="{% url 'inventory:project_list' %}">Projects</a>
+          <a href="{% url 'inventory:reorder' %}">Reorder</a>
+          <a href="{% url 'inventory:labels' %}">Labels</a>
+          <a href="{% url 'inventory:reference_list' %}">Reference</a>
+          <a href="{% url 'inventory:export_inventory' %}">Export</a>
+          <a href="/admin/">Admin</a>
+        </div>
+      </details>
     </nav>
   </header>
   <script>
