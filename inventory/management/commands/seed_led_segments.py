@@ -3,20 +3,27 @@ from django.db import transaction
 
 from inventory.models import Container, Drawer, DrawerLedSegment
 
-# Seth's measured LED-per-drawer counts (2026-08-31), 1-based LED numbers as he gave them,
-# converted here to (0-based start_index, count). Same pattern applies to every left/right
-# strip for cabinets 1-3; cabinet 4's single (left-only, by design -- no right-side strip)
-# strip has its own measured pattern.
-STANDARD_PATTERN = [(0, 10), (10, 10), (20, 10), (30, 10), (40, 10), (50, 10), (60, 10), (70, 9), (79, 10)]
-CABINET4_LEFT_PATTERN = [(0, 6), (6, 7), (13, 6), (19, 6), (25, 6), (31, 10), (41, 9), (50, 9), (59, 9)]
+# Seth's re-measured LED-per-drawer counts (2026-09-09), taken after confirming the real
+# physical-strip <-> logical-strip-name mapping via the /locate test sequence (physical strips
+# 1-7 right-to-left correspond to cabinet3-left, cabinet3-right, cabinet2-left, cabinet2-right,
+# cabinet1-left, cabinet1-right, cabinet4-left, in that order). 1-based LED numbers as he gave
+# them, converted here to (0-based start_index, count).
+#
+# cabinet1-left (physical strip 5) and cabinet2/cabinet3's strips (physical 1-4) all use a flat
+# 10-LEDs-per-drawer spacing. cabinet1-right (physical strip 6) and cabinet4-left (physical
+# strip 7) instead use an uneven 9/9/10/10/10/9/10/10/9 spacing -- different physical strip
+# product/pitch, per Seth. cabinet2 and cabinet3 explicitly have matching left/right patterns;
+# cabinet1 explicitly does not.
+FLAT_10_PATTERN = [(0, 10), (10, 10), (20, 10), (30, 10), (40, 10), (50, 10), (60, 10), (70, 10), (80, 10)]
+UNEVEN_9_10_PATTERN = [(0, 9), (9, 9), (18, 10), (28, 10), (38, 10), (48, 9), (57, 10), (67, 10), (77, 9)]
 
 # (container number, first drawer number in that cabinet, [(logical strip name, pattern), ...])
-# Strip names must match led-controller/pi/strip_map.json.example's keys on the Pi side.
+# Strip names must match led-controller/pi/strip_map.json's keys on the Pi side.
 CABINETS = [
-    (38, 1, [("cabinet1-left", STANDARD_PATTERN), ("cabinet1-right", STANDARD_PATTERN)]),
-    (39, 10, [("cabinet2-left", STANDARD_PATTERN), ("cabinet2-right", STANDARD_PATTERN)]),
-    (40, 19, [("cabinet3-left", STANDARD_PATTERN), ("cabinet3-right", STANDARD_PATTERN)]),
-    (119, 28, [("cabinet4-left", CABINET4_LEFT_PATTERN)]),
+    (38, 1, [("cabinet1-left", FLAT_10_PATTERN), ("cabinet1-right", UNEVEN_9_10_PATTERN)]),
+    (39, 10, [("cabinet2-left", FLAT_10_PATTERN), ("cabinet2-right", FLAT_10_PATTERN)]),
+    (40, 19, [("cabinet3-left", FLAT_10_PATTERN), ("cabinet3-right", FLAT_10_PATTERN)]),
+    (119, 28, [("cabinet4-left", UNEVEN_9_10_PATTERN)]),
 ]
 
 
