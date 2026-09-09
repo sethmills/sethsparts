@@ -1,0 +1,45 @@
+{% extends "inventory/base.html" %}
+{% block title %}Light controls — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>💡 Light controls</h1>
+  <p class="muted">Brightness and default color apply to every future "Locate" flash. Room light and the demo are just for fun / showing off — they override any in-progress locate animation until you turn them off.</p>
+</div>
+
+<div class="card">
+  <h2>Brightness &amp; default color</h2>
+  <form method="post" action="{% url 'inventory:led_set_defaults' %}">
+    {% csrf_token %}
+    <label class="muted">Brightness</label>
+    <p><input type="range" name="brightness" min="0" max="100" value="100" style="width:100%;"></p>
+    <label class="muted">Default locate color</label>
+    <p><input type="color" name="color" value="#ffffff"></p>
+    <button class="btn" type="submit">Save defaults</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Room light</h2>
+  <p class="muted">Fills every cabinet strip solid — use the cabinets as ambient room lighting. Stays on until you turn it off.</p>
+  <form method="post" action="{% url 'inventory:led_room_light' %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    {% csrf_token %}
+    <input type="color" name="color" value="#ffffff">
+    <input type="hidden" name="on" value="1">
+    <button class="btn" type="submit">Turn on</button>
+  </form>
+  <form method="post" action="{% url 'inventory:led_room_light' %}" style="margin-top:8px;">
+    {% csrf_token %}
+    <input type="hidden" name="on" value="0">
+    <button class="btn secondary" type="submit">Turn off</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>🌈 Demo mode</h2>
+  <p class="muted">A rainbow chase across every cabinet, ~15 seconds — good for showing this thing off.</p>
+  <form method="post" action="{% url 'inventory:led_demo' %}">
+    {% csrf_token %}
+    <button class="btn" type="submit">Run demo</button>
+  </form>
+</div>
+{% endblock %}

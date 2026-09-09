@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tor-inventory",
+      "runtimeExecutable": "./venv/bin/python",
+      "runtimeArgs": ["manage.py", "runserver", "8801"],
+      "port": 8801
+    }
+  ]
+}

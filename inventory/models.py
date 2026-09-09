@@ -255,9 +255,20 @@ class StockItem(models.Model):
     quantity = models.IntegerField(null=True, blank=True)
     quantity_raw = models.CharField(max_length=50, blank=True, help_text="Original spreadsheet value, e.g. '10 aprox'")
     source_notes = models.CharField(max_length=300, blank=True, help_text="Non-drawer freeform notes from the spreadsheet")
+    bin_number = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="Which of the drawer's 16 bins (1-16, 4 rows of 4) this sits in, if known",
+    )
 
     class Meta:
         ordering = ["container__number", "drawer__label", "part__name"]
+
+    @property
+    def bin_row(self):
+        """Which of the 4 rows (1-4) this bin is in, or None if bin_number isn't set."""
+        if self.bin_number is None:
+            return None
+        return ((self.bin_number - 1) // 4) + 1
 
     def __str__(self):
         where = self.drawer or self.container

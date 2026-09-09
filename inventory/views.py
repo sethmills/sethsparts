@@ -289,6 +289,73 @@ def update_stock_quantity(request, pk):
 
 
 @login_required
+def update_stock_bin(request, pk):
+    stock_item = get_object_or_404(StockItem, pk=pk)
+    if request.method == "POST":
+        raw = (request.POST.get("bin_number") or "").strip()
+        if not raw:
+            stock_item.bin_number = None
+            stock_item.save(update_fields=["bin_number"])
+            messages.success(request, "Cleared bin number.")
+            return redirect("inventory:part_detail", pk=stock_item.part_id)
+        try:
+            bin_number = int(raw)
+            if not (1 <= bin_number <= 16):
+                raise ValueError
+        except ValueError:
+            messages.error(request, "Bin number must be 1-16.")
+            return redirect("inventory:part_detail", pk=stock_item.part_id)
+        stock_item.bin_number = bin_number
+        stock_item.save(update_fields=["bin_number"])
+        messages.success(request, f"Set bin to {bin_number} (row {stock_item.bin_row}).")
+    return redirect("inventory:part_detail", pk=stock_item.part_id)
+
+
+@login_required
+def locate_stock_item(request, pk):
+    """Like locate_drawer_led, but for one specific StockItem — if it has a bin_number
+    set, includes which row (1-4) to flash so the animation conveys bin-level detail,
+    not just "somewhere in this drawer"."""
+    stock_item = get_object_or_404(StockItem, pk=pk)
+    if request.method == "POST":
+        drawer = stock_item.drawer
+        if not drawer:
+            messages.error(request, "This item isn't in a drawer (container-level only) — nothing to light up.")
+            return redirect("inventory:part_detail", pk=stock_item.part_id)
+        segments = list(drawer.led_segments.all())
+        if not segments:
+            messages.error(request, "This drawer has no LED mapping configured yet (set it in /admin/).")
+        elif not settings.LED_CONTROLLER_URL:
+            messages.error(request, "No LED controller configured yet (LED_CONTROLLER_URL is unset).")
+        else:
+            import requests
+
+            headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+            lit, errors = 0, []
+            for segment in segments:
+                payload = {
+                    "strip": segment.led_strip,
+                    "start_index": segment.led_start_index,
+                    "count": segment.led_count,
+                }
+                if stock_item.bin_row:
+                    payload["row"] = stock_item.bin_row
+                try:
+                    resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
+                    resp.raise_for_status()
+                    lit += 1
+                except requests.RequestException as exc:
+                    errors.append(f"{segment.led_strip}: {exc}")
+
+            if lit:
+                bin_note = f", bin {stock_item.bin_number} (flashing row {stock_item.bin_row})" if stock_item.bin_number else ""
+                messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}{bin_note}.")
+            if errors:
+                messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
+    return redirect("inventory:part_detail", pk=stock_item.part_id)
+
+
+@login_required
 def delete_stock_item(request, pk):
     stock_item = get_object_or_404(StockItem, pk=pk)
     part_id = stock_item.part_id
@@ -777,3 +844,73 @@ def reference_list(request):
 @login_required
 def resistor_calculator(request):
     return render(request, "inventory/resistor_calculator.html")
+
+
+# --- Light controls -----------------------------------------------------------
+
+def _led_post(endpoint, payload):
+    """POST one command to the Pi's LED controller. Returns (ok, error_message)."""
+    if not settings.LED_CONTROLLER_URL:
+        return False, "No LED controller configured yet (LED_CONTROLLER_URL is unset)."
+    import requests
+
+    headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+    try:
+        resp = requests.post(f"{settings.LED_CONTROLLER_URL}/{endpoint}", json=payload, headers=headers, timeout=5)
+        resp.raise_for_status()
+        return True, None
+    except requests.RequestException as exc:
+        return False, str(exc)
+
+
+@login_required
+def light_controls(request):
+    return render(request, "inventory/light_controls.html")
+
+
+@login_required
+def led_set_defaults(request):
+    if request.method == "POST":
+        payload = {}
+        brightness = request.POST.get("brightness")
+        if brightness:
+            try:
+                payload["brightness"] = max(0.0, min(1.0, float(brightness) / 100))
+            except ValueError:
+                pass
+        color = request.POST.get("color")  # "#rrggbb" from an <input type=color>
+        if color and color.startswith("#") and len(color) == 7:
+            payload["color"] = [int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)]
+        ok, error = _led_post("set_defaults", payload)
+        if ok:
+            messages.success(request, "Updated light defaults.")
+        else:
+            messages.error(request, f"Couldn't reach the LED controller: {error}")
+    return redirect("inventory:light_controls")
+
+
+@login_required
+def led_room_light(request):
+    if request.method == "POST":
+        on = request.POST.get("on") == "1"
+        payload = {"on": on}
+        color = request.POST.get("color")
+        if on and color and color.startswith("#") and len(color) == 7:
+            payload["color"] = [int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)]
+        ok, error = _led_post("room_light", payload)
+        if ok:
+            messages.success(request, "Room light on." if on else "Room light off.")
+        else:
+            messages.error(request, f"Couldn't reach the LED controller: {error}")
+    return redirect("inventory:light_controls")
+
+
+@login_required
+def led_demo(request):
+    if request.method == "POST":
+        ok, error = _led_post("demo", {})
+        if ok:
+            messages.success(request, "Demo running — enjoy the show!")
+        else:
+            messages.error(request, f"Couldn't reach the LED controller: {error}")
+    return redirect("inventory:light_controls")
