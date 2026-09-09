@@ -32,7 +32,7 @@ NUM_STRANDS = 8
 STRAND_LENGTH = 100
 
 # Locate animation timing (seconds).
-BREATHE_DURATION = 2.4
+BREATHE_DURATION = 3.6
 FLASH_ON = 0.18
 FLASH_OFF = 0.15
 PAUSE = 0.4
