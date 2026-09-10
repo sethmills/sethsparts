@@ -20,6 +20,92 @@
   {% endif %}
 </div>
 
+<div class="card">
+  <h2>Photos ({{ photos|length }})</h2>
+  {% for photo in photos %}
+    <p><img src="{{ photo.image.url }}" alt="Container photo" style="max-width:100%;max-height:300px;border-radius:8px;"></p>
+  {% endfor %}
+  {% url 'inventory:add_container_photo' container.number as add_photo_url %}
+  {% include "inventory/_photo_capture.html" with upload_url=add_photo_url %}
+</div>
+
+<div class="card">
+  <h2>Contents notes ({{ intake_notes|length }})</h2>
+  <p class="muted">Quick notes about what's in this box — typed or dictated, queued for you to turn into real parts later.</p>
+  <form method="post" action="{% url 'inventory:add_intake_note' container.number %}">
+    {% csrf_token %}
+    <input type="hidden" name="source" id="note-source" value="typed">
+    <p><textarea name="text" id="note-text" placeholder="What's in this box?"></textarea></p>
+    <p>
+      <button class="btn" type="submit">Save note</button>
+      <button type="button" class="btn secondary" id="dictate-btn">🎙 Dictate</button>
+      <span class="muted" id="dictate-status"></span>
+    </p>
+  </form>
+  {% for note in intake_notes %}
+    <p class="muted">{{ note.created_at|date:"Y-m-d H:i" }} ({{ note.get_source_display }}){% if note.reviewed %} · reviewed{% endif %}: {{ note.text }}</p>
+  {% endfor %}
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('dictate-btn');
+  const textEl = document.getElementById('note-text');
+  const sourceEl = document.getElementById('note-source');
+  const statusEl = document.getElementById('dictate-status');
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    btn.disabled = true;
+    statusEl.textContent = 'Voice dictation isn\'t supported in this browser — type the note instead.';
+    return;
+  }
+
+  let recognition = null;
+  let listening = false;
+
+  btn.addEventListener('click', function () {
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalText = textEl.value ? textEl.value + ' ' : '';
+
+    recognition.onstart = function () {
+      listening = true;
+      btn.textContent = '⏹ Stop';
+      statusEl.textContent = 'Listening…';
+    };
+    recognition.onresult = function (event) {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalText += event.results[i][0].transcript + ' ';
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      textEl.value = finalText + interim;
+      sourceEl.value = 'voice';
+    };
+    recognition.onerror = function (event) {
+      statusEl.textContent = 'Dictation error: ' + event.error;
+    };
+    recognition.onend = function () {
+      listening = false;
+      btn.textContent = '🎙 Dictate';
+      statusEl.textContent = '';
+    };
+    recognition.start();
+  });
+})();
+</script>
+
 {% if drawers %}
 <div class="card">
   <h2>Drawers ({{ drawers|length }})</h2>

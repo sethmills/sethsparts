@@ -1,0 +1,73 @@
+<form method="post" action="{{ upload_url }}" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+  {% csrf_token %}
+  <input type="file" name="photo" accept="image/*" required style="width:auto;flex:1;min-width:180px;">
+  <button class="btn" type="submit">Upload</button>
+</form>
+
+<div class="touch-only" style="margin-top:12px;">
+  <button type="button" class="btn secondary" id="photo-cam-btn">📷 Take a photo</button>
+</div>
+<div id="photo-cam-widget" style="display:none;margin-top:12px;">
+  <video id="photo-cam-video" autoplay playsinline style="width:100%;max-width:400px;border-radius:8px;background:#000;display:block;"></video>
+  <p>
+    <button type="button" class="btn" id="photo-cam-capture">Capture</button>
+    <button type="button" class="btn secondary" id="photo-cam-cancel">Cancel</button>
+  </p>
+  <p class="muted" id="photo-cam-status"></p>
+</div>
+<canvas id="photo-cam-canvas" style="display:none;"></canvas>
+
+<script>
+(function () {
+  const camBtn = document.getElementById('photo-cam-btn');
+  const widget = document.getElementById('photo-cam-widget');
+  const video = document.getElementById('photo-cam-video');
+  const canvas = document.getElementById('photo-cam-canvas');
+  const captureBtn = document.getElementById('photo-cam-capture');
+  const cancelBtn = document.getElementById('photo-cam-cancel');
+  const statusEl = document.getElementById('photo-cam-status');
+  let stream = null;
+
+  function stopStream() {
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+  }
+
+  camBtn.addEventListener('click', async function () {
+    widget.style.display = 'block';
+    statusEl.textContent = 'Starting camera…';
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = stream;
+      statusEl.textContent = '';
+    } catch (e) {
+      statusEl.textContent = 'Camera unavailable (' + e.message + ') — use the upload button above instead.';
+    }
+  });
+
+  cancelBtn.addEventListener('click', function () {
+    stopStream();
+    widget.style.display = 'none';
+    statusEl.textContent = '';
+  });
+
+  captureBtn.addEventListener('click', function () {
+    if (!stream) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(function (blob) {
+      stopStream();
+      statusEl.textContent = 'Uploading…';
+      const formData = new FormData();
+      formData.append('photo', blob, 'photo.jpg');
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      fetch("{{ upload_url }}", { method: 'POST', body: formData })
+        .then(function () { window.location.reload(); })
+        .catch(function () { statusEl.textContent = 'Upload failed — use the upload button above instead.'; });
+    }, 'image/jpeg', 0.9);
+  });
+})();
+</script>

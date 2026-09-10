@@ -1,0 +1,28 @@
+{% extends "inventory/base.html" %}
+{% block title %}Bin barcodes — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Bin barcodes</h1>
+  <p class="muted">Drawers 1-27 (cabinets 1-3) are each split into 16 bins. Stick a barcode on each physical bin, then scan through them in order to link each one — no typing, no per-scan tap.</p>
+  <p>{{ total_done }} of {{ total_bins }} bins linked.</p>
+  <p><a href="{% url 'inventory:bin_scan' %}" class="btn">Start scanning from Drawer 1, Bin 1 →</a></p>
+</div>
+
+<div class="card">
+  <h2>By drawer</h2>
+  <table>
+    <tr><th>Drawer</th><th>Linked</th><th></th></tr>
+    {% for row in rows %}
+    <tr>
+      <td>#{{ row.drawer.container.number }} / {{ row.drawer.label }}</td>
+      <td>{{ row.done }} / {{ row.total }}</td>
+      <td>
+        {% if row.start_bin %}
+        <a href="{% url 'inventory:bin_scan' %}?start={{ row.start_bin.pk }}">{% if row.done == 0 %}Scan{% else %}Continue{% endif %} →</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

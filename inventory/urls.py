@@ -47,4 +47,12 @@ urlpatterns = [
     path("lights/set-defaults/", views.led_set_defaults, name="led_set_defaults"),
     path("lights/room-light/", views.led_room_light, name="led_room_light"),
     path("lights/demo/", views.led_demo, name="led_demo"),
+    path("bins/", views.bin_setup, name="bin_setup"),
+    path("bins/scan/", views.bin_scan, name="bin_scan"),
+    path("bins/<int:pk>/scan/", views.api_scan_bin, name="api_scan_bin"),
+    path("containers/<int:number>/add-photo/", views.add_container_photo, name="add_container_photo"),
+    path("containers/<int:number>/add-note/", views.add_intake_note, name="add_intake_note"),
+    path("intake/new-box/", views.quick_add_container, name="quick_add_container"),
+    path("intake/queue/", views.intake_queue, name="intake_queue"),
+    path("intake/notes/<int:pk>/reviewed/", views.mark_intake_note_reviewed, name="mark_intake_note_reviewed"),
 ]
