@@ -23,8 +23,8 @@
       <strong>{{ doc.title }}</strong>
       {% if doc.description %}<br><span class="muted">{{ doc.description }}</span>{% endif %}
       <br>
-      {% if doc.file %}<a href="{{ doc.file.url }}" target="_blank" rel="noopener">cached copy</a>{% if doc.external_url %} · {% endif %}{% endif %}
-      {% if doc.external_url %}<a href="{{ doc.external_url }}" target="_blank" rel="noopener">source →</a>{% endif %}
+      {% if doc.file %}<a href="{{ doc.file.url }}">cached copy</a>{% if doc.external_url %} · {% endif %}{% endif %}
+      {% if doc.external_url %}<a href="{{ doc.external_url }}">source →</a>{% endif %}
     </p>
   {% endfor %}
 </div>

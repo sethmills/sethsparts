@@ -18,7 +18,7 @@
       <td>{{ row.need }}</td>
       <td>{{ row.have }}</td>
       <td>{% if row.shortfall %}<span class="msg-error">{{ row.shortfall }}</span>{% else %}—{% endif %}</td>
-      <td>{% if row.reorder_link %}<a href="{{ row.reorder_link }}" target="_blank" rel="noopener">order →</a>{% endif %}</td>
+      <td>{% if row.reorder_link %}<a href="{{ row.reorder_link }}">order →</a>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

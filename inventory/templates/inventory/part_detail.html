@@ -8,8 +8,8 @@
     {% if part.manufacturer %} · {{ part.manufacturer }}{% endif %}
   </p>
   {% if part.description %}<p>{{ part.description }}</p>{% endif %}
-  {% if part.reorder_url %}<p><a href="{{ part.reorder_url }}" target="_blank" rel="noopener">Buy / product page →</a></p>{% endif %}
-  {% if part.datasheet_url %}<p><a href="{{ part.datasheet_url }}" target="_blank" rel="noopener">Datasheet →</a></p>{% endif %}
+  {% if part.reorder_url %}<p><a href="{{ part.reorder_url }}">Buy / product page →</a></p>{% endif %}
+  {% if part.datasheet_url %}<p><a href="{{ part.datasheet_url }}">Datasheet →</a></p>{% endif %}
   {% if part.min_quantity %}<p class="muted">Reorder threshold: {{ part.min_quantity }}</p>{% endif %}
 </div>
 
@@ -96,8 +96,8 @@
   {% for a in attachments %}
     <p>
       <span class="pill">{{ a.get_doc_type_display }}</span>
-      <a href="{{ a.file.url }}" target="_blank" rel="noopener">{{ a.title|default:a.file.name }}</a>
-      {% if a.source_url %}<span class="muted">(<a href="{{ a.source_url }}" target="_blank" rel="noopener">source</a>)</span>{% endif %}
+      <a href="{{ a.file.url }}">{{ a.title|default:a.file.name }}</a>
+      {% if a.source_url %}<span class="muted">(<a href="{{ a.source_url }}">source</a>)</span>{% endif %}
     </p>
     {% if a.doc_type == "image" or a.doc_type == "pinout" %}
       <p><img src="{{ a.file.url }}" alt="{{ a.title }}" style="max-width:100%;border-radius:8px;"></p>
