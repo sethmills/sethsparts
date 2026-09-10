@@ -11,19 +11,19 @@
   <form method="post" action="{% url 'inventory:led_set_defaults' %}">
     {% csrf_token %}
     <label class="muted">Brightness</label>
-    <p><input type="range" name="brightness" min="0" max="100" value="100" style="width:100%;"></p>
+    <p><input type="range" name="brightness" min="0" max="100" value="100" style="width:100%;" onchange="this.form.requestSubmit()"></p>
     <label class="muted">Default locate color</label>
-    <p><input type="color" name="color" value="#ffffff"></p>
+    <p><input type="color" name="color" value="#ffffff" onchange="this.form.requestSubmit()"></p>
     <button class="btn" type="submit">Save defaults</button>
   </form>
 </div>
 
 <div class="card">
   <h2>Room light</h2>
-  <p class="muted">Fills every cabinet strip solid — use the cabinets as ambient room lighting. Stays on until you turn it off.</p>
+  <p class="muted">Fills every cabinet strip solid — use the cabinets as ambient room lighting. Stays on until you turn it off. Picking a color turns it on right away with that color.</p>
   <form method="post" action="{% url 'inventory:led_room_light' %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     {% csrf_token %}
-    <input type="color" name="color" value="#ffffff">
+    <input type="color" name="color" value="#ffffff" onchange="this.form.requestSubmit()">
     <input type="hidden" name="on" value="1">
     <button class="btn" type="submit">Turn on</button>
   </form>
@@ -36,10 +36,16 @@
 
 <div class="card">
   <h2>🌈 Demo mode</h2>
-  <p class="muted">A rainbow chase across every cabinet, ~15 seconds — good for showing this thing off.</p>
-  <form method="post" action="{% url 'inventory:led_demo' %}">
+  <p class="muted">A comet chase across every cabinet — good for showing this thing off. Stays on until you turn it off.</p>
+  <form method="post" action="{% url 'inventory:led_demo' %}" style="display:inline;">
     {% csrf_token %}
-    <button class="btn" type="submit">Run demo</button>
+    <input type="hidden" name="on" value="1">
+    <button class="btn" type="submit">Turn on</button>
+  </form>
+  <form method="post" action="{% url 'inventory:led_demo' %}" style="display:inline;">
+    {% csrf_token %}
+    <input type="hidden" name="on" value="0">
+    <button class="btn secondary" type="submit">Turn off</button>
   </form>
 </div>
 {% endblock %}

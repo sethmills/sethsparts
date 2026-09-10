@@ -1,0 +1,26 @@
+{% extends "inventory/base.html" %}
+{% block title %}New moving box — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>New moving box</h1>
+  <p class="muted">Creates the next container number and prints its barcode right away — stick it on the box, then add a photo or dictate its contents from the container's own page whenever you get to it.</p>
+  <form method="post">
+    {% csrf_token %}
+    <label class="muted">Type</label>
+    <p>
+      <input type="text" name="container_type" list="container-types" value="black tote" autocomplete="off">
+      <datalist id="container-types">
+        {% for t in existing_types %}<option value="{{ t }}">{% endfor %}
+      </datalist>
+    </p>
+    <label class="muted">Original room (optional)</label>
+    <p>
+      <select name="location">
+        <option value="">—</option>
+        {% for loc in locations %}<option value="{{ loc.pk }}">{{ loc.name }}</option>{% endfor %}
+      </select>
+    </p>
+    <button class="btn" type="submit">Create &amp; print barcode →</button>
+  </form>
+</div>
+{% endblock %}

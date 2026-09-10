@@ -1,0 +1,99 @@
+{% extends "inventory/base.html" %}
+{% block title %}Scan bin barcodes — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Scan bin barcodes</h1>
+  <p class="muted">Scan the barcode on the current bin — it fills in and moves to the next one automatically. No taps needed between scans.</p>
+  <p id="bin-progress" class="muted"></p>
+  <h2 id="bin-label" style="text-transform:none;color:var(--text);"></h2>
+  <p id="bin-existing" class="muted"></p>
+  <p><input type="text" id="scan-input" autofocus autocomplete="off" placeholder="Scan or type a barcode, then Enter"></p>
+  <p id="bin-error" class="msg-error" style="display:none;"></p>
+  <p><a href="#" id="skip-link">Skip this bin →</a></p>
+  <p id="bin-done" class="msg-success" style="display:none;">All bins in this run are linked. <a href="{% url 'inventory:bin_setup' %}">Back to bin barcodes →</a></p>
+</div>
+
+{{ positions_json|json_script:"positions-data" }}
+<script>
+(function () {
+  const positions = JSON.parse(document.getElementById('positions-data').textContent);
+  let index = {{ start_index }};
+  const csrftoken = "{{ csrf_token }}";
+
+  const progressEl = document.getElementById('bin-progress');
+  const labelEl = document.getElementById('bin-label');
+  const existingEl = document.getElementById('bin-existing');
+  const input = document.getElementById('scan-input');
+  const errorEl = document.getElementById('bin-error');
+  const skipLink = document.getElementById('skip-link');
+  const doneEl = document.getElementById('bin-done');
+  const cardMain = input.closest('.card');
+
+  function render() {
+    if (index >= positions.length) {
+      cardMain.querySelectorAll('#bin-progress, #bin-label, #bin-existing, #scan-input, #skip-link').forEach(function (el) { el.style.display = 'none'; });
+      doneEl.style.display = 'block';
+      return;
+    }
+    const pos = positions[index];
+    progressEl.textContent = 'Bin ' + (index + 1) + ' of ' + positions.length;
+    labelEl.textContent = pos.label;
+    existingEl.textContent = pos.has_code ? ('Currently linked: ' + pos.code) : '';
+    errorEl.style.display = 'none';
+    input.value = '';
+    input.focus();
+  }
+
+  function advance() {
+    index += 1;
+    render();
+  }
+
+  function submitCode(code) {
+    const pos = positions[index];
+    fetch("/bins/" + pos.pk + "/scan/", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+      body: JSON.stringify({ code: code }),
+    })
+      .then(function (resp) { return resp.json().then(function (data) { return { status: resp.status, data: data }; }); })
+      .then(function (result) {
+        if (result.data.ok) {
+          pos.has_code = true;
+          pos.code = code;
+          advance();
+        } else {
+          errorEl.textContent = result.data.error || 'Something went wrong.';
+          errorEl.style.display = 'block';
+          input.value = '';
+          input.focus();
+        }
+      })
+      .catch(function () {
+        errorEl.textContent = 'Network error — check the connection and try scanning again.';
+        errorEl.style.display = 'block';
+        input.focus();
+      });
+  }
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = input.value.trim();
+      if (code) submitCode(code);
+    }
+  });
+
+  input.addEventListener('blur', function () {
+    setTimeout(function () { if (index < positions.length) input.focus(); }, 50);
+  });
+
+  skipLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    advance();
+  });
+
+  render();
+})();
+</script>
+{% endblock %}

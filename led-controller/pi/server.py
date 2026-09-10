@@ -28,7 +28,6 @@ API_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
 LISTEN_PORT = int(os.environ.get("LED_CONTROLLER_PORT", "9000"))
 DEFAULT_COLOR = [255, 255, 255]
 DEFAULT_LOCATE_DURATION_MS = 30000
-DEFAULT_DEMO_DURATION_MS = 15000
 
 _serial_lock = threading.Lock()
 _serial_conn = None
@@ -167,7 +166,7 @@ class Handler(BaseHTTPRequestHandler):
         self._relay(command)
 
     def _handle_demo(self, payload):
-        command = {"cmd": "demo", "duration_ms": payload.get("duration_ms", DEFAULT_DEMO_DURATION_MS)}
+        command = {"cmd": "demo", "on": payload.get("on", True)}
         self._relay(command)
 
     def _handle_set_defaults(self, payload):

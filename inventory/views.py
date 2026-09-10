@@ -1,3 +1,5 @@
+import json
+import re
 import secrets
 from urllib.parse import quote
 
@@ -5,19 +7,24 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from .models import (
     Attachment,
+    Bin,
     BOMRevision,
     Build,
     BuildConsumption,
     Category,
     Container,
+    ContainerPhoto,
     Drawer,
+    IntakeNote,
+    Location,
     Part,
     Project,
     ReferenceDoc,
@@ -144,7 +151,13 @@ def container_detail(request, number):
     return render(
         request,
         "inventory/container_detail.html",
-        {"container": container, "drawers": drawers, "stock_items": direct_stock},
+        {
+            "container": container,
+            "drawers": drawers,
+            "stock_items": direct_stock,
+            "photos": container.photos.all(),
+            "intake_notes": container.intake_notes.all(),
+        },
     )
 
 
@@ -636,6 +649,81 @@ def register_drawer_barcode(request, pk):
     return redirect("inventory:drawer_detail", pk=drawer.pk)
 
 
+# --- Moving-day intake: quick container creation, photos, dictated notes ----
+
+@login_required
+def quick_add_container(request):
+    """For packing up boxes during a move: assign the next container number, print
+    its barcode immediately, and worry about contents later (photo + dictated note
+    on the container's own page)."""
+    existing_types = (
+        Container.objects.exclude(container_type="").values_list("container_type", flat=True).distinct().order_by("container_type")
+    )
+    if request.method == "POST":
+        container_type = (request.POST.get("container_type") or "black tote").strip()
+        location_id = request.POST.get("location") or None
+        next_number = (Container.objects.aggregate(m=Max("number"))["m"] or 0) + 1
+        container = Container.objects.create(
+            number=next_number,
+            container_type=container_type,
+            location_id=location_id,
+            barcode_id=f"C{next_number}",
+        )
+        messages.success(request, f"Created container #{container.number} — print its barcode below, then stick it on the box.")
+        return redirect(f"{reverse('inventory:print_labels')}?ids=c{container.pk}")
+
+    return render(
+        request,
+        "inventory/quick_add_container.html",
+        {"existing_types": existing_types, "locations": Location.objects.all()},
+    )
+
+
+@login_required
+def add_container_photo(request, number):
+    container = get_object_or_404(Container, number=number)
+    if request.method == "POST":
+        photo = request.FILES.get("photo")
+        if not photo:
+            messages.error(request, "No photo received.")
+        else:
+            ContainerPhoto.objects.create(container=container, image=photo)
+            messages.success(request, "Photo added.")
+    return redirect("inventory:container_detail", number=container.number)
+
+
+@login_required
+def add_intake_note(request, number):
+    container = get_object_or_404(Container, number=number)
+    if request.method == "POST":
+        text = (request.POST.get("text") or "").strip()
+        source = request.POST.get("source") or IntakeNote.TYPED
+        if source not in dict(IntakeNote.SOURCE_CHOICES):
+            source = IntakeNote.TYPED
+        if not text:
+            messages.error(request, "No note text received.")
+        else:
+            IntakeNote.objects.create(container=container, text=text, source=source)
+            messages.success(request, "Note queued for review.")
+    return redirect("inventory:container_detail", number=container.number)
+
+
+@login_required
+def intake_queue(request):
+    notes = IntakeNote.objects.filter(reviewed=False).select_related("container")
+    return render(request, "inventory/intake_queue.html", {"notes": notes})
+
+
+@login_required
+def mark_intake_note_reviewed(request, pk):
+    note = get_object_or_404(IntakeNote, pk=pk)
+    if request.method == "POST":
+        note.reviewed = True
+        note.save(update_fields=["reviewed"])
+        messages.success(request, "Marked reviewed.")
+    return redirect("inventory:intake_queue")
+
+
 @login_required
 def labels(request):
     unlabeled_containers = Container.objects.filter(Q(barcode_id__isnull=True) | Q(barcode_id=""))
@@ -706,6 +794,123 @@ def barcode_svg(request, code):
     buffer = io.BytesIO()
     code128.write(buffer)
     return HttpResponse(buffer.getvalue(), content_type="image/svg+xml")
+
+
+# --- Bin barcodes (bulk scan-to-link) ----------------------------------------
+# Only cabinets 1-3 (containers #38/#39/#40, drawers 1-27) are subdivided into the
+# 16-bin grid -- cabinet 4 (container #119, drawers 28-36) holds oversized/different
+# items with no bin subdivisions, per Seth.
+BIN_ELIGIBLE_CONTAINERS = [38, 39, 40]
+BINS_PER_DRAWER = 16
+
+
+def _drawer_number(drawer):
+    match = re.search(r"\d+", drawer.label)
+    return int(match.group()) if match else 0
+
+
+def _bin_eligible_drawers():
+    drawers = list(Drawer.objects.filter(container__number__in=BIN_ELIGIBLE_CONTAINERS).select_related("container"))
+    drawers.sort(key=_drawer_number)
+    return drawers
+
+
+def _ensure_bins_seeded():
+    """Create any missing Bin rows (1-16) for every bin-eligible drawer. Idempotent —
+    safe to call on every page load."""
+    drawers = _bin_eligible_drawers()
+    existing = set(
+        Bin.objects.filter(drawer__container__number__in=BIN_ELIGIBLE_CONTAINERS).values_list("drawer_id", "bin_number")
+    )
+    to_create = [
+        Bin(drawer=drawer, bin_number=n)
+        for drawer in drawers
+        for n in range(1, BINS_PER_DRAWER + 1)
+        if (drawer.id, n) not in existing
+    ]
+    if to_create:
+        Bin.objects.bulk_create(to_create)
+    return drawers
+
+
+@login_required
+def bin_setup(request):
+    drawers = _ensure_bins_seeded()
+    bins_by_drawer = {}
+    for b in Bin.objects.filter(drawer__in=drawers):
+        bins_by_drawer.setdefault(b.drawer_id, []).append(b)
+
+    rows = []
+    total_done = 0
+    for drawer in drawers:
+        drawer_bins = sorted(bins_by_drawer.get(drawer.id, []), key=lambda b: b.bin_number)
+        done = sum(1 for b in drawer_bins if b.barcode_id)
+        total_done += done
+        first_unscanned = next((b for b in drawer_bins if not b.barcode_id), None)
+        rows.append({
+            "drawer": drawer,
+            "done": done,
+            "total": len(drawer_bins),
+            "start_bin": (first_unscanned or drawer_bins[0]) if drawer_bins else None,
+        })
+
+    return render(
+        request,
+        "inventory/bin_setup.html",
+        {"rows": rows, "total_done": total_done, "total_bins": len(drawers) * BINS_PER_DRAWER},
+    )
+
+
+@login_required
+def bin_scan(request):
+    drawers = _ensure_bins_seeded()
+    all_bins = Bin.objects.filter(drawer__in=drawers).select_related("drawer", "drawer__container")
+
+    positions = [
+        {
+            "pk": b.pk,
+            "label": f"#{b.drawer.container.number} / {b.drawer.label} — Bin {b.bin_number} (row {b.bin_row})",
+            "has_code": bool(b.barcode_id),
+            "code": b.barcode_id or "",
+        }
+        for b in all_bins
+    ]
+
+    start_pk = request.GET.get("start")
+    start_index = 0
+    if start_pk:
+        for i, p in enumerate(positions):
+            if str(p["pk"]) == str(start_pk):
+                start_index = i
+                break
+
+    return render(
+        request,
+        "inventory/bin_scan.html",
+        {"positions_json": positions, "start_index": start_index},
+    )
+
+
+@login_required
+@require_POST
+def api_scan_bin(request, pk):
+    b = get_object_or_404(Bin, pk=pk)
+    try:
+        payload = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "invalid json"}, status=400)
+
+    code = (payload.get("code") or "").strip()
+    if not code:
+        return JsonResponse({"ok": False, "error": "no code given"}, status=400)
+
+    conflict = Bin.objects.filter(barcode_id=code).exclude(pk=b.pk).select_related("drawer").first()
+    if conflict:
+        return JsonResponse({"ok": False, "error": f"That barcode is already linked to {conflict}."}, status=409)
+
+    b.barcode_id = code
+    b.save(update_fields=["barcode_id"])
+    return JsonResponse({"ok": True})
 
 
 # --- Phase 4: BOM / Projects -------------------------------------------------
@@ -926,9 +1131,10 @@ def led_room_light(request):
 @login_required
 def led_demo(request):
     if request.method == "POST":
-        ok, error = _led_post("demo", {})
+        on = request.POST.get("on") == "1"
+        ok, error = _led_post("demo", {"on": on})
         if ok:
-            messages.success(request, "Demo running — enjoy the show!")
+            messages.success(request, "Demo running — enjoy the show!" if on else "Demo stopped.")
         else:
             messages.error(request, f"Couldn't reach the LED controller: {error}")
     return redirect("inventory:light_controls")

@@ -248,6 +248,67 @@ class ReferenceDoc(models.Model):
         return self.title
 
 
+class Bin(models.Model):
+    """One physical bin slot within a drawer (16 per drawer, 4 rows of 4) — distinct from
+    StockItem.bin_number (which part sits in which bin). This exists so a physical barcode
+    sticker on the bin itself can be scanned to identify "this drawer, this bin" directly,
+    via the bulk bin-barcode scan flow. Only drawers 1-27 (cabinets 1-3) have bins — cabinet
+    4 (drawers 28-36) holds oversized/different items with no bin subdivisions, per Seth."""
+
+    drawer = models.ForeignKey(Drawer, on_delete=models.CASCADE, related_name="bins")
+    bin_number = models.PositiveSmallIntegerField(help_text="1-16 (4 rows of 4)")
+    barcode_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ["drawer__container__number", "drawer__label", "bin_number"]
+        unique_together = [("drawer", "bin_number")]
+
+    @property
+    def bin_row(self):
+        return ((self.bin_number - 1) // 4) + 1
+
+    def __str__(self):
+        return f"{self.drawer} bin {self.bin_number}"
+
+
+class ContainerPhoto(models.Model):
+    """A quick reference photo of a container's contents — for the moving-day intake flow
+    (pack a box, snap a photo, move on) as well as any other container someone wants a
+    picture of. Separate from Attachment (which is Part-scoped, for manufacturer docs)."""
+
+    container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="photos")
+    image = models.FileField(upload_to="container_photos/%Y/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"Photo of {self.container} ({self.uploaded_at:%Y-%m-%d})"
+
+
+class IntakeNote(models.Model):
+    """A quick, unstructured note about a container's contents — typed or voice-dictated —
+    queued for Seth to review later and turn into real Part/StockItem entries. Deliberately
+    not auto-parsed into structured data; this is just fast capture during a move."""
+
+    VOICE = "voice"
+    TYPED = "typed"
+    SOURCE_CHOICES = [(VOICE, "Voice"), (TYPED, "Typed")]
+
+    container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="intake_notes")
+    text = models.TextField()
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=TYPED)
+    reviewed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.container}: {self.text[:50]}"
+
+
 class StockItem(models.Model):
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="stock_items")
     container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="stock_items")

@@ -10,8 +10,9 @@ Three independent modes, mutually exclusive (starting one cancels the others):
   duration -- auto-clears when it expires.
 - "room_light": fills every channel solid, stays on until explicitly turned off
   (no auto-clear) -- for using the cabinets as ambient room lighting.
-- "demo": a rainbow chase across every channel for a given duration, purely for
-  fun/show-off value, then auto-clears.
+- "demo": a rainbow chase across every channel, purely for fun/show-off value.
+  An on/off toggle like room_light, not a timed run -- stays on until explicitly
+  turned off.
 
 A persistent global brightness (0-1) and default color apply whenever a command
 doesn't specify its own color.
@@ -41,7 +42,6 @@ PAUSE = 0.4
 DEFAULT_LOCATE_DURATION_MS = 30000
 
 # Demo mode timing.
-DEFAULT_DEMO_DURATION_MS = 15000
 DEMO_CHANNEL_TRAVEL_TIME = 1.8  # seconds for the comet to sweep one full strip
 DEMO_COMET_TAIL = 12  # pixels of fading tail behind the comet's bright head
 DEMO_HUE_SPEED = 60  # degrees/sec the comet's own color cycles while it travels
@@ -252,10 +252,15 @@ def handle(msg):
         return {"ok": True}
 
     if cmd == "demo":
-        duration_ms = msg.get("duration_ms", DEFAULT_DEMO_DURATION_MS)
+        on = msg.get("on", True)
         locate_animations.clear()
         room_light = None
-        demo = {"start": time.monotonic(), "end": time.monotonic() + duration_ms / 1000}
+        if on:
+            demo = {"start": time.monotonic()}
+        else:
+            demo = None
+            clear_all()
+            pixels.show()
         return {"ok": True}
 
     return {"ok": False, "error": "unknown cmd"}
@@ -281,11 +286,7 @@ while True:
     dirty = False
 
     if demo is not None:
-        if now >= demo["end"]:
-            clear_all()
-            demo = None
-        else:
-            render_demo(now)
+        render_demo(now)
         dirty = True
 
     expired = [ch for ch, anim in locate_animations.items() if now >= anim["end"]]

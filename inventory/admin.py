@@ -2,14 +2,17 @@ from django.contrib import admin
 
 from .models import (
     Attachment,
+    Bin,
     BOMLine,
     BOMRevision,
     Build,
     BuildConsumption,
     Category,
     Container,
+    ContainerPhoto,
     Drawer,
     DrawerLedSegment,
+    IntakeNote,
     Location,
     Part,
     Project,
@@ -23,6 +26,18 @@ class DrawerInline(admin.TabularInline):
     extra = 0
 
 
+class ContainerPhotoInline(admin.TabularInline):
+    model = ContainerPhoto
+    extra = 0
+    readonly_fields = ["uploaded_at"]
+
+
+class IntakeNoteInline(admin.TabularInline):
+    model = IntakeNote
+    extra = 0
+    readonly_fields = ["created_at"]
+
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     search_fields = ["name"]
@@ -33,11 +48,25 @@ class ContainerAdmin(admin.ModelAdmin):
     list_display = ["number", "name", "container_type", "location", "barcode_id"]
     list_filter = ["container_type", "location"]
     search_fields = ["number", "name", "barcode_id"]
-    inlines = [DrawerInline]
+    inlines = [DrawerInline, ContainerPhotoInline, IntakeNoteInline]
+
+
+@admin.register(IntakeNote)
+class IntakeNoteAdmin(admin.ModelAdmin):
+    list_display = ["container", "text", "source", "reviewed", "created_at"]
+    list_filter = ["reviewed", "source"]
+    list_editable = ["reviewed"]
+    search_fields = ["text"]
+    autocomplete_fields = ["container"]
 
 
 class DrawerLedSegmentInline(admin.TabularInline):
     model = DrawerLedSegment
+    extra = 0
+
+
+class BinInline(admin.TabularInline):
+    model = Bin
     extra = 0
 
 
@@ -46,7 +75,15 @@ class DrawerAdmin(admin.ModelAdmin):
     list_display = ["container", "label", "barcode_id"]
     list_filter = ["container"]
     search_fields = ["label", "barcode_id"]
-    inlines = [DrawerLedSegmentInline]
+    inlines = [DrawerLedSegmentInline, BinInline]
+
+
+@admin.register(Bin)
+class BinAdmin(admin.ModelAdmin):
+    list_display = ["drawer", "bin_number", "barcode_id"]
+    list_filter = ["drawer__container"]
+    search_fields = ["barcode_id"]
+    autocomplete_fields = ["drawer"]
 
 
 @admin.register(Category)
