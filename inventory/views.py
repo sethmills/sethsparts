@@ -100,10 +100,24 @@ def browse(request):
 
     all_types = Container.objects.order_by("container_type").values_list("container_type", flat=True).distinct()
 
+    # Drawers, front and center: day-to-day browsing is almost always "which drawer",
+    # not "which cabinet" -- the cabinet/container grouping below is still there for
+    # organization, but shouldn't be a click Seth has to make just to get to a drawer.
+    all_drawers = list(
+        Drawer.objects.select_related("container").annotate(item_count=Count("stock_items", distinct=True))
+    )
+    all_drawers.sort(key=_drawer_number)
+
     return render(
         request,
         "inventory/browse.html",
-        {"containers": containers, "all_types": all_types, "selected_type": container_type, "q": q},
+        {
+            "containers": containers,
+            "all_types": all_types,
+            "selected_type": container_type,
+            "q": q,
+            "all_drawers": all_drawers,
+        },
     )
 
 
