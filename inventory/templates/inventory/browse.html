@@ -15,6 +15,22 @@
   </form>
 </div>
 
+<div class="card">
+  <h2>Drawers ({{ all_drawers|length }})</h2>
+  <table>
+    <tr><th>Drawer</th><th>Cabinet</th><th>Items</th></tr>
+    {% for d in all_drawers %}
+    <tr>
+      <td><a href="{% url 'inventory:drawer_detail' d.pk %}">{{ d.label }}</a></td>
+      <td><a href="{% url 'inventory:container_detail' d.container.number %}">#{{ d.container.number }}</a></td>
+      <td>{{ d.item_count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2 style="margin:24px 4px 10px;color:var(--muted);font-size:1.05rem;text-transform:uppercase;letter-spacing:0.03em;">All locations</h2>
+
 {% for c in containers %}
 <div class="card">
   <h2><a href="{% url 'inventory:container_detail' c.number %}">#{{ c.number }}</a> — {{ c.container_type }}
