@@ -21,6 +21,8 @@
       </svg>
       Seth's Parts
     </a>
+    <button type="button" class="btn secondary pi-only" onclick="history.back()" title="Go back">← Back</button>
+    <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse">🏠 Home</a>
     <button type="button" class="btn secondary pi-only" onclick="fetch('http://127.0.0.1:9091/toggle', {method: 'POST', mode: 'no-cors'}).catch(function(){})" title="Show/hide the on-screen keyboard">⌨ Keyboard</button>
     <button type="button" class="btn secondary pi-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop">⏻ Desktop</button>
     <nav>

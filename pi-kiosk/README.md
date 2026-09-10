@@ -36,3 +36,16 @@ changes to the Pi manually (scp + the relevant `systemctl`/`lightdm` restart).
     (pcmanfm-pi/wf-panel-pi keep running regardless; only the kiosk browser
     is fullscreen over them). Use the relaunch desktop icon above to get
     back into the kiosk afterward.
+- `squeekboard/squeekboard.service` → `~/.config/systemd/user/squeekboard.service`,
+  enabled + started the same way as `kiosk-helper.service`. Raspberry Pi OS
+  ships squeekboard preinstalled, but its stock autostart entry
+  (`/etc/xdg/autostart/squeekboard.desktop`) only launches it via a wrapper
+  script (`/usr/bin/sbtest`) that checks `libinput list-devices` for a touch
+  device first — a check that loses a race against the USB touch
+  controller's enumeration at boot on this Pi, so squeekboard silently never
+  starts. This unit launches `/usr/bin/squeekboard` directly (no touch
+  check needed — this kiosk always has a touchscreen), with
+  `WAYLAND_DISPLAY=wayland-0` set explicitly since systemd user units don't
+  otherwise inherit it. `sm.puri.OSK0.SetVisible` (what `kiosk-helper`'s
+  `/toggle` route calls) only exists on the session bus once this is
+  actually running.

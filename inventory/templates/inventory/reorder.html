@@ -22,7 +22,7 @@
       <td><a href="{% url 'inventory:part_detail' row.part.pk %}">{{ row.part.name }}</a></td>
       <td class="msg-error">{{ row.have }}</td>
       <td>{{ row.min_quantity }}</td>
-      <td><a href="{{ row.reorder_link }}" target="_blank" rel="noopener">order →</a></td>
+      <td><a href="{{ row.reorder_link }}">order →</a></td>
     </tr>
     {% endfor %}
   </table>
