@@ -1,0 +1,79 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ bin.drawer }} Bin {{ bin.bin_number }} — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ bin.drawer }} — Bin {{ bin.bin_number }}</h1>
+  <p class="muted">Row {{ bin.bin_row }}, column {{ bin.bin_column }} · in <a href="{% url 'inventory:drawer_detail' bin.drawer.pk %}">{{ bin.drawer.label }}</a> (<a href="{% url 'inventory:container_detail' bin.drawer.container.number %}">#{{ bin.drawer.container.number }}</a>)</p>
+
+  <form method="post" action="{% url 'inventory:locate_bin' bin.pk %}" class="no-print">
+    {% csrf_token %}
+    <button class="btn secondary" type="submit">💡 Locate this bin</button>
+  </form>
+
+  {% if bin.barcode_id %}
+    <p>Barcode: <span class="pill">{{ bin.barcode_id }}</span></p>
+  {% else %}
+    <form method="post" action="{% url 'inventory:register_bin_barcode' bin.pk %}">
+      {% csrf_token %}
+      <label class="muted">No barcode registered yet — scan or type its physical label code:</label>
+      <input type="text" name="code" value="{{ request.GET.code }}" autofocus autocomplete="off">
+      <p><button class="btn" type="submit">Register barcode</button></p>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Contents ({{ stock_items|length }})</h2>
+  {% if stock_items %}
+  <table>
+    <tr><th>Part</th><th>Qty</th></tr>
+    {% for si in stock_items %}
+    <tr>
+      <td><a href="{% url 'inventory:part_detail' si.part.pk %}">{{ si.part.name }}</a></td>
+      <td>{{ si.quantity_raw|default:si.quantity }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nothing recorded in this bin yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Sub-bins ({{ sub_bins|length }}/4)</h2>
+  {% for sb in sub_bins %}
+    <div class="location-card">
+      <div class="location-card-header">
+        <span>Sub-bin {{ sb.position }} <span class="pill">{{ sb.get_size_display }}</span></span>
+        <form method="post" action="{% url 'inventory:delete_sub_bin' sb.pk %}" onsubmit="return confirm('Remove this sub-bin?');">
+          {% csrf_token %}
+          <button class="btn secondary btn-sm" type="submit">Remove</button>
+        </form>
+      </div>
+      {% if sb.barcode_id %}
+        <p>Barcode: <span class="pill">{{ sb.barcode_id }}</span></p>
+      {% else %}
+        <form method="post" action="{% url 'inventory:register_sub_bin_barcode' sb.pk %}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          {% csrf_token %}
+          <input type="text" name="code" autocomplete="off" placeholder="Scan or type barcode">
+          <button class="btn secondary btn-sm" type="submit">Register</button>
+        </form>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="muted">No sub-bins yet.</p>
+  {% endfor %}
+
+  {% if can_add_sub_bin %}
+    <form method="post" action="{% url 'inventory:add_sub_bin' bin.pk %}" style="display:flex;gap:10px;align-items:center;margin-top:10px;">
+      {% csrf_token %}
+      <select name="size">
+        {% for value, label in size_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">+ Add sub-bin</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

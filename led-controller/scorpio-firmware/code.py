@@ -6,8 +6,9 @@ channel/index range.
 
 Three independent modes, mutually exclusive (starting one cancels the others):
 - "locate" animations, one per channel: breathe for a few seconds, then (if a
-  bin row 1-4 was given) flash that many times, then repeat, for a total
-  duration -- auto-clears when it expires.
+  bin row/column 1-4 was given) hold a position readout -- (row-1) LEDs lit
+  immediately left of the segment's center, column LEDs lit immediately right
+  of center -- then repeat, for a total duration -- auto-clears when it expires.
 - "room_light": fills every channel solid, stays on until explicitly turned off
   (no auto-clear) -- for using the cabinets as ambient room lighting.
 - "demo": a rainbow chase across every channel, purely for fun/show-off value.
@@ -34,10 +35,9 @@ STRAND_LENGTH = 100
 
 # Locate animation timing (seconds).
 BREATHE_DURATION = 3.6  # one breathe pulse
-BREATHE_CYCLES = 3  # how many pulses before flashing the bin row
+BREATHE_CYCLES = 3  # how many pulses before the row/column position readout
 BREATHE_SEGMENT = BREATHE_DURATION * BREATHE_CYCLES
-FLASH_ON = 0.18
-FLASH_OFF = 0.15
+POSITION_HOLD = 2.0  # how long the row/column readout stays lit
 PAUSE = 0.4
 DEFAULT_LOCATE_DURATION_MS = 30000
 
@@ -93,22 +93,47 @@ def stop_all_modes():
     pixels.show()
 
 
-def start_locate(channel, start, count, color, row, duration_ms):
+def start_locate(channel, start, count, color, row, col, duration_ms):
     locate_animations[channel] = {
         "base": channel * STRAND_LENGTH,
         "start": start,
         "count": count,
         "color": color,
         "row": row,  # None, or 1-4
+        "col": col,  # None, or 1-4
         "cycle_start": time.monotonic(),
         "end": time.monotonic() + duration_ms / 1000,
     }
 
 
 def pattern_length(anim):
-    if anim["row"]:
-        return BREATHE_SEGMENT + anim["row"] * (FLASH_ON + FLASH_OFF) + PAUSE
+    if anim["row"] or anim["col"]:
+        return BREATHE_SEGMENT + POSITION_HOLD + PAUSE
     return BREATHE_SEGMENT + PAUSE
+
+
+def _position_indices(count, row, col):
+    """(row-1) LEDs immediately left of the segment's center, `col` LEDs immediately
+    right of it -- e.g. bin 13 (row 4, column 1) shows 3 LEDs left of center, 1 LED
+    right. Works for both even- and odd-length segments (9 or 10 LEDs, per cabinet)."""
+    left_count = (row - 1) if row else 0
+    right_count = col if col else 0
+
+    if count % 2 == 0:
+        left_start, right_start = count // 2 - 1, count // 2
+    else:
+        left_start, right_start = count // 2 - 1, count // 2 + 1
+
+    indices = []
+    for i in range(left_count):
+        idx = left_start - i
+        if idx >= 0:
+            indices.append(idx)
+    for i in range(right_count):
+        idx = right_start + i
+        if idx < count:
+            indices.append(idx)
+    return indices
 
 
 def render_locate(anim, now):
@@ -116,7 +141,7 @@ def render_locate(anim, now):
     base, start, count, color = anim["base"], anim["start"], anim["count"], anim["color"]
 
     if elapsed < BREATHE_SEGMENT:
-        # Smooth 0->1->0 breathe, repeated BREATHE_CYCLES times before flashing.
+        # Smooth 0->1->0 breathe, repeated BREATHE_CYCLES times before the position readout.
         phase = elapsed % BREATHE_DURATION
         level = (1 - math.cos(2 * math.pi * phase / BREATHE_DURATION)) / 2
         rgb = _rgb_int(color, level * brightness)
@@ -125,14 +150,12 @@ def render_locate(anim, now):
         return
 
     t = elapsed - BREATHE_SEGMENT
-    if anim["row"]:
-        flash_cycle = FLASH_ON + FLASH_OFF
-        if t < anim["row"] * flash_cycle:
-            on = (t % flash_cycle) < FLASH_ON
-            rgb = _rgb_int(color, brightness) if on else 0
-            for i in range(count):
-                pixels[base + start + i] = rgb
-            return
+    if (anim["row"] or anim["col"]) and t < POSITION_HOLD:
+        lit = set(_position_indices(count, anim["row"], anim["col"]))
+        rgb = _rgb_int(color, brightness)
+        for i in range(count):
+            pixels[base + start + i] = rgb if i in lit else 0
+        return
 
     # Pause segment (all off) between cycles.
     for i in range(count):
@@ -215,6 +238,7 @@ def handle(msg):
         color = tuple(msg.get("color", default_color))
         duration_ms = msg.get("duration_ms", DEFAULT_LOCATE_DURATION_MS)
         row = msg.get("row")
+        col = msg.get("col")
 
         if not isinstance(channel, int) or not (0 <= channel < NUM_STRANDS):
             return {"ok": False, "error": "bad channel"}
@@ -224,12 +248,14 @@ def handle(msg):
             return {"ok": False, "error": "start/count exceeds STRAND_LENGTH -- raise it in code.py"}
         if row is not None and (not isinstance(row, int) or not (1 <= row <= 4)):
             return {"ok": False, "error": "row must be 1-4"}
+        if col is not None and (not isinstance(col, int) or not (1 <= col <= 4)):
+            return {"ok": False, "error": "col must be 1-4"}
 
         # Locate is exclusive with room_light/demo, but multiple channels can
         # locate at once (e.g. a drawer's left+right segments).
         room_light = None
         demo = None
-        start_locate(channel, start, count, color, row, duration_ms)
+        start_locate(channel, start, count, color, row, col, duration_ms)
         return {"ok": True}
 
     if cmd == "room_light":

@@ -267,8 +267,34 @@ class Bin(models.Model):
     def bin_row(self):
         return ((self.bin_number - 1) // 4) + 1
 
+    @property
+    def bin_column(self):
+        return ((self.bin_number - 1) % 4) + 1
+
     def __str__(self):
         return f"{self.drawer} bin {self.bin_number}"
+
+
+class SubBin(models.Model):
+    """A small/medium sub-container within a Bin -- 0-4 of them, each with its own physical
+    barcode. Discovered/added as Seth actually goes through each drawer's bins, not seeded
+    up front like Bin (there's no fixed count)."""
+
+    SMALL = "small"
+    MEDIUM = "medium"
+    SIZE_CHOICES = [(SMALL, "Small"), (MEDIUM, "Medium")]
+
+    bin = models.ForeignKey(Bin, on_delete=models.CASCADE, related_name="sub_bins")
+    position = models.PositiveSmallIntegerField(help_text="1-4 within the bin")
+    size = models.CharField(max_length=10, choices=SIZE_CHOICES, default=SMALL)
+    barcode_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ["bin", "position"]
+        unique_together = [("bin", "position")]
+
+    def __str__(self):
+        return f"{self.bin} sub-bin {self.position} ({self.get_size_display()})"
 
 
 class ContainerPhoto(models.Model):
@@ -330,6 +356,13 @@ class StockItem(models.Model):
         if self.bin_number is None:
             return None
         return ((self.bin_number - 1) // 4) + 1
+
+    @property
+    def bin_column(self):
+        """Which of the 4 columns (1-4) this bin is in, or None if bin_number isn't set."""
+        if self.bin_number is None:
+            return None
+        return ((self.bin_number - 1) % 4) + 1
 
     def __str__(self):
         where = self.drawer or self.container

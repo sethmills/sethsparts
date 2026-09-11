@@ -130,12 +130,16 @@ class Handler(BaseHTTPRequestHandler):
         start_index = payload.get("start_index")
         count = payload.get("count", 1)
         row = payload.get("row")  # optional, 1-4 -- which bin-row within the drawer
+        col = payload.get("col")  # optional, 1-4 -- which bin-column within the drawer
 
         if not strip_name or start_index is None:
             self._json_response(400, {"error": "strip and start_index are required"})
             return
         if row is not None and (not isinstance(row, int) or not (1 <= row <= 4)):
             self._json_response(400, {"error": "row must be 1-4"})
+            return
+        if col is not None and (not isinstance(col, int) or not (1 <= col <= 4)):
+            self._json_response(400, {"error": "col must be 1-4"})
             return
 
         strip_map = _load_strip_map()
@@ -157,6 +161,8 @@ class Handler(BaseHTTPRequestHandler):
             command["color"] = payload["color"]
         if row is not None:
             command["row"] = row
+        if col is not None:
+            command["col"] = col
         self._relay(command)
 
     def _handle_room_light(self, payload):

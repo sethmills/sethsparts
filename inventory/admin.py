@@ -18,6 +18,7 @@ from .models import (
     Project,
     ReferenceDoc,
     StockItem,
+    SubBin,
 )
 
 
@@ -70,6 +71,11 @@ class BinInline(admin.TabularInline):
     extra = 0
 
 
+class SubBinInline(admin.TabularInline):
+    model = SubBin
+    extra = 0
+
+
 @admin.register(Drawer)
 class DrawerAdmin(admin.ModelAdmin):
     list_display = ["container", "label", "barcode_id"]
@@ -84,6 +90,15 @@ class BinAdmin(admin.ModelAdmin):
     list_filter = ["drawer__container"]
     search_fields = ["barcode_id"]
     autocomplete_fields = ["drawer"]
+    inlines = [SubBinInline]
+
+
+@admin.register(SubBin)
+class SubBinAdmin(admin.ModelAdmin):
+    list_display = ["bin", "position", "size", "barcode_id"]
+    list_filter = ["size", "bin__drawer__container"]
+    search_fields = ["barcode_id"]
+    autocomplete_fields = ["bin"]
 
 
 @admin.register(Category)
