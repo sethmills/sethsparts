@@ -1,0 +1,56 @@
+{% extends "inventory/base.html" %}
+{% block title %}Custom label — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>🏷 Custom label</h1>
+  <p class="muted">Design and print an impromptu label on the Zebra printer — not tied to any container or drawer. Nothing here is saved; it's just for printing something quick.</p>
+</div>
+
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+    <label class="muted">Text</label>
+    <p><textarea name="text" rows="3" onchange="this.form.requestSubmit()">{{ values.text }}</textarea></p>
+
+    <label class="muted">Barcode value (optional — leave blank for no barcode)</label>
+    <p><input type="text" name="barcode_value" value="{{ values.barcode_value }}" autocomplete="off" onchange="this.form.requestSubmit()"></p>
+
+    <p style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">
+      <span>
+        <label class="muted" style="display:block;">Label size</label>
+        <select name="size" onchange="this.form.requestSubmit()">
+          {% for key, size in label_sizes.items %}
+            <option value="{{ key }}" {% if values.size == key %}selected{% endif %}>{{ size.display }}</option>
+          {% endfor %}
+        </select>
+      </span>
+      <span>
+        <label class="muted" style="display:block;">Font size (pt)</label>
+        <input type="number" name="font_pt" value="{{ font_pt }}" min="6" max="120" style="width:80px;" onchange="this.form.requestSubmit()">
+      </span>
+      <span>
+        <label><input type="checkbox" name="bold" value="1" {% if values.bold %}checked{% endif %} onchange="this.form.requestSubmit()"> Bold</label>
+      </span>
+      <span>
+        <label><input type="checkbox" name="italic" value="1" {% if values.italic %}checked{% endif %} onchange="this.form.requestSubmit()"> Italic</label>
+      </span>
+    </p>
+
+    <p>
+      <button class="btn secondary" type="submit" name="action" value="preview">🔄 Update preview</button>
+      <button class="btn" type="submit" name="action" value="print">🖨 Print</button>
+    </p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Preview</h2>
+  {% if preview_data_uri %}
+    <p style="background:#fff;display:inline-block;padding:12px;border-radius:8px;">
+      <img src="{{ preview_data_uri }}" alt="Label preview" style="display:block;max-width:100%;image-rendering:pixelated;">
+    </p>
+  {% else %}
+    <p class="muted">Type some text or a barcode value above to see a preview.</p>
+  {% endif %}
+</div>
+{% endblock %}

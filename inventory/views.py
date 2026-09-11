@@ -1,3 +1,4 @@
+import base64
 import json
 import re
 import secrets
@@ -808,6 +809,67 @@ def barcode_svg(request, code):
     buffer = io.BytesIO()
     code128.write(buffer)
     return HttpResponse(buffer.getvalue(), content_type="image/svg+xml")
+
+
+@login_required
+def custom_label(request):
+    """A one-off/impromptu label designer -- type text, pick one of the 3 physical label
+    sizes Seth owns, tweak font size/bold/italic, optionally add a barcode, preview it, and
+    send it straight to the Zebra GK420T via the Pi's print-bridge. Deliberately stateless —
+    nothing here is saved, this is for "I just need a quick label right now," not cataloged
+    inventory labels (those are /labels/)."""
+    from . import label_printing
+
+    if request.method == "POST":
+        values = {
+            "text": request.POST.get("text", ""),
+            "size": request.POST.get("size", "large"),
+            "font_pt": request.POST.get("font_pt", "24"),
+            "bold": bool(request.POST.get("bold")),
+            "italic": bool(request.POST.get("italic")),
+            "barcode_value": request.POST.get("barcode_value", ""),
+        }
+        action = request.POST.get("action", "preview")
+    else:
+        values = {"text": "", "size": "large", "font_pt": "24", "bold": False, "italic": False, "barcode_value": ""}
+        action = None
+
+    if values["size"] not in label_printing.LABEL_SIZES:
+        values["size"] = "large"
+    try:
+        font_pt = max(6, min(120, int(values["font_pt"])))
+    except (TypeError, ValueError):
+        font_pt = 24
+
+    preview_data_uri = None
+    if values["text"].strip() or values["barcode_value"].strip():
+        png_bytes = label_printing.render_label_png_bytes(
+            values["text"], values["size"], font_pt, values["bold"], values["italic"], values["barcode_value"]
+        )
+        preview_data_uri = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+    if action == "print":
+        if not values["text"].strip() and not values["barcode_value"].strip():
+            messages.error(request, "Nothing to print — add some text or a barcode value first.")
+        else:
+            ok, error = label_printing.print_label(
+                values["text"], values["size"], font_pt, values["bold"], values["italic"], values["barcode_value"]
+            )
+            if ok:
+                messages.success(request, "Sent to the printer.")
+            else:
+                messages.error(request, f"Couldn't print: {error}")
+
+    return render(
+        request,
+        "inventory/custom_label.html",
+        {
+            "values": values,
+            "font_pt": font_pt,
+            "label_sizes": label_printing.LABEL_SIZES,
+            "preview_data_uri": preview_data_uri,
+        },
+    )
 
 
 # --- Bin barcodes (bulk scan-to-link) ----------------------------------------

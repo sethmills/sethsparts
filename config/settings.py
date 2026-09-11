@@ -163,6 +163,12 @@ VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
 LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")
 LED_CONTROLLER_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
 
+# Zebra GK420T label printer, connected via USB to the same Pi as the LED controller — a
+# thin print-bridge there relays raw ZPL bytes straight to the printer. Empty URL means the
+# print button just reports "not configured" instead of erroring.
+LABEL_PRINTER_URL = os.environ.get("LABEL_PRINTER_URL", "")
+LABEL_PRINTER_KEY = os.environ.get("LABEL_PRINTER_KEY", "")
+
 # Lets the Pi kiosk's own launch script auto-establish a real, properly-issued session
 # on every boot (device-pairing style) without ever storing or typing Seth's account
 # password anywhere. Empty means the endpoint always rejects.

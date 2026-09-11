@@ -21,6 +21,10 @@ services:
       # Leave unset in .env and the Locate button just reports "not configured".
       - LED_CONTROLLER_URL=${LED_CONTROLLER_URL:-}
       - LED_CONTROLLER_KEY=${LED_CONTROLLER_KEY:-}
+      # Optional -- only needed once the Zebra label printer's Pi print-bridge exists.
+      # Leave unset in .env and the Print button just reports "not configured".
+      - LABEL_PRINTER_URL=${LABEL_PRINTER_URL:-}
+      - LABEL_PRINTER_KEY=${LABEL_PRINTER_KEY:-}
       # Optional -- only needed for the Pi kiosk's own auto-login (never Seth's real
       # password). Leave unset in .env and that endpoint just no-ops.
       - KIOSK_AUTOLOGIN_TOKEN=${KIOSK_AUTOLOGIN_TOKEN:-}

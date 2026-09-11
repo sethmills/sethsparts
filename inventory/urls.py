@@ -36,6 +36,7 @@ urlpatterns = [
     path("labels/generate/", views.generate_and_print_labels, name="generate_labels"),
     path("labels/print/", views.print_labels, name="print_labels"),
     path("barcode/<str:code>.svg", views.barcode_svg, name="barcode_svg"),
+    path("labels/custom/", views.custom_label, name="custom_label"),
     path("projects/", views.project_list, name="project_list"),
     path("projects/<int:pk>/", views.project_detail, name="project_detail"),
     path("projects/<int:pk>/build/", views.build_project, name="build_project"),
