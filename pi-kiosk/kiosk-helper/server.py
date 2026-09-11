@@ -2,9 +2,8 @@
 """Local helper for the Pi kiosk -- small OS-level actions the page's own
 touch-only buttons can't do from inside the browser sandbox.
 
-Runs as a systemd --user unit (the keyboard toggle needs the graphical
-session's DBus bus), listening on 127.0.0.1 only -- the page calls it
-directly since it and the kiosk browser share the same machine.
+Runs as a systemd --user unit, listening on 127.0.0.1 only -- the page
+calls it directly since it and the kiosk browser share the same machine.
 
 Routes:
   GET  /health         -- 200 if this service is reachable. The page's own JS
@@ -14,14 +13,15 @@ Routes:
                           -- independent of screen size/touch capability, so
                           it keeps working correctly across display swaps and
                           never shows those buttons on someone's phone.
-  POST /toggle          -- show/hide squeekboard (already running on this Pi,
-                          normally toggled from the taskbar, which kiosk mode
-                          hides) via its sm.puri.OSK0.SetVisible DBus method.
   POST /exit-browser   -- kill kiosk Chromium, revealing the desktop
                           underneath (pcmanfm-pi/wf-panel-pi keep running
                           regardless -- only the kiosk browser is fullscreen
                           over them). A desktop shortcut relaunches it
                           (see ../sethsparts-kiosk.desktop).
+
+(The on-screen keyboard toggle that used to live here was removed -- squeekboard's
+overlay never rendered above kiosk Chromium's fullscreen surface anyway, a wlroots
+z-ordering quirk with fullscreen apps, and Seth has a physical keyboard now.)
 """
 import subprocess
 import threading
@@ -29,23 +29,6 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 LISTEN_PORT = 9091
-BUS_ARGS = ["busctl", "--user"]
-DEST, PATH, IFACE = "sm.puri.OSK0", "/sm/puri/OSK0", "sm.puri.OSK0"
-
-
-def _get_visible():
-    out = subprocess.run(
-        [*BUS_ARGS, "get-property", DEST, PATH, IFACE, "Visible"],
-        capture_output=True, text=True, timeout=3, check=True,
-    )
-    return "true" in out.stdout
-
-
-def _set_visible(value):
-    subprocess.run(
-        [*BUS_ARGS, "call", DEST, PATH, IFACE, "SetVisible", "b", "true" if value else "false"],
-        capture_output=True, text=True, timeout=3, check=True,
-    )
 
 
 def _kill_chromium_soon():
@@ -74,15 +57,6 @@ class Handler(BaseHTTPRequestHandler):
         self._respond(404)
 
     def do_POST(self):
-        if self.path == "/toggle":
-            try:
-                new_state = not _get_visible()
-                _set_visible(new_state)
-                self._respond(200, str(new_state).lower().encode())
-            except (subprocess.SubprocessError, OSError):
-                self._respond(502)
-            return
-
         if self.path == "/exit-browser":
             self._respond(200)
             threading.Thread(target=_kill_chromium_soon, daemon=True).start()
