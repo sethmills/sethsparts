@@ -561,10 +561,13 @@ def tagging_update(request, pk):
 def _locate_drawer(drawer, row=None, col=None):
     """POSTs /locate to the Pi controller once per configured LED segment for this drawer
     (a drawer can have more than one, e.g. a cabinet's left- and right-side strips both
-    covering the same drawer range, both should light up together). row/col (1-4, optional)
-    convey which bin within the drawer. Returns (lit_count, errors, error_reason) where
-    error_reason is a short string set only when nothing was attempted at all (no segments
-    configured, or no controller configured)."""
+    covering the same drawer range). row/col (1-4, optional) convey which bin within the
+    drawer -- each strip shows only its own value (the "-left" strip lights `row` LEDs,
+    the "-right" strip lights `col` LEDs), not both, per Seth's request: the two physical
+    strips split the readout between them rather than each showing a combined row+column
+    display on its own. Returns (lit_count, errors, error_reason) where error_reason is a
+    short string set only when nothing was attempted at all (no segments configured, or no
+    controller configured)."""
     segments = list(drawer.led_segments.all())
     if not segments:
         return 0, [], "This drawer has no LED mapping configured yet (set it in /admin/)."
@@ -581,9 +584,9 @@ def _locate_drawer(drawer, row=None, col=None):
             "start_index": segment.led_start_index,
             "count": segment.led_count,
         }
-        if row:
+        if row and segment.led_strip.endswith("-left"):
             payload["row"] = row
-        if col:
+        if col and segment.led_strip.endswith("-right"):
             payload["col"] = col
         try:
             resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
