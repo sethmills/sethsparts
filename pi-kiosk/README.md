@@ -24,28 +24,19 @@ changes to the Pi manually (scp + the relevant `systemctl`/`lightdm` restart).
   launcher" click in the file manager before it'll run without a warning.
 - `kiosk-helper/server.py` → `/home/seth/kiosk-helper/server.py`, run as the
   systemd **user** service `kiosk-helper/kiosk-helper.service` →
-  `~/.config/systemd/user/kiosk-helper.service` (needs the graphical
-  session's DBus bus for the keyboard route, hence a user unit;
-  `loginctl enable-linger seth` keeps it running independent of active login
-  state). Listens on `127.0.0.1:9091` only. Two routes, both called from
-  touch-only buttons in the site's own header (invisible on desktop/mouse):
-  - `POST /toggle` — show/hide squeekboard (already installed and running on
-    this Pi) via its `sm.puri.OSK0.SetVisible` DBus method — squeekboard
-    normally toggles from the taskbar, which kiosk mode hides.
+  `~/.config/systemd/user/kiosk-helper.service` (`loginctl enable-linger seth`
+  keeps it running independent of active login state). Listens on
+  `127.0.0.1:9091` only. One route, called from a touch-only button in the
+  site's own header (invisible on desktop/mouse):
   - `POST /exit-browser` — kills Chromium, revealing the desktop underneath
     (pcmanfm-pi/wf-panel-pi keep running regardless; only the kiosk browser
     is fullscreen over them). Use the relaunch desktop icon above to get
     back into the kiosk afterward.
-- `squeekboard/squeekboard.service` → `~/.config/systemd/user/squeekboard.service`,
-  enabled + started the same way as `kiosk-helper.service`. Raspberry Pi OS
-  ships squeekboard preinstalled, but its stock autostart entry
-  (`/etc/xdg/autostart/squeekboard.desktop`) only launches it via a wrapper
-  script (`/usr/bin/sbtest`) that checks `libinput list-devices` for a touch
-  device first — a check that loses a race against the USB touch
-  controller's enumeration at boot on this Pi, so squeekboard silently never
-  starts. This unit launches `/usr/bin/squeekboard` directly (no touch
-  check needed — this kiosk always has a touchscreen), with
-  `WAYLAND_DISPLAY=wayland-0` set explicitly since systemd user units don't
-  otherwise inherit it. `sm.puri.OSK0.SetVisible` (what `kiosk-helper`'s
-  `/toggle` route calls) only exists on the session bus once this is
-  actually running.
+
+  (An on-screen keyboard toggle used to live here too, calling squeekboard's
+  `sm.puri.OSK0.SetVisible` over DBus. Removed — squeekboard's overlay never
+  actually rendered above kiosk Chromium's fullscreen surface, a wlroots
+  z-ordering quirk with fullscreen apps, and it's no longer needed now that
+  there's a physical keyboard. The `squeekboard.service` unit that used to
+  run alongside `kiosk-helper` should be disabled/removed too if still
+  present: `systemctl --user disable --now squeekboard`.)

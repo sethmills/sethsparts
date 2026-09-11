@@ -1,5 +1,5 @@
 [Unit]
-Description=Seth's Parts kiosk helper (keyboard toggle, exit-to-desktop)
+Description=Seth's Parts kiosk helper (exit-to-desktop)
 After=graphical-session.target
 
 [Service]
