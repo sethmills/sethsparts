@@ -25,6 +25,19 @@
   {% endif %}
 </div>
 
+{% if bins %}
+<div class="card">
+  <h2>Bins ({{ bins|length }})</h2>
+  <p style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+    {% for b in bins %}
+      <a class="pill" href="{% url 'inventory:bin_detail' b.pk %}" style="text-align:center;padding:10px 6px;">
+        {{ b.bin_number }}{% if b.barcode_id %} ✓{% endif %}{% if b.sub_bin_count %} <span class="muted">({{ b.sub_bin_count }})</span>{% endif %}
+      </a>
+    {% endfor %}
+  </p>
+</div>
+{% endif %}
+
 <div class="card">
   <h2>Contents ({{ stock_items|length }})</h2>
   {% if stock_items %}

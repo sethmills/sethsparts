@@ -30,6 +30,7 @@ from .models import (
     Project,
     ReferenceDoc,
     StockItem,
+    SubBin,
 )
 from .search import build_search_query, expand_terms
 
@@ -141,6 +142,14 @@ def go(request):
     if drawer:
         return redirect("inventory:drawer_detail", pk=drawer.pk)
 
+    b = Bin.objects.filter(barcode_id=code).first()
+    if b:
+        return redirect("inventory:bin_detail", pk=b.pk)
+
+    sub_bin = SubBin.objects.filter(barcode_id=code).first()
+    if sub_bin:
+        return redirect("inventory:bin_detail", pk=sub_bin.bin_id)
+
     return render(request, "inventory/not_found.html", {"code": code})
 
 
@@ -204,12 +213,14 @@ def delete_container(request, number):
 
 @login_required
 def drawer_detail(request, pk):
-    drawer = get_object_or_404(Drawer, pk=pk)
+    drawer = get_object_or_404(Drawer.objects.select_related("container"), pk=pk)
     stock_items = drawer.stock_items.select_related("part")
+    has_bins = _ensure_bins_for_drawer(drawer)
+    bins = drawer.bins.annotate(sub_bin_count=Count("sub_bins")) if has_bins else []
     return render(
         request,
         "inventory/drawer_detail.html",
-        {"drawer": drawer, "stock_items": stock_items},
+        {"drawer": drawer, "stock_items": stock_items, "bins": bins},
     )
 
 
@@ -360,7 +371,7 @@ def update_stock_bin(request, pk):
 @login_required
 def locate_stock_item(request, pk):
     """Like locate_drawer_led, but for one specific StockItem — if it has a bin_number
-    set, includes which row (1-4) to flash so the animation conveys bin-level detail,
+    set, includes which row/column (1-4 each) so the animation conveys bin-level detail,
     not just "somewhere in this drawer"."""
     stock_item = get_object_or_404(StockItem, pk=pk)
     if request.method == "POST":
@@ -368,36 +379,15 @@ def locate_stock_item(request, pk):
         if not drawer:
             messages.error(request, "This item isn't in a drawer (container-level only) — nothing to light up.")
             return redirect("inventory:part_detail", pk=stock_item.part_id)
-        segments = list(drawer.led_segments.all())
-        if not segments:
-            messages.error(request, "This drawer has no LED mapping configured yet (set it in /admin/).")
-        elif not settings.LED_CONTROLLER_URL:
-            messages.error(request, "No LED controller configured yet (LED_CONTROLLER_URL is unset).")
-        else:
-            import requests
 
-            headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
-            lit, errors = 0, []
-            for segment in segments:
-                payload = {
-                    "strip": segment.led_strip,
-                    "start_index": segment.led_start_index,
-                    "count": segment.led_count,
-                }
-                if stock_item.bin_row:
-                    payload["row"] = stock_item.bin_row
-                try:
-                    resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
-                    resp.raise_for_status()
-                    lit += 1
-                except requests.RequestException as exc:
-                    errors.append(f"{segment.led_strip}: {exc}")
-
-            if lit:
-                bin_note = f", bin {stock_item.bin_number} (flashing row {stock_item.bin_row})" if stock_item.bin_number else ""
-                messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}{bin_note}.")
-            if errors:
-                messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
+        lit, errors, error_reason = _locate_drawer(drawer, row=stock_item.bin_row, col=stock_item.bin_column)
+        if error_reason:
+            messages.error(request, error_reason)
+        if lit:
+            bin_note = f", bin {stock_item.bin_number} (row {stock_item.bin_row}, column {stock_item.bin_column})" if stock_item.bin_number else ""
+            messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}{bin_note}.")
+        if errors:
+            messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
     return redirect("inventory:part_detail", pk=stock_item.part_id)
 
 
@@ -568,40 +558,53 @@ def tagging_update(request, pk):
     return redirect(next_url)
 
 
+def _locate_drawer(drawer, row=None, col=None):
+    """POSTs /locate to the Pi controller once per configured LED segment for this drawer
+    (a drawer can have more than one, e.g. a cabinet's left- and right-side strips both
+    covering the same drawer range, both should light up together). row/col (1-4, optional)
+    convey which bin within the drawer. Returns (lit_count, errors, error_reason) where
+    error_reason is a short string set only when nothing was attempted at all (no segments
+    configured, or no controller configured)."""
+    segments = list(drawer.led_segments.all())
+    if not segments:
+        return 0, [], "This drawer has no LED mapping configured yet (set it in /admin/)."
+    if not settings.LED_CONTROLLER_URL:
+        return 0, [], "No LED controller configured yet (LED_CONTROLLER_URL is unset)."
+
+    import requests
+
+    headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+    lit, errors = 0, []
+    for segment in segments:
+        payload = {
+            "strip": segment.led_strip,
+            "start_index": segment.led_start_index,
+            "count": segment.led_count,
+        }
+        if row:
+            payload["row"] = row
+        if col:
+            payload["col"] = col
+        try:
+            resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
+            resp.raise_for_status()
+            lit += 1
+        except requests.RequestException as exc:
+            errors.append(f"{segment.led_strip}: {exc}")
+    return lit, errors, None
+
+
 @login_required
 def locate_drawer_led(request, pk):
-    """Fires the "find the part" LED indicator for one drawer — POSTs to the Pi controller
-    once per configured segment (a drawer can have more than one, e.g. a cabinet's left- and
-    right-side strips both covering the same drawer range, both should light up together)."""
     drawer = get_object_or_404(Drawer, pk=pk)
     if request.method == "POST":
-        segments = list(drawer.led_segments.all())
-        if not segments:
-            messages.error(request, "This drawer has no LED mapping configured yet (set it in /admin/).")
-        elif not settings.LED_CONTROLLER_URL:
-            messages.error(request, "No LED controller configured yet (LED_CONTROLLER_URL is unset).")
-        else:
-            import requests
-
-            headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
-            lit, errors = 0, []
-            for segment in segments:
-                payload = {
-                    "strip": segment.led_strip,
-                    "start_index": segment.led_start_index,
-                    "count": segment.led_count,
-                }
-                try:
-                    resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
-                    resp.raise_for_status()
-                    lit += 1
-                except requests.RequestException as exc:
-                    errors.append(f"{segment.led_strip}: {exc}")
-
-            if lit:
-                messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}.")
-            if errors:
-                messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
+        lit, errors, error_reason = _locate_drawer(drawer)
+        if error_reason:
+            messages.error(request, error_reason)
+        if lit:
+            messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {drawer}.")
+        if errors:
+            messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
     return redirect("inventory:drawer_detail", pk=drawer.pk)
 
 
@@ -909,6 +912,18 @@ def _ensure_bins_seeded():
     return drawers
 
 
+def _ensure_bins_for_drawer(drawer):
+    """Same idea as _ensure_bins_seeded but scoped to one drawer — cheap enough to call
+    from drawer_detail on every visit, instead of re-checking all 27 bin-eligible drawers."""
+    if drawer.container.number not in BIN_ELIGIBLE_CONTAINERS:
+        return False
+    existing_numbers = set(drawer.bins.values_list("bin_number", flat=True))
+    to_create = [Bin(drawer=drawer, bin_number=n) for n in range(1, BINS_PER_DRAWER + 1) if n not in existing_numbers]
+    if to_create:
+        Bin.objects.bulk_create(to_create)
+    return True
+
+
 @login_required
 def bin_setup(request):
     drawers = _ensure_bins_seeded()
@@ -987,6 +1002,96 @@ def api_scan_bin(request, pk):
     b.barcode_id = code
     b.save(update_fields=["barcode_id"])
     return JsonResponse({"ok": True})
+
+
+@login_required
+def bin_detail(request, pk):
+    b = get_object_or_404(Bin.objects.select_related("drawer", "drawer__container"), pk=pk)
+    stock_items = StockItem.objects.filter(drawer=b.drawer, bin_number=b.bin_number).select_related("part")
+    return render(
+        request,
+        "inventory/bin_detail.html",
+        {
+            "bin": b,
+            "stock_items": stock_items,
+            "sub_bins": b.sub_bins.all(),
+            "can_add_sub_bin": b.sub_bins.count() < 4,
+            "size_choices": SubBin.SIZE_CHOICES,
+        },
+    )
+
+
+@login_required
+def register_bin_barcode(request, pk):
+    b = get_object_or_404(Bin, pk=pk)
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        if code:
+            conflict = Bin.objects.filter(barcode_id=code).exclude(pk=b.pk).first()
+            if conflict:
+                messages.error(request, f"That barcode is already linked to {conflict}.")
+            else:
+                b.barcode_id = code
+                b.save(update_fields=["barcode_id"])
+                messages.success(request, f"Registered barcode {code} for {b}.")
+    return redirect("inventory:bin_detail", pk=b.pk)
+
+
+@login_required
+def locate_bin(request, pk):
+    b = get_object_or_404(Bin.objects.select_related("drawer"), pk=pk)
+    if request.method == "POST":
+        lit, errors, error_reason = _locate_drawer(b.drawer, row=b.bin_row, col=b.bin_column)
+        if error_reason:
+            messages.error(request, error_reason)
+        if lit:
+            messages.success(request, f"Lit up {lit} indicator{'s' if lit != 1 else ''} for {b} (row {b.bin_row}, column {b.bin_column}).")
+        if errors:
+            messages.error(request, "Couldn't reach the LED controller for: " + "; ".join(errors))
+    return redirect("inventory:bin_detail", pk=b.pk)
+
+
+@login_required
+def add_sub_bin(request, pk):
+    b = get_object_or_404(Bin, pk=pk)
+    if request.method == "POST":
+        existing_positions = set(b.sub_bins.values_list("position", flat=True))
+        if len(existing_positions) >= 4:
+            messages.error(request, "This bin already has 4 sub-bins — that's the max.")
+        else:
+            size = request.POST.get("size") or SubBin.SMALL
+            if size not in dict(SubBin.SIZE_CHOICES):
+                size = SubBin.SMALL
+            next_position = next(p for p in range(1, 5) if p not in existing_positions)
+            SubBin.objects.create(bin=b, position=next_position, size=size)
+            messages.success(request, f"Added sub-bin {next_position} to {b}.")
+    return redirect("inventory:bin_detail", pk=b.pk)
+
+
+@login_required
+def register_sub_bin_barcode(request, pk):
+    sub_bin = get_object_or_404(SubBin, pk=pk)
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        if code:
+            conflict = SubBin.objects.filter(barcode_id=code).exclude(pk=sub_bin.pk).first()
+            if conflict:
+                messages.error(request, f"That barcode is already linked to {conflict}.")
+            else:
+                sub_bin.barcode_id = code
+                sub_bin.save(update_fields=["barcode_id"])
+                messages.success(request, f"Registered barcode {code} for {sub_bin}.")
+    return redirect("inventory:bin_detail", pk=sub_bin.bin_id)
+
+
+@login_required
+def delete_sub_bin(request, pk):
+    sub_bin = get_object_or_404(SubBin, pk=pk)
+    bin_pk = sub_bin.bin_id
+    if request.method == "POST":
+        sub_bin.delete()
+        messages.success(request, "Sub-bin removed.")
+    return redirect("inventory:bin_detail", pk=bin_pk)
 
 
 # --- Phase 4: BOM / Projects -------------------------------------------------
