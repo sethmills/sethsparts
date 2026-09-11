@@ -6,9 +6,11 @@ channel/index range.
 
 Three independent modes, mutually exclusive (starting one cancels the others):
 - "locate" animations, one per channel: breathe for a few seconds, then (if a
-  bin row/column 1-4 was given) hold a position readout -- (row-1) LEDs lit
-  immediately left of the segment's center, column LEDs lit immediately right
-  of center -- then repeat, for a total duration -- auto-clears when it expires.
+  bin row/column 1-4 was given) hold a static position readout for ~12s --
+  `row` LEDs lit immediately left of the segment's center, `column` LEDs lit
+  immediately right of center, each LED its own distinct rainbow hue so
+  they're easy to count individually behind the diffuser -- then repeat, for
+  a total duration -- auto-clears when it expires.
 - "room_light": fills every channel solid, stays on until explicitly turned off
   (no auto-clear) -- for using the cabinets as ambient room lighting.
 - "demo": a rainbow chase across every channel, purely for fun/show-off value.
@@ -37,7 +39,7 @@ STRAND_LENGTH = 100
 BREATHE_DURATION = 3.6  # one breathe pulse
 BREATHE_CYCLES = 3  # how many pulses before the row/column position readout
 BREATHE_SEGMENT = BREATHE_DURATION * BREATHE_CYCLES
-POSITION_HOLD = 2.0  # how long the row/column readout stays lit
+POSITION_HOLD = 12.0  # how long the row/column readout stays lit -- static, easy to count
 PAUSE = 0.4
 DEFAULT_LOCATE_DURATION_MS = 30000
 
@@ -113,16 +115,20 @@ def pattern_length(anim):
 
 
 def _position_indices(count, row, col):
-    """(row-1) LEDs immediately left of the segment's center, `col` LEDs immediately
-    right of it -- e.g. bin 13 (row 4, column 1) shows 3 LEDs left of center, 1 LED
-    right. Works for both even- and odd-length segments (9 or 10 LEDs, per cabinet)."""
-    left_count = (row - 1) if row else 0
+    """`row` LEDs immediately left of the segment's center, `col` LEDs immediately
+    right of it -- e.g. bin 13 (row 4, column 1) shows 4 LEDs left of center, 1 LED
+    right; bin 7 (row 2, column 3) shows 2 LEDs left, 3 right. Works for both even-
+    and odd-length segments (9 or 10 LEDs, per cabinet)."""
+    left_count = row if row else 0
     right_count = col if col else 0
 
     if count % 2 == 0:
         left_start, right_start = count // 2 - 1, count // 2
     else:
-        left_start, right_start = count // 2 - 1, count // 2 + 1
+        # Odd-length segments have one true center pixel -- fold it into the left
+        # (row) group instead of leaving it dark, so row/column stay one contiguous
+        # block with no gap at the boundary (a dark center pixel reads as a skipped LED).
+        left_start, right_start = count // 2, count // 2 + 1
 
     indices = []
     for i in range(left_count):
@@ -151,10 +157,14 @@ def render_locate(anim, now):
 
     t = elapsed - BREATHE_SEGMENT
     if (anim["row"] or anim["col"]) and t < POSITION_HOLD:
-        lit = set(_position_indices(count, anim["row"], anim["col"]))
-        rgb = _rgb_int(color, brightness)
+        # Each lit LED gets its own distinct hue (not just anim's locate color) --
+        # a same-color blob is hard to count behind a frosted diffuser, but evenly
+        # spaced rainbow hues make each individual LED easy to pick out.
+        ordered = _position_indices(count, anim["row"], anim["col"])
+        n = len(ordered)
+        lit_colors = {idx: _hsv_to_rgb_int(i * 360 / n, 1.0, brightness) for i, idx in enumerate(ordered)}
         for i in range(count):
-            pixels[base + start + i] = rgb if i in lit else 0
+            pixels[base + start + i] = lit_colors.get(i, 0)
         return
 
     # Pause segment (all off) between cycles.
