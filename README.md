@@ -163,6 +163,12 @@ Pi locally instead of an externally-hosted server). **Not built yet** —
 deliberately deferred until Seth considers his own instance finished. See the
 backlog section of `docs/HANDOFF.md` for the current thinking.
 
+## Community search (planned, not built)
+
+Cross-instance search across a friends list of other Seth's-Parts
+installs, opt-in and category-scoped, kept on its own page rather than
+merged into local search. Full spec: `docs/PLAN_community_search.md`.
+
 ## Picking this up with a different AI assistant / on a different machine
 
 1. Read this file, then `docs/HANDOFF.md` top to bottom — its "Current live
