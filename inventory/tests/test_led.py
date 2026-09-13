@@ -212,7 +212,16 @@ class LightControlsTests(TestCase):
         resp = self.client.get(reverse("inventory:light_controls"))
         self.assertEqual(resp.status_code, 200)
 
+    @override_settings(LED_CONTROLLER_URL="")
     def test_room_light_reports_not_configured_rather_than_erroring(self):
+        """Explicitly blanks the URL instead of relying on the ambient default.
+
+        This test originally assumed LED_CONTROLLER_URL was unset -- true on a
+        dev machine with no .env, false inside the production container, where it
+        points at the real Pi. That made it fire a genuine POST and switch the
+        workshop cabinet lights on during a test run. Never depend on ambient
+        settings for anything that can reach hardware.
+        """
         resp = self.client.post(reverse("inventory:led_room_light"), {"on": "1"}, follow=True)
         self.assertContains(resp, "No LED controller configured")
 
