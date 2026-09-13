@@ -115,6 +115,7 @@ class CanonicalPinTests(SimpleTestCase):
             "lon": self.payload(lon=-0.1417),
             "country": self.payload(country="US"),
             "name": self.payload(name="Eric's workshop"),
+            "gone": self.payload(gone=True),
             "updated_at": self.payload(updated_at="2026-09-14T12:00:00Z"),
         }
         for field, variant in variants.items():
@@ -142,7 +143,7 @@ class MakeAndVerifyPinTests(SimpleTestCase):
     def test_a_pin_carries_its_own_verification_material(self):
         """Everything needed to check it is in the pin, which is what lets a relay
         verify what it forwards without holding anyone's secret."""
-        for field in ("v", "public_key", "lat", "lon", "country", "updated_at", "signature"):
+        for field in ("v", "public_key", "lat", "lon", "country", "name", "gone", "updated_at", "signature"):
             self.assertIn(field, self.pin)
 
     def test_a_freshly_made_pin_verifies(self):
@@ -161,6 +162,7 @@ class MakeAndVerifyPinTests(SimpleTestCase):
             ("name", "Someone else"),
             ("updated_at", "2030-01-01T00:00:00Z"),
             ("public_key", "ff" * 32),
+            ("gone", True),
             ("v", 99),
         ]:
             with self.subTest(field=field):
@@ -173,7 +175,7 @@ class MakeAndVerifyPinTests(SimpleTestCase):
 
     def test_a_pin_claiming_an_unknown_version_is_rejected(self):
         """A future or invented version must not be interpreted by guesswork."""
-        for bad_version in (0, 2, 99, -1, "1", None):
+        for bad_version in (0, PIN_VERSION + 1, 99, -1, "1", None):
             with self.subTest(v=bad_version):
                 tampered = dict(self.pin)
                 tampered["v"] = bad_version
@@ -184,13 +186,14 @@ class MakeAndVerifyPinTests(SimpleTestCase):
         relabel a pin in transit and it would still verify — the pin's own statement
         about its format was the one field nothing checked."""
         tampered = dict(self.pin)
-        tampered["v"] = 2
+        tampered["v"] = PIN_VERSION + 1
         self.assertFalse(verify_pin(tampered))
 
     def test_a_correctly_signed_pin_from_a_future_version_is_still_rejected(self):
-        """The version guard has to stand on its own. A genuine v2 pin — signed
-        properly over v2 bytes — is still refused, because this build does not know
-        what v2 means and must not pretend otherwise."""
+        """The version guard has to stand on its own. A genuine pin for the *next*
+        version — signed properly over those bytes — is still refused, because this build
+        does not know what that version means and must not pretend otherwise."""
+        next_version = PIN_VERSION + 1
         body = canonical_pin(
             public_key=self.public_hex,
             lat=self.pin["lat"],
@@ -198,12 +201,35 @@ class MakeAndVerifyPinTests(SimpleTestCase):
             country="GB",
             name="",
             updated_at=self.pin["updated_at"],
-            v=2,
+            v=next_version,
         )
         future = dict(self.pin)
-        future["v"] = 2
+        future["v"] = next_version
         future["signature"] = sign(self.private_hex, body)
         self.assertFalse(verify_pin(future))
+
+    def test_a_gone_entry_carries_nothing_about_where(self):
+        """The opt-out is a statement about the key, not about a place. If a removal had
+        to carry the coordinates to stay verifiable, every node that agreed to delete it
+        would have to keep them in order to pass the removal on."""
+        gone = make_pin(self.private_hex, gone=True, updated_at=datetime(2026, 9, 13, tzinfo=timezone.utc))
+        for field in ("lat", "lon", "country", "name"):
+            self.assertNotIn(field, gone)
+        self.assertTrue(verify_pin(gone))
+
+    def test_a_location_pin_cannot_be_turned_into_a_removal(self):
+        """`gone` is inside the signed bytes, so it cannot be flipped in transit — by a
+        relay wanting to delete someone else's pin, or by one wanting to undo a removal."""
+        tampered = dict(self.pin)
+        tampered["gone"] = True
+        self.assertFalse(verify_pin(tampered))
+
+    def test_extra_fields_on_a_removal_are_harmless(self):
+        """Nothing reads them: `remember` clears the location for a gone entry whatever
+        the payload claims, so padding one with coordinates achieves nothing."""
+        gone = make_pin(self.private_hex, gone=True)
+        padded = {**gone, "lat": "1.000000", "lon": "2.000000"}
+        self.assertTrue(verify_pin(padded))
 
     def test_a_stripped_field_does_not_verify(self):
         for field in ("public_key", "lat", "lon", "updated_at"):

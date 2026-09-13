@@ -52,12 +52,15 @@ urlpatterns = [
     path("export/", views.export_inventory, name="export_inventory"),
     # Community: the connections page, and the single endpoint peers call.
     path("community/", views.community_connections, name="community_connections"),
+    path("community/map/", views.community_map, name="community_map"),
+    path("community/map/sync/", views.community_sync_pins, name="community_sync_pins"),
     path("community/connect/", views.community_join, name="community_join"),
     path("community/code/", views.community_issue_code, name="community_issue_code"),
     path("community/<int:pk>/update/", views.community_update_peer, name="community_update_peer"),
     path("community/<int:pk>/revoke/", views.community_revoke, name="community_revoke"),
     path("community/<int:pk>/forget/", views.community_forget, name="community_forget"),
     path("api/community/claim/", views.api_community_claim, name="api_community_claim"),
+    path("api/community/pins/", views.api_community_pins, name="api_community_pins"),
     # Setup and settings are the same pages, deliberately — see inventory/wizard.py.
     # Every one stays reachable after setup, because "change my workshop's name" should
     # not need a rebuild or a trip into /admin/.

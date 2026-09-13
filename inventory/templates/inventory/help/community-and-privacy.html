@@ -26,7 +26,8 @@
 
 <div class="card">
   <h2>There is no central server</h2>
-  <p>Nothing about the community feature lives on a server anyone runs on your behalf. When you look at the map, your instance asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know.</p>
+  <p>Nothing about the community feature lives on a server anyone runs on your behalf. Your instance asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know — but only when you ask it to: the button on the map, or <code>manage.py sync_community_pins</code> on a timer. Simply opening the map contacts nobody.</p>
+  <p>Pins are signed by whoever published them, which is what lets a workshop pass one on without being able to move it, rename it, or invent one that isn't theirs.</p>
   <p>That's why one connection is enough to start seeing a map, and why connecting to any other workshop keeps it working if one goes away.</p>
   <p class="muted">Every install starts connected to the app's maintainer, so a brand-new instance has somewhere to ask. That connection is pins only, and you can remove it.</p>
 </div>

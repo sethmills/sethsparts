@@ -494,6 +494,73 @@ MUTATIONS = [
         "    if False:",
         "inventory.tests.test_setup_wizard",
     ),
+    # --- community pins and the map -------------------------------------------
+    # The opt-out is the promise this feature makes, so several of these break it in
+    # ways that would be invisible: a removed pin that still holds its coordinates, a
+    # stale copy that brings a workshop back, a removal that never gets sent.
+    (
+        "A forged pin is stored anyway (signature check skipped)",
+        ROOT / "inventory" / "community_pins.py",
+        "    if not isinstance(pin, dict) or not verify_pin(pin):",
+        "    if not isinstance(pin, dict):",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "Newest-wins removed (an old pin overwrites a newer one)",
+        ROOT / "inventory" / "community_pins.py",
+        "        if existing is not None and signed_at <= existing.signed_at:",
+        "        if False:",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "A removal is stored as a live pin (opt-out hides instead of deleting)",
+        ROOT / "inventory" / "community_pins.py",
+        '                "gone": gone,',
+        '                "gone": False,',
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "Hop limit ignored on the way out (unbounded gossip)",
+        ROOT / "inventory" / "community_pins.py",
+        "    for row in KnownPin.objects.filter(hops__lt=MAX_HOPS):",
+        "    for row in KnownPin.objects.all():",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "A connection without pin permissions can read the map",
+        ROOT / "inventory" / "community_pins.py",
+        "    for peer in Peer.objects.filter(status=Peer.ACTIVE, exchanges_pins=True):",
+        "    for peer in Peer.objects.filter(status=Peer.ACTIVE):",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "A revoked connection's old key still works",
+        ROOT / "inventory" / "community_pins.py",
+        "    for peer in Peer.objects.filter(status=Peer.ACTIVE, exchanges_pins=True):",
+        "    for peer in Peer.objects.filter(exchanges_pins=True):",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "The owner's name published to the whole network with the pin",
+        ROOT / "inventory" / "community_pins.py",
+        '        name="",',
+        "        name=profile.display_name,",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "Opting out publishes the pin instead of the removal",
+        ROOT / "inventory" / "community_pins.py",
+        "    if CommunityProfile.load().discoverable:\n        return own_pin()",
+        "    if True:\n        return own_pin()",
+        "inventory.tests.test_community_pins",
+    ),
+    (
+        "Changing discoverability tells nobody (the removal never goes out)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "            if profile.discoverable != was_discoverable:",
+        "            if False:",
+        "inventory.tests.test_community_pins",
+    ),
 ]
 
 

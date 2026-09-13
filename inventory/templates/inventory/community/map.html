@@ -1,0 +1,158 @@
+{% extends "inventory/base.html" %}
+{% load static %}
+{% block title %}Community map — {{ site_name }}{% endblock %}
+{% block extra_head %}
+  {# Vendored, not loaded from a CDN: a self-hosted app should not depend on a
+     third party being up to draw its own map, and the workshop Pi's connection is
+     not something to bet a page render on. #}
+  <link rel="stylesheet" href="{% static 'inventory/vendor/maplibre-gl.css' %}">
+  <style>
+    #community-map { height: 420px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    .map-fallback {
+      height: 420px; display: flex; align-items: center; justify-content: center;
+      border: 1px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 24px; text-align: center; color: var(--muted);
+    }
+    .pin { width: 16px; height: 16px; border-radius: 50%; background: var(--accent2); border: 2px solid #10131a; box-sizing: border-box; }
+    .pin.friend { background: var(--accent); }
+    .pin.you { width: 20px; height: 20px; background: var(--ok); box-shadow: 0 0 0 4px rgba(111, 191, 115, 0.3); }
+    .map-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 0.9rem; color: var(--muted); }
+    .map-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; }
+    /* Dark chrome to match the rest of the app, since MapLibre's own controls and
+       popups are styled for a white page. */
+    .maplibregl-popup-content { background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    .maplibregl-popup-tip { border-top-color: var(--panel-raised) !important; border-bottom-color: var(--panel-raised) !important; }
+    .maplibregl-popup-close-button { color: var(--muted); }
+    .maplibregl-ctrl-group { background: var(--panel-raised) !important; border: 1px solid var(--border) !important; }
+    .maplibregl-ctrl-attrib { background: rgba(13, 17, 23, 0.82) !important; color: var(--muted) !important; }
+    .maplibregl-ctrl-attrib a { color: var(--accent2) !important; }
+  </style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Community map</h1>
+  <p class="muted">
+    Anonymous pins from workshops connected to yours, plus your own if you're
+    discoverable. Zoom and pan anywhere.
+  </p>
+  <form method="post" action="{% url 'inventory:community_sync_pins' %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    {% csrf_token %}
+    <button class="btn secondary" type="submit">🔄 Ask connections for pins</button>
+    <span class="muted" style="font-size:0.9rem;">
+      {% if has_pin_neighbours %}
+        This is the only thing on this page that contacts anyone — opening the map never does.
+      {% else %}
+        Connect to a workshop first; there's nobody to ask yet.
+      {% endif %}
+    </span>
+  </form>
+</div>
+
+<div class="card">
+  <div id="community-map"></div>
+  <div class="map-legend">
+    {% if own_pin %}<span><i style="background:var(--ok)"></i> you</span>{% endif %}
+    <span><i style="background:var(--accent)"></i> connected workshop</span>
+    <span><i style="background:var(--accent2)"></i> elsewhere in the network</span>
+  </div>
+  <p class="muted" style="margin-top:12px;">
+    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+    contributors, tiles from <a href="https://openfreemap.org/">OpenFreeMap</a>.
+  </p>
+</div>
+
+<div class="card">
+  <h2>What a pin is, and what it isn't</h2>
+  <p class="muted">
+    A pin is an anonymous point at postcode-area level — no name, no address, no
+    inventory. There is nothing behind a pin you can read or search.
+  </p>
+  <p class="muted">
+    <strong>On the map is not the same as sharing parts.</strong> Pins travel between
+    connected workshops and the default connection exchanges pins only. Nobody can
+    search your inventory unless you grant that separately, workshop by workshop,
+    on the <a href="{% url 'inventory:community_connections' %}">Connections</a> page.
+  </p>
+  <p class="muted">
+    <strong>Your pin is not private to your connections.</strong> That is the point of
+    it — a map needs the pins to spread — so it is visible to workshops across the
+    network. Turning discoverability off publishes a signed “I'm gone” entry that
+    makes every workshop that holds your pin delete it.
+  </p>
+</div>
+{% endblock %}
+{% block extra_body %}
+  <script src="{% static 'inventory/vendor/maplibre-gl.js' %}"></script>
+  <script>
+    (function () {
+      const mount = document.getElementById('community-map');
+      const data = {{ pins_json|safe }};
+      const styleUrl = "{{ map_style_url }}";
+
+      // Say so honestly instead of leaving an empty rectangle: a blank box looks
+      // like a broken page, and "the map library didn't load" is a fixable state.
+      function fallback(html) {
+        const box = document.createElement('div');
+        box.className = 'map-fallback';
+        box.innerHTML = html;
+        mount.replaceWith(box);
+      }
+
+      if (typeof maplibregl === 'undefined') {
+        fallback('<div><strong>The map library didn’t load.</strong><br>' +
+                 'admin/static files may not have been collected — run ' +
+                 '<code>manage.py collectstatic</code>.</div>');
+        return;
+      }
+      if (!data.pins.length) {
+        fallback('<div><strong>No pins yet.</strong><br>' +
+                 (data.own ? 'Yours is published; pins from other workshops arrive as they gossip.' :
+                             'Turn on discoverability in Settings to publish your own, or connect to another workshop.') +
+                 '</div>');
+        return;
+      }
+
+      let map;
+      try {
+        map = new maplibregl.Map({
+          container: mount,
+          style: styleUrl,
+          center: [data.center.lon, data.center.lat],
+          zoom: data.center.zoom,
+          attributionControl: { compact: true },
+        });
+      } catch (err) {
+        fallback('<div><strong>The map failed to start:</strong> ' + err.message + '</div>');
+        return;
+      }
+
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+      // Tiles come from a third party; if they are unreachable, say that rather than
+      // showing an empty map frame that looks like a data problem.
+      let reported = false;
+      map.on('error', function () {
+        if (reported) return;
+        reported = true;
+        mount.insertAdjacentHTML('beforebegin',
+          '<p class="msg-error">Couldn’t fetch the map tiles — check this machine’s internet access. ' +
+          'The pins below are what your workshop already knows.</p>');
+      });
+
+      function element(kind) {
+        const dot = document.createElement('div');
+        dot.className = 'pin ' + (kind === 'you' ? 'you' : kind === 'friend' ? 'friend' : '');
+        return dot;
+      }
+
+      data.pins.forEach(function (pin) {
+        const marker = new maplibregl.Marker({ element: element(pin.kind), anchor: 'center' })
+          .setLngLat([pin.lon, pin.lat]);
+        if (pin.popup) {
+          marker.setPopup(new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '240px' }).setHTML(pin.popup));
+        }
+        marker.addTo(map);
+      });
+    })();
+  </script>
+{% endblock %}

@@ -99,11 +99,14 @@ from .enrichment import (
 )
 from .community import (
     api_community_claim,
+    api_community_pins,
     community_connections,
     community_forget,
     community_issue_code,
     community_join,
+    community_map,
     community_revoke,
+    community_sync_pins,
     community_update_peer,
 )
 from .help import (
@@ -220,12 +223,15 @@ __all__ = [
     "setup_access",
     "setup_finish",
     "community_connections",
+    "community_map",
+    "community_sync_pins",
     "community_join",
     "community_issue_code",
     "community_update_peer",
     "community_revoke",
     "community_forget",
     "api_community_claim",
+    "api_community_pins",
     "help_index",
     "help_topic",
     "reference_list",

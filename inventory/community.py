@@ -29,7 +29,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 # Bump only for an incompatible change to the canonical payload. It is inside the
 # signed bytes, so a v1 instance will not silently accept a v2 pin.
-PIN_VERSION = 1
+#
+# v2 added `gone`. Removal has to be expressible in the signed format itself: an
+# owner opting out publishes a newer signed "I'm gone" entry, and every node that
+# holds their pin can verify that and delete it. A flag that lived *outside* the
+# signature would be forgeable by any relay — one could delete anyone's pin, which is
+# the same class of abuse as moving it.
+PIN_VERSION = 2
 
 # Versions this build knows how to read. A pin declaring anything else is rejected
 # outright rather than guessed at.
@@ -80,11 +86,12 @@ def _coord(value) -> str:
 def canonical_pin(
     *,
     public_key: str,
-    lat,
-    lon,
+    lat=None,
+    lon=None,
     country: str = "",
     name: str = "",
     updated_at: str,
+    gone: bool = False,
     v: int = PIN_VERSION,
 ) -> bytes:
     """The exact bytes a pin's signature covers.
@@ -103,43 +110,71 @@ def canonical_pin(
     ``name`` is included because it is part of what the owner chose to publish, and
     an unsigned name could be swapped in transit. It is empty unless the owner set
     one; the map shows anonymous pins by default.
+
+    **A gone entry signs no coordinates at all.** It is a statement about the key, not
+    about a place: "this instance has stopped being discoverable". That matters for the
+    opt-out to work beyond one hop — a removal has to be storable and forwardable by
+    nodes that have already deleted the location, so a removal that carried the location
+    to stay verifiable would keep alive exactly the data it was revoking. ``gone`` is
+    inside the signature, so a location pin cannot be turned into a removal, or back,
+    without breaking it.
     """
     payload = {
         "v": v,
         "public_key": public_key,
-        "lat": _coord(lat),
-        "lon": _coord(lon),
-        "country": (country or "").upper(),
-        "name": name or "",
+        "gone": bool(gone),
         "updated_at": updated_at,
     }
+    if not gone:
+        payload["lat"] = _coord(lat)
+        payload["lon"] = _coord(lon)
+        payload["country"] = (country or "").upper()
+        payload["name"] = name or ""
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def make_pin(private_hex: str, *, lat, lon, country="", name="", updated_at=None) -> dict:
+def make_pin(private_hex: str, *, lat=None, lon=None, country="", name="", gone=False, updated_at=None) -> dict:
     """Build a signed pin for this instance.
 
     ``updated_at`` defaults to now in UTC. It is the owner's clock, so a peer must
     not trust it blindly for *freshness* — but it must be inside the signed bytes,
     or an old pin could be replayed as new.
+
+    ``gone=True`` builds the opt-out entry: a newer, signed statement that this
+    instance has stopped being discoverable. It carries no coordinates — see
+    ``canonical_pin`` — so a node can hold and forward it after deleting the location
+    it revoked.
     """
     public_hex = public_from_private(private_hex)
     if updated_at is None:
         updated_at = datetime.now(timezone.utc)
     stamp = updated_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     body = canonical_pin(
-        public_key=public_hex, lat=lat, lon=lon, country=country, name=name, updated_at=stamp
+        public_key=public_hex,
+        lat=lat,
+        lon=lon,
+        country=country,
+        name=name,
+        gone=gone,
+        updated_at=stamp,
     )
-    return {
+    pin = {
         "v": PIN_VERSION,
         "public_key": public_hex,
-        "lat": _coord(lat),
-        "lon": _coord(lon),
-        "country": (country or "").upper(),
-        "name": name or "",
+        "gone": bool(gone),
         "updated_at": stamp,
         "signature": sign(private_hex, body),
     }
+    if not gone:
+        pin.update(
+            {
+                "lat": _coord(lat),
+                "lon": _coord(lon),
+                "country": (country or "").upper(),
+                "name": name or "",
+            }
+        )
+    return pin
 
 
 def verify_pin(pin: dict) -> bool:
@@ -157,13 +192,17 @@ def verify_pin(pin: dict) -> bool:
     version = pin.get("v")
     if version not in SUPPORTED_PIN_VERSIONS:
         return False
+    gone = bool(pin.get("gone", False))
     try:
         body = canonical_pin(
             public_key=pin["public_key"],
-            lat=pin["lat"],
-            lon=pin["lon"],
+            # A removal carries no coordinates, and its signature does not cover any --
+            # so they are not read here either.
+            lat=None if gone else pin["lat"],
+            lon=None if gone else pin["lon"],
             country=pin.get("country", ""),
             name=pin.get("name", ""),
+            gone=gone,
             updated_at=pin["updated_at"],
             v=version,
         )

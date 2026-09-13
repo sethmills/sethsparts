@@ -2,7 +2,7 @@ import secrets
 
 from django.db import models
 
-from .community import generate_keypair
+from .community import PIN_VERSION, generate_keypair
 from .units import DEFAULT_UNIT, STOCK_UNIT_CHOICES, UNIT_SYSTEMS, format_quantity, symbol as unit_symbol
 
 
@@ -840,6 +840,70 @@ class CommunityProfile(models.Model):
     def can_publish(self) -> bool:
         """Both halves are required before a pin may go out, and both are opt-ins."""
         return self.discoverable and self.has_location
+
+
+class KnownPin(models.Model):
+    """A pin heard from another workshop.
+
+    Keyed by the publishing instance's public key, because that *is* its identity:
+    one row per workshop, holding only its newest entry. Everything here is a copy of
+    signed material, which is why a pin can be passed on to a workshop that has never
+    met the one that published it.
+
+    **A removed pin keeps its row, with nothing in it.** When an owner opts out they
+    publish a newer, signed "I'm gone" entry, and every node holding their pin deletes
+    the location. Keeping the key's newest timestamp is what stops an *older* pin —
+    relayed again by someone whose copy is stale — from resurrecting a workshop that
+    has asked to be forgotten. Coordinates are cleared rather than kept hidden, so
+    there is nothing left on disk to leak; what remains is a timestamp, a signature and
+    a boolean.
+
+    Note what is deliberately absent: which neighbour this pin arrived from. The plan
+    forbids disclosing that (watching who receives what would map the social graph),
+    and the strongest version of not disclosing it is not storing it.
+    """
+
+    public_key = models.CharField(
+        max_length=64, unique=True, help_text="The publishing instance's Ed25519 key — also its identity."
+    )
+    lat = models.FloatField(null=True, blank=True)
+    lon = models.FloatField(null=True, blank=True)
+    country = models.CharField(max_length=2, blank=True)
+    name = models.CharField(
+        max_length=100, blank=True, help_text="Empty for an anonymous pin, which is the default."
+    )
+    gone = models.BooleanField(
+        default=False, help_text="Set by a signed opt-out entry. The location is deleted when this is set."
+    )
+    signed_at = models.DateTimeField(
+        help_text="The timestamp from inside the signed bytes — the owner's own clock, not ours."
+    )
+    signature = models.CharField(max_length=128)
+    pin_version = models.PositiveSmallIntegerField(
+        default=PIN_VERSION,
+        help_text=(
+            "Which version of the pin format this entry was signed as. It is inside the "
+            "signed bytes, so re-serving the entry under a different number would "
+            "invalidate its own signature."
+        ),
+    )
+    hops = models.PositiveSmallIntegerField(
+        default=0, help_text="How many relays away the origin is. Not signed — a cost and loop guard, not a fact."
+    )
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-signed_at"]
+        verbose_name = "known pin"
+
+    def __str__(self):
+        state = "gone" if self.gone else f"{self.lat}, {self.lon}"
+        return f"pin {self.public_key[:12]}… ({state})"
+
+    @property
+    def is_placeholder(self) -> bool:
+        """True for the kept shell of an opted-out pin: no location left at all."""
+        return self.gone and self.lat is None and self.lon is None
 
 
 class SiteSettings(models.Model):

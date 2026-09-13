@@ -18,7 +18,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from .. import archiving, geocoding, hardware_config, label_printing, updates, wizard
+from .. import archiving, community_pins, geocoding, hardware_config, label_printing, updates, wizard
 from ..label_drivers import DRIVERS, driver_keys, get_driver
 from ..models import CommunityProfile, Drawer, DrawerLedSegment, LedStrip, ReferenceDoc, SiteSettings
 from ..site_config import get_site_settings
@@ -552,10 +552,21 @@ def setup_community(request):
                 # wipe a location that was working.
                 messages.error(request, result.error)
         elif action == "save":
+            was_discoverable = profile.discoverable
             profile.discoverable = bool(request.POST.get("discoverable"))
             profile.display_name = (request.POST.get("display_name") or "").strip()[:100]
             profile.save()
             messages.success(request, "Saved.")
+
+            # Tell the network, but only when the answer actually changed. Re-pushing an
+            # unchanged pin on every save would be noise, and the peers' own periodic sync
+            # picks up anything else. This is a write, not a page render, so the request
+            # it makes is allowed — and it is best effort: a peer being offline must not
+            # stop the owner turning their own pin off.
+            if profile.discoverable != was_discoverable:
+                published, detail = community_pins.publish_own_state()
+                (messages.success if published else messages.error)(request, detail)
+
             return redirect(wizard.next_step_after(wizard.COMMUNITY.key).url_name)
 
         return redirect("inventory:setup_community")
