@@ -37,6 +37,36 @@
 </div>
 
 <div class="card">
+  <h2>This version</h2>
+  <p class="muted">
+    {% if update_info %}
+      {{ update_info.current }} — {{ update_info.latest|default:"latest unknown" }} available.
+      {% if update_info.update_available %}
+        <br><strong>A newer version is available.</strong>
+        {% if update_info.notes %}<br>{{ update_info.notes }}{% endif %}
+        <br><a href="{{ update_info.url }}">What changed →</a>
+      {% else %}
+        <br>You're up to date.
+      {% endif %}
+    {% else %}
+      Not checked yet.
+    {% endif %}
+  </p>
+  {% if update_check_enabled %}
+    <form method="post">{% csrf_token %}
+      <button class="btn secondary" type="submit" name="action" value="check_updates">Check for updates</button>
+    </form>
+    <p class="muted" style="margin-top:10px;">
+      This asks GitHub for the latest release, which tells GitHub that this app is
+      installed somewhere. Nothing else is sent, and nothing is ever installed
+      automatically. Set <code>UPDATE_CHECK_ENABLED=false</code> to turn it off.
+    </p>
+  {% else %}
+    <p class="muted">Update checking is switched off on this install.</p>
+  {% endif %}
+</div>
+
+<div class="card">
   <h2>Other things worth knowing</h2>
   <p><a href="{% url 'inventory:reference_manage' %}">Reference library</a> — <span class="muted">add, edit or remove the charts and pinouts the app keeps for you.</span></p>
   <p><a href="{% url 'inventory:help_index' %}">Help</a> — <span class="muted">how the app is organised, and how to lay out a workshop so it stays findable.</span></p>

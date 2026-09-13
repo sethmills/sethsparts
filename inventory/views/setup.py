@@ -18,7 +18,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from .. import archiving, geocoding, hardware_config, wizard
+from .. import archiving, geocoding, hardware_config, updates, wizard
 from ..models import CommunityProfile, Drawer, DrawerLedSegment, ReferenceDoc, SiteSettings
 from ..site_config import get_site_settings
 
@@ -74,11 +74,25 @@ def setup_hub(request):
     if not wizard.account_exists():
         return redirect("inventory:setup_account")
 
+    if request.method == "POST" and request.POST.get("action") == "check_updates":
+        info = updates.check_for_update()
+        (messages.success if info.ok else messages.error)(request, updates.describe(info))
+        return redirect("inventory:setup_hub")
+
     site = _site()
     return render(
         request,
         "inventory/setup/hub.html",
-        _shell(request, None, outstanding=wizard.required_outstanding(), setup_complete=site.setup_complete),
+        _shell(
+            request,
+            None,
+            outstanding=wizard.required_outstanding(),
+            setup_complete=site.setup_complete,
+            # Read from the cache only — see updates.cached_info. The page never makes
+            # an outbound request just because someone opened it.
+            update_info=updates.cached_info(),
+            update_check_enabled=updates.enabled(),
+        ),
     )
 
 

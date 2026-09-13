@@ -187,6 +187,13 @@ LABEL_PRINTER_KEY = os.environ.get("LABEL_PRINTER_KEY", "")
 ARCHIVE_ON_SAVE = os.environ.get("ARCHIVE_ON_SAVE", "true").lower() == "true"
 ARCHIVE_TIMEOUT = int(os.environ.get("ARCHIVE_TIMEOUT", "20"))
 
+# Checking GitHub for a newer version. This is the app's only outbound call that isn't
+# to hardware the owner configured or a link they added, so it is off-switchable and
+# the settings page says plainly what it does. Set UPDATE_REPO when running a fork, so
+# the check follows that repository instead.
+UPDATE_CHECK_ENABLED = os.environ.get("UPDATE_CHECK_ENABLED", "true").lower() == "true"
+UPDATE_REPO = os.environ.get("UPDATE_REPO", "sethmills/sethsparts")
+
 # Lets the Pi kiosk's own launch script auto-establish a real, properly-issued session
 # on every boot (device-pairing style) without ever storing or typing Seth's account
 # password anywhere. Empty means the endpoint always rejects.
