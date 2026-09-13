@@ -195,7 +195,7 @@ Two new modes, mutually exclusive with locate and each other: **`room_light`** (
 
 ### 15. Kiosk auto-login, layout redesign for the real screen, squeekboard fix, persistent back/home nav — ✅ done (2026-09-09/10)
 
-**Kiosk auto-login.** The Pi kiosk was booting to a login screen instead of straight into the app. Added `kiosk_autologin` view (`inventory/views.py`) — takes a long-lived shared-secret token (`KIOSK_AUTOLOGIN_TOKEN`, compared with `secrets.compare_digest`), mints a real Django session for the configured kiosk user (`KIOSK_AUTOLOGIN_USERNAME`, default `seth`) via `login()`, never touches Seth's actual account password. `kiosk-launch.sh` now points Chromium at `/kiosk-autologin/?token=...&next=/` instead of the plain site URL, so every kiosk launch (including after a Chromium profile wipe) re-establishes a session on its own. Hit one real bug: `KIOSK_AUTOLOGIN_TOKEN`/`KIOSK_AUTOLOGIN_USERNAME` were in Hetzner's `.env` but missing from `docker-compose.yml`'s `environment:` list, so the container never actually saw them (confirmed via no `Set-Cookie` at all on the response) — added both. Confirmed working end to end.
+**Kiosk auto-login.** The Pi kiosk was booting to a login screen instead of straight into the app. Added `kiosk_autologin` view (`inventory/views/auth.py`) — takes a long-lived shared-secret token (`KIOSK_AUTOLOGIN_TOKEN`, compared with `secrets.compare_digest`), mints a real Django session for the configured kiosk user (`KIOSK_AUTOLOGIN_USERNAME`, default `seth`) via `login()`, never touches Seth's actual account password. `kiosk-launch.sh` now points Chromium at `/kiosk-autologin/?token=...&next=/` instead of the plain site URL, so every kiosk launch (including after a Chromium profile wipe) re-establishes a session on its own. Hit one real bug: `KIOSK_AUTOLOGIN_TOKEN`/`KIOSK_AUTOLOGIN_USERNAME` were in Hetzner's `.env` but missing from `docker-compose.yml`'s `environment:` list, so the container never actually saw them (confirmed via no `Set-Cookie` at all on the response) — added both. Confirmed working end to end.
 
 **Kiosk layout redesign.** Seth reported the layout "doesn't look great" on the kiosk screen — traced to two wrong assumptions: the CSS had a `@media (max-width: 860px)` block still sized for the *old* 800×480 DSI touchscreen (replaced back in item 13 by a 1920×1200 HDMI panel), and `pointer: coarse` doesn't reliably fire for this Pi's touch hardware either. Replaced both with sizing keyed off the existing `.pi-kiosk` runtime-detected class (see item 9) — the one signal that's actually guaranteed correct on this specific device regardless of screen swaps. Widened `main` to 1400px, enlarged buttons/nav/inputs/table cells. Also split the header nav into primary links + a "More ▾" `<details>` dropdown (too many top-level links for one row), and rebuilt the part detail page's "Where it lives" section from a cramped multi-button table into one `.location-card` per location (qty/bin fields + Locate/Remove buttons, each with room to breathe). Verified by forcing `.pi-kiosk` on and checking computed layout at the real 1920×1200 resolution before deploying (a screenshot at a small custom viewport in the dev sandbox is not trustworthy — devicePixelRatio scaling makes correct layouts look broken; check computed styles/accessibility tree, or screenshot at the real target resolution).
 
@@ -205,7 +205,7 @@ Two new modes, mutually exclusive with locate and each other: **`room_light`** (
 
 ### 16. Demo mode as a toggle, live color pickers, bulk bin-barcode scanning, moving-day intake — ✅ built (2026-09-10)
 
-**Demo mode is now on/off, not timed.** Was a single "Run demo" button firing a fixed ~15s animation; now two buttons like room light ("Turn on"/"Turn off"). Firmware (`scorpio-firmware/code.py`) demo state dropped its `"end"` timestamp — `render_demo` just keeps running every loop tick until an explicit `{"cmd": "demo", "on": false}` clears it. `pi/server.py` and `led_demo` (views.py) now relay `on` through instead of a duration. **Not yet deployed to the Pi/Scorpio** — `code.py` needs `scp` + `sync` (auto-reloads), `pi/server.py` needs `scp` + Seth's own `sudo systemctl restart led-controller` (same as every prior firmware/server change, per item 14).
+**Demo mode is now on/off, not timed.** Was a single "Run demo" button firing a fixed ~15s animation; now two buttons like room light ("Turn on"/"Turn off"). Firmware (`scorpio-firmware/code.py`) demo state dropped its `"end"` timestamp — `render_demo` just keeps running every loop tick until an explicit `{"cmd": "demo", "on": false}` clears it. `pi/server.py` and `led_demo` (inventory/views/lights.py) now relay `on` through instead of a duration. **Not yet deployed to the Pi/Scorpio** — `code.py` needs `scp` + `sync` (auto-reloads), `pi/server.py` needs `scp` + Seth's own `sudo systemctl restart led-controller` (same as every prior firmware/server change, per item 14).
 
 **Color pickers apply immediately.** The default-locate-color and room-light-color `<input type=color>`s now fire `this.form.requestSubmit()` on `change` (i.e. once a color is actually picked/confirmed, not continuously while dragging) — no more separate "Save"/"Turn on" tap needed to see the new color take effect. Room light in particular: picking a new color while it's already on updates it live; picking one while it's off turns it on with that color (a deliberate direct-manipulation choice — "I picked pink" and the light responding is the whole point of a color picker here).
 
@@ -251,7 +251,7 @@ Original note, now resolved: `lsusb`/`dmesg` on the Pi had shown the GK420T *was
 2. Fixed readability: extended the static hold from 2s to 12s, and gave each lit LED its own distinct rainbow hue (`_hsv_to_rgb_int`, evenly spaced across however many LEDs are lit) instead of one flat color.
 3. Found and fixed a real bug during this pass: odd-length segments (9 LEDs, `cabinet1-right`/`cabinet4-left`) left the true center pixel dark, which read as a "skipped" LED — folded it into the left/row group so the block is always contiguous.
 4. Seth corrected the count formula: he actually wanted `row` LEDs (not `row-1`) on the left, confirmed with a second worked example (bin 7 = row 2/col 3 → 2 left, 3 right).
-5. **Final correction, the actual intended design:** rather than one strip showing a combined row+column centered display, the drawer's *two separate physical strips* should each show one value — the `-left`-named strip lights `row` LEDs, the `-right`-named strip lights `col` LEDs. `_locate_drawer()` (views.py) now includes `row` in the payload only for segments whose `led_strip` ends `-left`, and `col` only for `-right` — no firmware change needed for this split, since `_position_indices()` already handles either value being absent (just shows LEDs on one side of center, none on the other). Verified live against bin 13 (4 on the left strip, 1 on the right) — Seth confirmed it looks right.
+5. **Final correction, the actual intended design:** rather than one strip showing a combined row+column centered display, the drawer's *two separate physical strips* should each show one value — the `-left`-named strip lights `row` LEDs, the `-right`-named strip lights `col` LEDs. `_locate_drawer()` (inventory/views/lights.py) now includes `row` in the payload only for segments whose `led_strip` ends `-left`, and `col` only for `-right` — no firmware change needed for this split, since `_position_indices()` already handles either value being absent (just shows LEDs on one side of center, none on the other). Verified live against bin 13 (4 on the left strip, 1 on the right) — Seth confirmed it looks right.
 
 Every step verified via a local Python simulation (stubbing `board`/`usb_cdc`/`adafruit_neopxl8`) before deploying to real hardware, catching the odd-segment gap bug before ever flashing it.
 
@@ -322,14 +322,89 @@ Added a "Tests" section covering the conventions (behaviour contracts over snaps
 intentional behaviour with an explanatory docstring so a later "fix" trips the test) and a fifth step
 in "Picking this up with a different AI assistant".
 
-**Not done, deliberately:** `inventory/views.py` is still a single 1,465-line file with 71 view
-functions. Splitting it by domain (bins, intake, labels, lights, enrichment, search) is the obvious
-next structural job — and is now a low-risk mechanical refactor *because* the suite exists. Doing it
-before this would have meant moving 71 functions with nothing to catch a mistake.
+**Not done in *this* step (superseded immediately after — see item 22):** `inventory/views.py` was
+still a single 1,465-line file with 71 view functions when this landed. That split was the intended
+next job, and doing it *after* this rather than before was deliberate: it meant moving code with a
+committed safety net in place instead of with nothing to catch a mistake.
 
 **Verified:** `manage.py test inventory` → 211 tests, OK. `scripts/mutation_check.py` → baseline
 PASS, 10/10 mutations caught. `manage.py check` → no issues. Nothing deployed — this is branch
 `hardening/test-suite`, no production behaviour changed.
+
+### 22. Split views.py into inventory/views/ — ✅ done (2026-09-13)
+
+**What changed.** `inventory/views.py` (1,465 lines, 71 view functions, 2 constants) is now a
+package, one module per topic. Nothing about the app's behaviour changed — this is pure
+reorganisation, verified as such (see below).
+
+| Module | Lines | Holds |
+|---|---|---|
+| `views/__init__.py` | 185 | Facade — re-exports all 73 names so both existing import styles keep working |
+| `views/_shared.py` | 60 | `_current_stock`, `_reorder_link`, `_consume_stock`, `_slugify_drawer_code`, `_location_choices`, `_drawer_number` |
+| `views/browse.py` | 185 | browse, scan, `go()`, container/drawer detail, barcode registration |
+| `views/bins.py` | 218 | Bin seeding, bulk bin scanning, bin detail, sub-bins |
+| `views/parts.py` | 192 | Part intake/detail, stock quantity + bin editing |
+| `views/labels.py` | 148 | Label generation, printing, barcode SVGs |
+| `views/intake.py` | 136 | Moving-day capture, quick box creation, dictated notes |
+| `views/searching.py` | 92 | `parts_search` + the HA voice endpoint |
+| `views/tagging.py` | 95 | Tagging/review worklists |
+| `views/projects.py` | 100 | Projects, BOMs, builds, reorder dashboard |
+| `views/enrichment.py` | 177 | Enrichment queue, export, reference docs |
+| `views/lights.py` | 174 | Everything that talks to the LED controller |
+| `views/auth.py` | 22 | Kiosk auto-login |
+
+**The import paths are deliberately unchanged.** `inventory/urls.py` does `from . import views` and
+calls `views.browse` etc.; the test suite does `from inventory.views import _locate_drawer`. Both
+are served by `views/__init__.py`, which imports every name from its topic module. That file exists
+*only* to keep those two paths stable — new views go in the topic module they belong to, not there.
+So this refactor touched exactly one file (`urls.py` untouched, tests untouched).
+
+**How it was done, and why that matters.** The split was generated by an AST script that copied each
+top-level block **byte-for-byte** by line range rather than retyping anything — a hand-move of 1,465
+lines is where transcription errors live. The generator hard-failed on any unassigned block. It then
+computed each module's imports from what that module's code actually resolves.
+
+**Three real bugs the generator hit, all worth remembering if this is ever repeated:**
+
+1. **The import header leaked into the first function of every module.** Import nodes were skipped
+   without advancing the "last block ended at" cursor, so the first block's line range started at
+   line 1 and swallowed the whole 36-line header. Symptom: a stray duplicate
+   `from .models import (…)` in every module. *My first verification missed this* because it
+   re-derived line numbers from the generated file, inheriting the same blind spot — the fix was to
+   add an explicit "nothing but a docstring and imports may precede the first def" check.
+2. **`django.db.models` also ends with `"models"`.** The test for "this is the app's models import"
+   matched it too, so `Count/Max/Q/Sum` were silently dropped from the import pool — which only
+   *appeared* to work because bug 1 was accidentally supplying them via the leaked header. Fixed by
+   requiring a relative import (`node.level >= 1 and module == "models"`).
+3. **Relative imports need one more dot inside the package.** `from .skills import …`-style lines
+   (`from .search import build_search_query`) silently became `inventory.views.search`, which is a
+   different module that doesn't exist. Now rewritten to add a dot per level.
+
+Plus one subtler one: the first version detected needed imports by scanning AST `Name` nodes, which
+cannot tell a global reference from a **local variable that shares the name**. `_tagging_location_choices`
+has a local `labels = {}`, so it grew a spurious `from .labels import labels` — harmless today (the
+local shadows it) but exactly the kind of thing that becomes a circular import later. Replaced with
+`symtable`, which resolves scope properly; specifically, only `is_global()` counts, because a `free`
+variable is bound by an *enclosing function* (the genexpr inside that same function sees `labels` as
+free), not at module scope.
+
+**Verified — this is a refactor, so the bar is "provably identical behaviour":**
+
+- **Structural:** all 73 top-level blocks present in the package, **0 bodies differing**, every
+  original body found verbatim in the generated source. No statement other than a docstring or an
+  import precedes the first `def` in any module. No duplicate imports.
+- **Import surface:** `len(views.__all__) == 73`, no duplicate exports, package imports cleanly.
+- **Behaviour:** `manage.py check` → no issues. **`manage.py test inventory` → 211 tests, OK.**
+- **`scripts/mutation_check.py` → 10/10 mutations caught**, with anchors repointed at the new module
+  files. That last one is the real proof for a refactor: each mutation now breaks a *different file*
+  than it used to (the FIFO order in `views/_shared.py`, the LED split in `views/lights.py`, the
+  kiosk token in `views/auth.py`) and the same tests still catch them — so the logic genuinely moved
+  intact rather than being quietly dropped.
+- `mutation_check.py` also reports `anchor not found` if logic moves, which is intentional: it
+  doubles as a tripwire for future refactors.
+
+**Deploy reminder:** nothing here changes behaviour, but the production checkout is still on
+`a7903aa` (3 doc-only commits behind `main`) — a deploy would also pick up items 20–22.
 
 ### Backlog / discussed, not built
 

@@ -3,27 +3,32 @@
 A test suite that passes is worthless on its own -- what matters is whether it
 FAILS when the behaviour it claims to protect is broken. Each mutation below
 inverts a real decision the app makes. Anything that stays green is a blind spot.
+
+The view logic was split out of a single views.py into inventory/views/<topic>.py,
+so the anchors below point at the module that now owns each behaviour. If a
+mutation reports "anchor not found", the logic has moved and this list needs
+updating -- which is itself useful signal that a refactor happened.
 """
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-VIEWS = ROOT / "inventory" / "views.py"
+PKG = ROOT / "inventory" / "views"
 MODELS = ROOT / "inventory" / "models.py"
 PY = str(ROOT / "venv" / "bin" / "python")
 
 MUTATIONS = [
     (
         "LED row/column split reversed (row->right, col->left)",
-        VIEWS,
+        PKG / "lights.py",
         'if row and segment.led_strip.endswith("-left"):',
         'if row and segment.led_strip.endswith("-right"):',
         "inventory.tests.test_led",
     ),
     (
         "FIFO stock consumption reversed to LIFO",
-        VIEWS,
+        PKG / "_shared.py",
         '.filter(part=part, quantity__gt=0).order_by("id")',
         '.filter(part=part, quantity__gt=0).order_by("-id")',
         "inventory.tests.test_stock_and_builds",
@@ -37,28 +42,28 @@ MUTATIONS = [
     ),
     (
         "Bins per drawer cut from 16 to 8",
-        VIEWS,
+        PKG / "bins.py",
         "BINS_PER_DRAWER = 16",
         "BINS_PER_DRAWER = 8",
         "inventory.tests.test_bins",
     ),
     (
         "Empty kiosk token now matches any supplied token",
-        VIEWS,
+        PKG / "auth.py",
         "if not settings.KIOSK_AUTOLOGIN_TOKEN or not secrets.compare_digest(token, settings.KIOSK_AUTOLOGIN_TOKEN):",
         "if not secrets.compare_digest(token, settings.KIOSK_AUTOLOGIN_TOKEN):",
         "inventory.tests.test_kiosk_auth",
     ),
     (
         "Voice API accepts a missing key when none is configured",
-        VIEWS,
+        PKG / "searching.py",
         "if not settings.VOICE_SEARCH_API_KEY or provided_key != settings.VOICE_SEARCH_API_KEY:",
         "if provided_key != settings.VOICE_SEARCH_API_KEY:",
         "inventory.tests.test_voice_api",
     ),
     (
         "Bin scan conflict check removed (silent overwrite)",
-        VIEWS,
+        PKG / "bins.py",
         'conflict = Bin.objects.filter(barcode_id=code).exclude(pk=b.pk).select_related("drawer").first()',
         "conflict = None",
         "inventory.tests.test_bins",
@@ -79,7 +84,7 @@ MUTATIONS = [
     ),
     (
         "Intake blank-line filtering removed",
-        VIEWS,
+        PKG / "intake.py",
         "lines = [line for line in lines if line]",
         "lines = lines",
         "inventory.tests.test_intake",
@@ -92,8 +97,7 @@ def run(label):
         [PY, "manage.py", "test", label],
         cwd=ROOT, capture_output=True, text=True, timeout=600,
     )
-    out = proc.stdout + proc.stderr
-    return proc.returncode == 0, out
+    return proc.returncode == 0, proc.stdout + proc.stderr
 
 
 print("=" * 72)
@@ -110,7 +114,7 @@ for name, path, old, new, label in MUTATIONS:
     original = path.read_text()
     if old not in original:
         results.append((name, "SKIPPED (anchor not found)"))
-        print(f"  !! anchor not found for: {name}")
+        print(f"  !! anchor not found in {path.name}: {name}")
         continue
     path.write_text(original.replace(old, new, 1))
     try:
