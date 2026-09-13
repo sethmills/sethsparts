@@ -303,6 +303,38 @@ class PrinterStepTests(WizardFlowTestCase):
         )
         self.assertEqual(SiteSettings.load().label_driver, "zpl")
 
+    def test_it_saves_the_dots_per_inch(self):
+        self.client.post(
+            reverse("inventory:setup_printer"),
+            {"action": "save", "label_printer_url": "pi:9100", "label_dpi": "300"},
+        )
+        self.assertEqual(SiteSettings.load().label_dpi, "300")
+
+    def test_blank_dots_per_inch_stays_blank(self):
+        """Blank means "use the resolution that goes with the printer type". Storing a
+        zero instead would render a zero-pixel label with nothing to explain it."""
+        self.client.post(
+            reverse("inventory:setup_printer"),
+            {"action": "save", "label_printer_url": "pi:9100", "label_dpi": ""},
+        )
+        self.assertEqual(SiteSettings.load().label_dpi, "")
+
+    def test_a_nonsense_dots_per_inch_is_refused_and_the_old_value_kept(self):
+        """Rather than stored and then ignored by the renderer, which leaves the owner
+        unable to tell which of the two happened."""
+        site = SiteSettings.load()
+        site.label_dpi = "203"
+        site.save()
+
+        response = self.client.post(
+            reverse("inventory:setup_printer"),
+            {"action": "save", "label_printer_url": "pi:9100", "label_dpi": "12000"},
+            follow=True,
+        )
+
+        self.assertContains(response, "between 50 and 2400")
+        self.assertEqual(SiteSettings.load().label_dpi, "203")
+
     def test_the_test_button_actually_prints(self):
         """A printer that answers a health check but prints nothing is the common
         failure, so the test sends a real label."""

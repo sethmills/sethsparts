@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from .. import hardware_config
+from ..label_drivers import get_driver
 from ..models import (
     Container,
     Drawer,
@@ -144,5 +146,9 @@ def custom_label(request):
             "font_pt": font_pt,
             "label_sizes": label_printing.LABEL_SIZES,
             "preview_data_uri": preview_data_uri,
+            # Which printer this will go to, so the page can name it and be honest
+            # about whether anything has ever tried that printer language.
+            "driver": get_driver(hardware_config.printer_driver()),
+            "dpi": label_printing.configured_dpi(),
         },
     )

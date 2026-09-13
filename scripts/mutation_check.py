@@ -9,6 +9,8 @@ so the anchors below point at the module that now owns each behaviour. If a
 mutation reports "anchor not found", the logic has moved and this list needs
 updating -- which is itself useful signal that a refactor happened.
 """
+import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -78,7 +80,7 @@ MUTATIONS = [
     ),
     (
         "ZPL row stride off by one byte",
-        ROOT / "inventory" / "label_printing.py",
+        ROOT / "inventory" / "label_drivers.py",
         "bytes_per_row = (width_px + 7) // 8",
         "bytes_per_row = (width_px + 8) // 8",
         "inventory.tests.test_labels",
@@ -440,6 +442,58 @@ MUTATIONS = [
         '        "/api/",\n        "/login/",',
         "inventory.tests.test_login",
     ),
+    # --- the printer driver layer ---------------------------------------------
+    # Silent failures, every one of them: a clipped label, a wrong-sized label and a
+    # mirrored label all look like a broken printer rather than a broken app.
+    (
+        "Rendering ignores the saved dots-per-inch (right shape, wrong size)",
+        ROOT / "inventory" / "label_printing.py",
+        "    return hardware_config.printer_dpi() or get_driver(hardware_config.printer_driver()).default_dpi",
+        "    return get_driver(hardware_config.printer_driver()).default_dpi",
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "A label too wide for the print head is sent anyway (prints clipped)",
+        ROOT / "inventory" / "label_printing.py",
+        "    if driver.max_width_dots and width_px > driver.max_width_dots:",
+        "    if False:",
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "An unknown printer type crashes instead of falling back to ZPL",
+        ROOT / "inventory" / "label_drivers.py",
+        '    return DRIVERS.get(key or "", DRIVERS["zpl"])',
+        "    return DRIVERS[key]",
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "Raster bits mirrored (leftmost dot in the low bit instead of the high one)",
+        ROOT / "inventory" / "label_drivers.py",
+        "                row[x // 8] |= 0x80 >> (x % 8)",
+        "                row[x // 8] |= 0x01 << (x % 8)",
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "Brother raster line shortened to the label width (stale dots in the head)",
+        ROOT / "inventory" / "label_drivers.py",
+        "_BROTHER_HEAD_BYTES = 90",
+        "_BROTHER_HEAD_BYTES = 88",
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "Bridge writes an image to the raw device instead of spooling it to CUPS",
+        ROOT / "label-printer" / "pi" / "server.py",
+        '    if ctype == CUPS_CONTENT_TYPE:\n        return "cups"',
+        '    if ctype == CUPS_CONTENT_TYPE:\n        return "raw"',
+        "inventory.tests.test_label_drivers",
+    ),
+    (
+        "Dots-per-inch range check removed (nonsense stored, then ignored)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "    if not raw.isdigit() or not (50 <= int(raw) <= 2400):",
+        "    if False:",
+        "inventory.tests.test_setup_wizard",
+    ),
 ]
 
 
@@ -473,6 +527,16 @@ for name, path, old, new, label in MUTATIONS:
         results.append((name, "caught" if not ok else "MISSED"))
     finally:
         path.write_text(original, encoding="utf-8")
+        # Restoring the source is not enough on its own. Python decides whether cached
+        # bytecode is current by comparing the source's mtime, at one-second
+        # resolution -- so restoring a file in the same second the mutation was written
+        # to leaves the *mutated* .pyc in place, and the next test run loads it. That
+        # presents as the suite failing on a clean tree, which is a genuinely
+        # confusing afternoon. Dropping the cached bytecode is the reliable fix.
+        try:
+            os.remove(importlib.util.cache_from_source(str(path)))
+        except OSError:
+            pass
 
 print()
 print("=" * 72)

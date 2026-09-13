@@ -18,7 +18,8 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from .. import archiving, geocoding, hardware_config, updates, wizard
+from .. import archiving, geocoding, hardware_config, label_printing, updates, wizard
+from ..label_drivers import DRIVERS, driver_keys, get_driver
 from ..models import CommunityProfile, Drawer, DrawerLedSegment, LedStrip, ReferenceDoc, SiteSettings
 from ..site_config import get_site_settings
 
@@ -354,6 +355,60 @@ def _test_led_controller() -> tuple[bool, str]:
 # --- Step 4: printer --------------------------------------------------------
 
 
+def _clean_driver(value) -> str:
+    """The submitted printer type, or ZPL.
+
+    Validated against the driver registry rather than a second hard-coded list, so
+    adding a driver means adding it in one place. Nonsense falls back to ZPL for the
+    same reason the registry does: it is the one that has been tested, and the
+    alternative is storing a key nothing can print with.
+    """
+    return value if value in DRIVERS else "zpl"
+
+
+def _clean_dpi(value) -> tuple[str, str]:
+    """(dots per inch, error). Blank means "use the printer's own resolution".
+
+    Rejected loudly rather than stored and then ignored. A settings box that appears to
+    save a number the renderer will silently discard is worse than one that refuses it,
+    because the owner cannot tell which of the two happened.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return "", ""
+    if not raw.isdigit() or not (50 <= int(raw) <= 2400):
+        return "", (
+            "Dots per inch has to be a whole number between 50 and 2400 — or leave it "
+            "blank to use the resolution that goes with the printer type."
+        )
+    return raw, ""
+
+
+def _stock_rows() -> list[dict]:
+    """Each label size at the resolution actually in use, and whether it fits.
+
+    The width is what decides it: a print head is a fixed width, so a 4" label simply
+    does not fit a Dymo's 448 dots and would be clipped without saying so. Showing the
+    number and the verdict here means nobody finds out by printing a damaged label.
+    """
+    dpi = label_printing.configured_dpi()
+    driver = get_driver(hardware_config.printer_driver())
+    rows = []
+    for key, spec in label_printing.LABEL_SIZES.items():
+        width_px = round(spec["width_in"] * dpi)
+        height_px = round(spec["height_in"] * dpi)
+        rows.append(
+            {
+                "key": key,
+                "display": spec["display"],
+                "width_px": width_px,
+                "height_px": height_px,
+                "fits": not driver.max_width_dots or width_px <= driver.max_width_dots,
+            }
+        )
+    return rows
+
+
 @login_required
 def setup_printer(request):
     site = _site()
@@ -361,8 +416,12 @@ def setup_printer(request):
         action = request.POST.get("action")
         site.label_printer_url = _clean_url(request.POST.get("label_printer_url"))
         site.label_printer_key = (request.POST.get("label_printer_key") or "").strip()
-        driver = request.POST.get("label_driver") or "zpl"
-        site.label_driver = driver if driver in ("zpl", "brother_ql", "dymo", "cups") else "zpl"
+        site.label_driver = _clean_driver(request.POST.get("label_driver"))
+        dpi, dpi_error = _clean_dpi(request.POST.get("label_dpi"))
+        if dpi_error:
+            messages.error(request, dpi_error)
+        else:
+            site.label_dpi = dpi
         site.save()
 
         if action == "test":
@@ -381,6 +440,10 @@ def setup_printer(request):
             wizard.PRINTER,
             configured=hardware_config.has_printer(),
             source=hardware_config.printer_source(),
+            drivers=[DRIVERS[key] for key in driver_keys()],
+            driver=get_driver(hardware_config.printer_driver()),
+            effective_dpi=label_printing.configured_dpi(),
+            stock=_stock_rows(),
         ),
     )
 

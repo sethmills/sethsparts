@@ -48,6 +48,33 @@ def printer_key() -> str:
     return _value("label_printer_key", "LABEL_PRINTER_KEY")
 
 
+def printer_driver() -> str:
+    """Which printer language to produce. 'zpl' unless the owner has said otherwise.
+
+    Falls back to ZPL rather than to nothing because there is no useful "no driver"
+    behaviour: some bytes have to be produced, and ZPL is the one that has been tested
+    against real hardware.
+    """
+    return _value("label_driver", "LABEL_PRINTER_DRIVER") or "zpl"
+
+
+def printer_dpi() -> int | None:
+    """The printer's dots per inch, or None to use the driver's own default.
+
+    Stored as text like the addresses above -- it arrives from a form, and this is the
+    same "blank means not configured" convention the rest of the row uses. Returned as
+    a number because every use of it is arithmetic. Anything unparseable, or outside
+    the range of anything a label printer has ever been, is treated as "not set"
+    rather than raising: a hand-edited database should not break label printing.
+    """
+    raw = _value("label_dpi", "LABEL_PRINTER_DPI")
+    try:
+        dpi = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return dpi if 50 <= dpi <= 2400 else None
+
+
 def has_leds() -> bool:
     return bool(led_url())
 

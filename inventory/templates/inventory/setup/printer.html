@@ -30,12 +30,31 @@
     <p>
       <label for="label_driver"><strong>What kind of printer is it?</strong></label><br>
       <select id="label_driver" name="label_driver" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
-        <option value="zpl" {% if site.label_driver == 'zpl' %}selected{% endif %}>Zebra / ZPL (GK420T and similar)</option>
-        <option value="brother_ql" {% if site.label_driver == 'brother_ql' %}selected{% endif %}>Brother QL series</option>
-        <option value="dymo" {% if site.label_driver == 'dymo' %}selected{% endif %}>Dymo LabelWriter</option>
-        <option value="cups" {% if site.label_driver == 'cups' %}selected{% endif %}>Any printer, via CUPS</option>
+        {% for d in drivers %}
+          <option value="{{ d.key }}" {% if driver.key == d.key %}selected{% endif %}>{{ d.name }}{% if not d.tested %} — untested{% endif %}</option>
+        {% endfor %}
       </select>
-      <br><span class="muted">This decides what language the label renderer produces. Zebra is the one this was built against.</span>
+      <br><span class="muted">This decides what language the label renderer produces.</span>
+    </p>
+    <p style="border-left:3px solid {% if driver.tested %}var(--ok){% else %}var(--muted){% endif %};padding-left:10px;">
+      <span class="muted">
+        {% if driver.tested %}
+          <strong>Tested.</strong> {{ driver.note }}
+        {% else %}
+          <strong>Not tested.</strong> {{ driver.note }} If labels come out wrong, that is the first thing to be suspicious of.
+        {% endif %}
+      </span>
+    </p>
+    <p>
+      <label for="label_dpi"><strong>Dots per inch</strong> <span class="muted">(optional)</span></label><br>
+      <input id="label_dpi" name="label_dpi" inputmode="numeric" value="{{ site.label_dpi }}"
+             placeholder="{{ driver.default_dpi }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100px;">
+      <br><span class="muted">
+        Blank uses <strong>{{ driver.default_dpi }}dpi</strong>, which is the usual resolution for that printer.
+        Worth setting only if yours is the other one — the same printer is often sold in both 203dpi and 300dpi.
+        Get it wrong and the label prints the right shape at the wrong size.
+      </span>
     </p>
     <p>
       <button class="btn" type="submit" name="action" value="save">Save</button>
@@ -47,11 +66,28 @@
 <div class="card">
   <h2>Label stock sizes</h2>
   <p class="muted">
-    Sizes are defined in <code>inventory/label_printing.py</code> as
-    <code>LABEL_SIZES</code> — height, width and how dense the printer is. The
-    defaults match the three sizes this was built around; edit that dictionary to
-    match the stock you actually buy, and every label in the app follows.
+    Sizes are physical, defined in <code>inventory/label_printing.py</code> as
+    <code>LABEL_SIZES</code> — width and height in inches. The three below are the sizes
+    this was built around; edit that dictionary to match the stock you actually buy and
+    every label in the app follows.
   </p>
-  <p class="muted">If your printer is a different resolution, its dots-per-inch matters: the renderer is set for 203 dpi, which is what a GK420T and most desktop label printers use.</p>
+  <p class="muted">Pixels are derived from the size and the resolution above, so what you see here is what gets sent:</p>
+  <table>
+    <tr><th>Size</th><th>Pixels at {{ effective_dpi }}dpi</th><th></th></tr>
+    {% for row in stock %}
+      <tr>
+        <td>{{ row.display }}</td>
+        <td>{{ row.width_px }} × {{ row.height_px }}</td>
+        <td>
+          {% if row.fits %}
+            <span class="muted">fits</span>
+          {% else %}
+            <span style="color:var(--danger);">too wide for {{ driver.name }}</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">A print head is a fixed width, so a label wider than it cannot be printed at all — the app refuses rather than letting the printer clip it.</p>
 </div>
 {% endblock %}

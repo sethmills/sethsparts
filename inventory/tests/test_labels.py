@@ -12,11 +12,11 @@ from unittest import mock
 from PIL import Image
 from django.test import TestCase, override_settings
 
+from inventory.label_drivers import zpl_graphic_field
 from inventory.label_printing import (
     DPI,
     LABEL_SIZES,
     _wrap_text,
-    image_to_zpl,
     print_label,
     render_label,
     render_label_png_bytes,
@@ -117,7 +117,8 @@ class WrapTextTests(TestCase):
         self.assertEqual(_wrap_text(self.draw, "", self.font, 400), [""])
 
 
-class ImageToZplTests(TestCase):
+class ZplGraphicFieldTests(TestCase):
+    """The bit packing, which now lives in label_drivers with the other encoders."""
     def test_bit_packing_places_black_pixels_at_the_right_bits(self):
         """Concrete, hand-checkable case: a 16x2 image with one black pixel in
         the top-left and one in the bottom-right.
@@ -129,13 +130,13 @@ class ImageToZplTests(TestCase):
         image.putpixel((0, 0), 0)    # first byte, high bit   -> 0x80
         image.putpixel((15, 1), 0)   # last byte, low bit     -> 0x01
 
-        zpl = image_to_zpl(image, 16, 2)
+        zpl = zpl_graphic_field(image, 16, 2)
 
         self.assertIn("^GFA,4,4,2,80000001", zpl)
 
     def test_zpl_envelope_and_dimensions(self):
         image = Image.new("1", (16, 2), 1)
-        zpl = image_to_zpl(image, 16, 2)
+        zpl = zpl_graphic_field(image, 16, 2)
 
         self.assertTrue(zpl.startswith("^XA\n"))
         self.assertTrue(zpl.rstrip().endswith("^XZ"))
@@ -144,7 +145,7 @@ class ImageToZplTests(TestCase):
 
     def test_byte_counts_match_the_image_for_a_real_label(self):
         image, w, h = render_label("Hello", "large")
-        zpl = image_to_zpl(image, w, h)
+        zpl = zpl_graphic_field(image, w, h)
 
         bytes_per_row = (w + 7) // 8
         total = bytes_per_row * h
@@ -152,7 +153,7 @@ class ImageToZplTests(TestCase):
 
     def test_hex_payload_has_exactly_the_expected_length(self):
         image, w, h = render_label("Hello", "tote")
-        zpl = image_to_zpl(image, w, h)
+        zpl = zpl_graphic_field(image, w, h)
 
         payload = zpl.split("^GFA,")[1].split("^FS")[0].split(",")[3]
         bytes_per_row = (w + 7) // 8
@@ -160,7 +161,7 @@ class ImageToZplTests(TestCase):
 
     def test_a_blank_label_still_produces_a_well_formed_field(self):
         image = Image.new("1", (8, 1), 1)
-        zpl = image_to_zpl(image, 8, 1)
+        zpl = zpl_graphic_field(image, 8, 1)
         self.assertIn("^GFA,1,1,1,00", zpl)
 
 

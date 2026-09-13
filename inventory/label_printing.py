@@ -1,15 +1,26 @@
-"""Custom label rendering + printing for the Zebra GK420T.
+"""Rendering labels, and getting them to the printer.
 
-The GK420T only understands ZPL. Rather than hand-rolling ZPL's limited (and
-italic-less) built-in font commands, labels are rendered as a full-bitmap image
-with Pillow (real font files -> real bold/italic/size control, plus an optional
-barcode composited in) and shipped to the printer as one ZPL ^GFA graphic field.
-The Pi's print-bridge (label-printer/pi/server.py) just relays those raw bytes
-to the printer over USB -- all the actual layout/rendering happens here.
+Two halves, deliberately split. **Rendering** happens once for every kind of printer:
+a Pillow bitmap at the label's physical size multiplied by the printer's dots per
+inch, with real font files (so genuine bold and italic), word-wrapping, shrink-to-fit,
+and an optional barcode composited in. **Encoding** is printer-specific and lives in
+`label_drivers`, one class per printer language. This module owns the pixel maths, the
+size table, and the trip to the print bridge on the Pi.
+
+The GK420T this was built around understands only ZPL, and ZPL's own font commands are
+limited -- no italics at all, and "bold" is a hack -- which is why a label is rendered
+as a complete bitmap rather than as text with font commands.
+
+`DPI` is a module constant rather than a setting lookup for the benefit of the label
+size table and the tests; the number actually used to render comes from
+`configured_dpi()`, which is the printer's own resolution unless the owner has said
+otherwise in Settings.
 """
 import io
 
 from PIL import Image, ImageDraw, ImageFont
+
+from .label_drivers import get_driver
 
 DPI = 203  # GK420T native resolution
 
@@ -78,13 +89,27 @@ def _wrap_text(draw, text, font, max_width):
     return lines
 
 
-def render_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_value=""):
+def configured_dpi() -> int:
+    """The resolution to render at: the printer's own, unless the owner overrode it.
+
+    The override exists for a real case rather than completeness. A printer family
+    spans resolutions -- a Zebra GK420T is 203dpi and the 300dpi version is otherwise
+    the same machine, Brother QLs are 300, Dymo LabelWriters are 203 -- and rendering
+    at the wrong one produces a label that is the right shape and the wrong size.
+    """
+    from . import hardware_config
+
+    return hardware_config.printer_dpi() or get_driver(hardware_config.printer_driver()).default_dpi
+
+
+def render_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_value="", dpi=None):
     """Returns a 1-bit Pillow Image (white background, black ink) at the label's
-    exact pixel dimensions for this printer's DPI."""
+    exact pixel dimensions for the given (or configured) DPI."""
+    dpi = dpi or configured_dpi()
     size = LABEL_SIZES[size_key]
-    width_px = round(size["width_in"] * DPI)
-    height_px = round(size["height_in"] * DPI)
-    margin = max(4, round(DPI * 0.06))
+    width_px = round(size["width_in"] * dpi)
+    height_px = round(size["height_in"] * dpi)
+    margin = max(4, round(dpi * 0.06))
 
     image = Image.new("L", (width_px, height_px), color=255)
     draw = ImageDraw.Draw(image)
@@ -97,7 +122,7 @@ def render_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_v
         from barcode.writer import ImageWriter
 
         writer = ImageWriter()
-        writer.dpi = DPI
+        writer.dpi = dpi
         bc = barcode.get("code128", barcode_value, writer=writer)
         bc_image = bc.render({"write_text": False, "quiet_zone": 1, "module_height": 8})
 
@@ -110,7 +135,7 @@ def render_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_v
         text_area_top = margin + bc_image.height + margin
 
     if text.strip():
-        font_size_px = round(font_pt * DPI / 72)
+        font_size_px = round(font_pt * dpi / 72)
         font = _load_font(bold, italic, font_size_px)
         max_text_width = width_px - 2 * margin
         lines = _wrap_text(draw, text.strip(), font, max_text_width)
@@ -137,61 +162,68 @@ def render_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_v
     return image.convert("1"), width_px, height_px
 
 
-def image_to_zpl(image, width_px, height_px):
-    """Packs a 1-bit Pillow image into a ZPL ^GFA (ASCII hex) graphic field."""
-    bytes_per_row = (width_px + 7) // 8
-    total_bytes = bytes_per_row * height_px
+def render_label_png_bytes(text, size_key, font_pt=24, bold=False, italic=False, barcode_value="", dpi=None):
+    """For the live preview endpoint -- same render, returned as PNG bytes.
 
-    # Pillow's '1' mode: 255 = white, 0 = black. ZPL ^GFA: bit 1 = print (black).
-    packed = bytearray(total_bytes)
-    pixels = image.load()
-    for y in range(height_px):
-        row_offset = y * bytes_per_row
-        for x in range(width_px):
-            if pixels[x, y] == 0:
-                packed[row_offset + (x // 8)] |= 0x80 >> (x % 8)
-
-    hex_data = packed.hex().upper()
-    width_dots = width_px
-    height_dots = height_px
-    zpl = (
-        "^XA\n"
-        f"^PW{width_dots}\n"
-        f"^LL{height_dots}\n"
-        f"^FO0,0^GFA,{total_bytes},{total_bytes},{bytes_per_row},{hex_data}^FS\n"
-        "^XZ\n"
-    )
-    return zpl
-
-
-def render_label_png_bytes(text, size_key, font_pt=24, bold=False, italic=False, barcode_value=""):
-    """For the live preview endpoint -- same render, returned as PNG bytes."""
-    image, _, _ = render_label(text, size_key, font_pt, bold, italic, barcode_value)
+    Rendered at the printer's own resolution on purpose, so the preview shows what
+    will actually come out rather than a differently-proportioned likeness.
+    """
+    image, _, _ = render_label(text, size_key, font_pt, bold, italic, barcode_value, dpi=dpi)
     buf = io.BytesIO()
     image.convert("RGB").save(buf, format="PNG")
     return buf.getvalue()
 
 
-def print_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_value=""):
-    """Renders and sends the label to the Pi's print-bridge. Returns (ok, error_message)."""
-    from .hardware_config import printer_key, printer_url
+def too_wide_message(driver, size_key, width_px, dpi) -> str:
+    """Why this label cannot go on this printer, in the owner's own terms.
 
-    url = printer_url()
+    Worth saying properly rather than truncating: a print head is only as wide as it
+    is, and clipping is silent. Inches are what label stock is sold in and what the
+    owner picked from, so both units appear.
+    """
+    display = LABEL_SIZES[size_key]["display"]
+    return (
+        f"A {display} label is {width_px} dots wide at {dpi}dpi, and {driver.name} prints "
+        f"{driver.max_width_dots} dots across — it would be clipped. Use a narrower label "
+        "size, or a different printer."
+    )
+
+
+def print_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_value=""):
+    """Renders and sends the label to the Pi's print-bridge. Returns (ok, error_message).
+
+    The bytes and their content type come from the configured driver, so the bridge
+    stays a relay for everything except CUPS (where it spools the image instead).
+    """
+    from . import hardware_config
+
+    url = hardware_config.printer_url()
     if not url:
         return False, "No label printer configured yet — set one up under Settings."
 
-    image, width_px, height_px = render_label(text, size_key, font_pt, bold, italic, barcode_value)
-    zpl = image_to_zpl(image, width_px, height_px)
+    driver = get_driver(hardware_config.printer_driver())
+    dpi = configured_dpi()
+    image, width_px, height_px = render_label(
+        text, size_key, font_pt, bold, italic, barcode_value, dpi=dpi
+    )
+
+    # Refuse rather than send something the printer will quietly crop. Checked here
+    # rather than in the driver because the message needs the label size, which is a
+    # rendering concern, not an encoding one.
+    if driver.max_width_dots and width_px > driver.max_width_dots:
+        return False, too_wide_message(driver, size_key, width_px, dpi)
+
+    payload = driver.encode(image, width_px, height_px)
 
     import requests
 
-    key = printer_key()
+    key = hardware_config.printer_key()
     headers = {"X-Api-Key": key} if key else {}
     try:
         resp = requests.post(
             f"{url}/print",
-            data=zpl.encode("utf-8"),
-            headers={**headers, "Content-Type": "application/x-zpl"},
+            data=payload,
+            headers={**headers, "Content-Type": driver.content_type},
             timeout=10,
         )
         resp.raise_for_status()

@@ -915,6 +915,19 @@ class SiteSettings(models.Model):
         ],
         help_text="Which printer language the label renderer should produce.",
     )
+    # CharField rather than an integer field, for the same reason the addresses above
+    # are: it arrives from a form, and blank has to mean "not configured". Blank means
+    # "use this printer's own resolution", which is the right answer for almost
+    # everyone -- the number is only here for the 300dpi variant of a printer whose
+    # sibling is 203dpi.
+    label_dpi = models.CharField(
+        max_length=6,
+        blank=True,
+        help_text=(
+            "The printer's dots per inch, e.g. 203. Leave blank to use the resolution "
+            "that goes with the printer type above."
+        ),
+    )
     public_url = models.CharField(
         max_length=300,
         blank=True,

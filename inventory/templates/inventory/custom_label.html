@@ -3,7 +3,10 @@
 {% block content %}
 <div class="card">
   <h1>🏷 Custom label</h1>
-  <p class="muted">Design and print an impromptu label on the Zebra printer — not tied to any container or drawer. Nothing here is saved; it's just for printing something quick.</p>
+  <p class="muted">Design and print an impromptu label on {{ driver.name }} — not tied to any container or drawer. Nothing here is saved; it's just for printing something quick.</p>
+  {% if not driver.tested %}
+    <p class="muted" style="border-left:3px solid var(--muted);padding-left:10px;"><strong>Not tested:</strong> {{ driver.note }}</p>
+  {% endif %}
 </div>
 
 <div class="card">
