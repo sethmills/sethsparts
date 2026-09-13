@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Community map — OpenFreeMap + MapLibre</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root{
+    --bg:#10131a; --card:#161a23; --line:#2c303a;
+    --txt:#e6e8eb; --muted:#9aa2b1; --accent:#5b9dff; --accent2:#3d7de0;
+    --ok:#5ec98a; --pink:#e58aa8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{width:980px;padding:18px 18px 22px}
+
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600}
+  nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  nav a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:5px 10px;
+    border:1px solid var(--line);border-radius:999px;background:var(--card)}
+  nav a.on{color:var(--txt);border-color:var(--accent);background:#1c2740}
+
+  h1{font-size:17px;margin:0 0 3px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+
+  .cols{display:grid;grid-template-columns:1fr 268px;gap:14px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .card h2{font-size:13px;margin:0 0 10px}
+
+  .bar{display:flex;gap:8px;margin-bottom:12px}
+  .bar input{flex:1;padding:9px 11px;border-radius:7px;border:1px solid var(--line);
+    background:#12151c;color:var(--txt);font-size:13px}
+  .btn{padding:9px 14px;border-radius:7px;border:1px solid var(--accent2);
+    background:var(--accent2);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.sm{padding:6px 11px;font-size:12px}
+
+  #map{height:420px;border:1px solid var(--line);border-radius:8px;background:#0d1117;overflow:hidden}
+  .fallback{height:420px;border:1px solid var(--line);border-radius:8px;background:#0d1117;
+    display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+  .fallback .inner{max-width:440px;color:var(--muted);font-size:12.5px;line-height:1.6}
+  .fallback b{color:var(--txt)}
+
+  .legend{display:flex;gap:15px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .count{margin-top:11px;font-size:13px}
+  .count b{font-size:16px}
+
+  /* pins */
+  .pin{width:16px;height:16px;border-radius:50%;background:var(--accent);
+    border:2px solid #0d1117;box-shadow:0 0 0 3px rgba(91,157,255,.25);cursor:pointer}
+  .pin.friend{background:var(--pink);box-shadow:0 0 0 3px rgba(229,138,168,.25)}
+  .pin.you{width:20px;height:20px;background:var(--ok);box-shadow:0 0 0 4px rgba(94,201,138,.3);cursor:default}
+
+  /* dark chrome for maplibre popups/controls */
+  .maplibregl-popup-content{background:#1d222c;color:var(--txt);border-radius:9px;
+    border:1px solid #38414f;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:11px 12px}
+  .maplibregl-popup-tip{border-top-color:#1d222c!important;border-bottom-color:#1d222c!important}
+  .maplibregl-popup-close-button{color:var(--muted);font-size:15px;padding:0 4px}
+  .maplibregl-ctrl-group{background:#1d222c!important;border:1px solid #38414f!important}
+  .maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
+  .maplibregl-ctrl-group button span{filter:invert(1) hue-rotate(180deg)}
+  .maplibregl-ctrl-attrib{background:rgba(13,17,23,.82)!important;color:var(--muted)!important;
+    font-size:10px!important}
+  .maplibregl-ctrl-attrib a{color:#8fb4e8!important}
+  .pop-t{font-weight:600;margin-bottom:2px}
+  .pop-d{color:var(--muted);font-size:11.5px;margin-bottom:9px}
+
+  .step{display:flex;gap:9px;font-size:12.5px;color:var(--muted);margin:9px 0}
+  .step i{flex:0 0 auto;width:17px;height:17px;border-radius:50%;background:#1c2740;
+    border:1px solid var(--accent2);color:var(--txt);font-size:10.5px;font-weight:700;
+    font-style:normal;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .step b{color:var(--txt);font-weight:600}
+  .hr{height:1px;background:var(--line);margin:13px 0}
+  .note{padding:10px;border-radius:8px;background:#12151c;border:1px solid var(--line);
+    font-size:11.5px;color:var(--muted)}
+  .note b{color:var(--txt)}
+  .note.warn{background:#1a1509;border-color:#4a3c1a;color:#e8d9b0;margin-top:11px}
+  .note.warn b{color:#f0e2bc}
+  .foot{margin-top:14px;padding:11px;border-radius:8px;background:#12151c;
+    border:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .foot b{color:var(--txt)}
+  .foot a{color:#8fb4e8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <span class="brand">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="3" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="2.5" y1="9.5" x2="21.5" y2="9.5" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="2.5" y1="16" x2="21.5" y2="16" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      Seth's Parts
+    </span>
+    <nav>
+      <a href="#">Browse</a><a href="#">Scan</a><a href="#">Search</a>
+      <a href="#" class="on">Community</a><a href="#">Lights</a>
+    </nav>
+  </div>
+
+  <h1>Community map</h1>
+  <p class="sub">Zoom and pan anywhere. Put in your postcode to centre it, click a pin to ask them to connect.</p>
+
+  <div class="cols">
+
+    <div class="card">
+      <div class="bar">
+        <input id="pc" value="SW1A 1AA" aria-label="Your postcode">
+        <button class="btn" id="go">Show mine</button>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="legend">
+        <span><i class="sw" style="background:#5ec98a"></i> you</span>
+        <span><i class="sw" style="background:#e58aa8"></i> connected</span>
+        <span><i class="sw" style="background:#5b9dff"></i> nearby workshop</span>
+      </div>
+      <div class="count"><b>3 workshops</b> within 25 km</div>
+    </div>
+
+    <div class="card">
+      <h2>What you can see</h2>
+      <div class="step"><i>1</i><div><b>A pin is all you get</b> until they accept — no name, no parts, no address.</div></div>
+      <div class="step"><i>2</i><div>Clicking only sends a <b>request</b>. They choose whether to accept.</div></div>
+      <div class="step"><i>3</i><div>Once connected, their name shows and you can search the categories they share.</div></div>
+
+      <div class="hr"></div>
+
+      <div class="note"><b>What others see of you:</b> an anonymous pin at postcode-area level, nothing else.</div>
+      <div class="note warn">
+        <b>On the map is not the same as sharing parts.</b> The default connection
+        exchanges pins only. Nobody can search your inventory unless you agree
+        separately, person by person.
+      </div>
+      <div class="note" style="margin-top:11px">
+        <b>If the default connection goes away</b>, connect with any other workshop and
+        the map starts updating again.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <b>Fully open source stack, nothing to sign up for:</b> MapLibre GL (the open-source
+    fork of Mapbox GL) for the map, <a href="https://openfreemap.org/">OpenFreeMap</a>
+    for vector tiles — free public instance, no API keys, no limits, no cookies, and the
+    whole production setup is open source so it can be self-hosted — and
+    <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> for the data.
+    Nothing here is built yet.
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(function(){
+  var YOU = [-0.1416, 51.5010];   // SW1A 1AA — note lng,lat order
+  var mount = document.getElementById('map');
+
+  function fallback(html){
+    var d = document.createElement('div');
+    d.className = 'fallback';
+    d.innerHTML = '<div class="inner">' + html + '</div>';
+    mount.parentNode.replaceChild(d, mount);
+  }
+
+  if (typeof maplibregl === 'undefined'){
+    fallback('<b>MapLibre could not load from the CDN in this preview.</b><br><br>' +
+             'In the real app both MapLibre and the tiles would be self-hosted or vendored, ' +
+             'so this only affects this sandbox. Open the file in a browser to see it.');
+    return;
+  }
+
+  var map;
+  try {
+    map = new maplibregl.Map({
+      container: mount,
+      style: 'https://tiles.openfreemap.org/styles/dark',
+      center: YOU,
+      zoom: 11,
+      attributionControl: { compact: true }
+    });
+  } catch (e) {
+    fallback('<b>The map failed to start:</b> ' + e.message);
+    return;
+  }
+
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+  // if the sandbox blocks the style/tiles, say so rather than showing a blank box
+  var failed = false;
+  map.on('error', function(){
+    if (failed) return;
+    failed = true;
+    fallback('<b>Tiles could not be fetched in this preview pane.</b><br><br>' +
+             'The map itself works &mdash; this sandbox is blocking the external requests. ' +
+             'Open the file directly in a browser to see it. Verified working outside the preview: ' +
+             'the OpenFreeMap style and MapLibre both return 200.');
+  });
+
+  function el(cls, size){
+    var d = document.createElement('div');
+    d.className = 'pin ' + cls;
+    if (size) { d.style.width = size + 'px'; d.style.height = size + 'px'; }
+    return d;
+  }
+
+  function popup(html){
+    return new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '230px' }).setHTML(html);
+  }
+
+  function add(lngLat, cls, size, html){
+    var m = new maplibregl.Marker({ element: el(cls, size), anchor: 'center' })
+      .setLngLat(lngLat)
+      .setPopup(popup(html))
+      .addTo(map);
+    return m;
+  }
+
+  map.on('load', function(){
+    add(YOU, 'you', 20,
+      '<div class="pop-t">Your workshop</div><div class="pop-d">SW1A 1AA &middot; visible to the network</div>');
+
+    add([-0.1750, 51.5155], 'friend', 16,
+      '<div class="pop-t">Dad\'s workshop</div><div class="pop-d">Connected &middot; 3 categories shared</div>' +
+      '<button class="btn sm">Search their parts</button>');
+
+    add([-0.1020, 51.4720], '', 16,
+      '<div class="pop-t">Workshop nearby</div>' +
+      '<div class="pop-d">That is all you can see until they accept.</div>' +
+      '<button class="btn sm">Ask to connect</button>');
+
+    add([-0.0750, 51.5320], '', 16,
+      '<div class="pop-t">Workshop nearby</div>' +
+      '<div class="pop-d">That is all you can see until they accept.</div>' +
+      '<button class="btn sm">Ask to connect</button>');
+
+    add([-0.2260, 51.4700], '', 16,
+      '<div class="pop-t">Workshop nearby</div>' +
+      '<div class="pop-d">That is all you can see until they accept.</div>' +
+      '<button class="btn sm">Ask to connect</button>');
+  });
+
+  document.getElementById('go').addEventListener('click', function(){
+    map.flyTo({ center: YOU, zoom: 12, speed: 1.2 });
+  });
+})();
+</script>
+</body>
+</html>

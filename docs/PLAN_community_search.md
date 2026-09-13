@@ -1,5 +1,14 @@
 # Plan: cross-instance community part search
 
+> **Superseded — see `docs/PLAN_community_sharing.md`.**
+>
+> This doc scoped the *search* half of the feature and is still correct on most of it
+> (peer model, inbound endpoint, category-level sharing, fuzzed quantities). It did
+> not cover location, the map, discovery of unconnected workshops, short-code pairing,
+> or the consequences of releasing this publicly — all of which Seth raised afterwards.
+> The newer doc carries this material forward, corrected, and replaces it as the
+> source of truth. Kept for reference; do not build from this one alone.
+
 **Status: planning only, not built.** This is a self-contained spec for
 implementing the feature — written so a different AI assistant (or Seth
 himself) can pick it up without needing any other context. If you're the
