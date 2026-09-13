@@ -80,8 +80,9 @@ def load_notes():
     for fn in SOURCE_FILES:
         path = os.path.join(SCRATCH, fn)
         if os.path.exists(path):
-            for entry in json.load(open(path)):
-                notes[entry["id"]] = entry
+            with open(path, encoding="utf-8") as f:
+                for entry in json.load(f):
+                    notes[entry["id"]] = entry
     return notes
 
 

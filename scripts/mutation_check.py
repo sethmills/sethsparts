@@ -193,6 +193,35 @@ MUTATIONS = [
         "    except (InvalidSignature, ValueError, TypeError):\n        return True",
         "inventory.tests.test_community_crypto",
     ),
+    # --- portability: the guard has to catch the thing it guards -------------
+    (
+        "Windows font dropped from the label chain",
+        ROOT / "inventory" / "label_printing.py",
+        '        "C:/Windows/Fonts/arial.ttf",  # Windows',
+        "        # Windows font removed",
+        "inventory.tests.test_portability",
+    ),
+    (
+        "Font fallback ignores the requested size (tiny labels)",
+        ROOT / "inventory" / "label_printing.py",
+        "    return ImageFont.load_default(size=size_px)",
+        "    return ImageFont.load_default()",
+        "inventory.tests.test_portability",
+    ),
+    (
+        "Explicit UTF-8 dropped from a file write (breaks on Windows)",
+        ROOT / "inventory" / "management" / "commands" / "classify_enrichment_queue.py",
+        'with open(output_path, "w", encoding="utf-8") as f:',
+        'with open(output_path, "w") as f:',
+        "inventory.tests.test_portability",
+    ),
+    (
+        "Explicit UTF-8 dropped from an ingest command (breaks on Windows)",
+        ROOT / "inventory" / "management" / "commands" / "ingest_enrichment.py",
+        'with open(path, encoding="utf-8") as f:',
+        "with open(path) as f:",
+        "inventory.tests.test_portability",
+    ),
 ]
 
 
@@ -215,17 +244,17 @@ if not ok:
 
 results = []
 for name, path, old, new, label in MUTATIONS:
-    original = path.read_text()
+    original = path.read_text(encoding="utf-8")
     if old not in original:
         results.append((name, "SKIPPED (anchor not found)"))
         print(f"  !! anchor not found in {path.name}: {name}")
         continue
-    path.write_text(original.replace(old, new, 1))
+    path.write_text(original.replace(old, new, 1), encoding="utf-8")
     try:
         ok, out = run(label)
         results.append((name, "caught" if not ok else "MISSED"))
     finally:
-        path.write_text(original)
+        path.write_text(original, encoding="utf-8")
 
 print()
 print("=" * 72)

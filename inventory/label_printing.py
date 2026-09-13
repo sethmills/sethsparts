@@ -20,24 +20,35 @@ LABEL_SIZES = {
     "barcode": {"display": 'Barcode 1"×0.5"', "width_in": 1.0, "height_in": 0.5},
 }
 
-# Linux (Docker/Pi) paths first, then macOS dev-machine fallbacks, so this renders
-# correctly in both places without needing anything installed for local testing.
+# Font resolution is a per-platform fallback chain, tried in order, because this
+# runs on four kinds of machine: a Debian container, macOS, the Pi kiosk, and
+# eventually other people's machines — including Windows. Seth's instance uses
+# DejaVu; a Mac or Windows user gets their own system font instead of a crash.
+#
+# The last resort uses load_default(size=...) rather than bare load_default(),
+# which renders at a fixed tiny size and ignores size_px entirely — so a machine
+# with none of these fonts would print unreadable labels instead of failing loudly.
+# The sized form returns a real scalable font.
 _FONT_CANDIDATES = {
     (False, False): [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux (Docker/Pi)
+        "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+        "C:/Windows/Fonts/arial.ttf",  # Windows
     ],
     (True, False): [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
     ],
     (False, True): [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
         "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
+        "C:/Windows/Fonts/ariali.ttf",
     ],
     (True, True): [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf",
+        "C:/Windows/Fonts/arialbi.ttf",
     ],
 }
 
@@ -48,7 +59,7 @@ def _load_font(bold, italic, size_px):
             return ImageFont.truetype(path, size_px)
         except OSError:
             continue
-    return ImageFont.load_default()
+    return ImageFont.load_default(size=size_px)
 
 
 def _wrap_text(draw, text, font, max_width):

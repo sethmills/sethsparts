@@ -81,7 +81,7 @@ class Command(BaseCommand):
 
         output_path = options.get("output")
         if output_path:
-            with open(output_path, "w") as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write("Parts needing Seth's clarification before enrichment can help\n")
                 f.write("=" * 60 + "\n\n")
                 for part in sorted(needs_clarification, key=lambda p: p.name):

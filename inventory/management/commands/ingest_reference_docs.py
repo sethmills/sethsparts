@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         path = options["json_path"]
         try:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 entries = json.load(f)
         except FileNotFoundError as exc:
             raise CommandError(f"File not found: {path}") from exc
