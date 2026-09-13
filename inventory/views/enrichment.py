@@ -1,4 +1,4 @@
-"""The enrichment queue plus inventory export and the reference docs."""
+"""The enrichment queue, inventory export, and the resistor decoder."""
 import os
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -8,7 +8,6 @@ from django.shortcuts import redirect, render
 from ..site_config import site_name
 from ..models import (
     Part,
-    ReferenceDoc,
 )
 
 
@@ -146,30 +145,10 @@ def export_inventory(request):
 
 
 # --- Reference section --------------------------------------------------------
-
-@login_required
-def reference_list(request):
-    category = request.GET.get("category") or ""
-    docs = ReferenceDoc.objects.all()
-    if category:
-        docs = docs.filter(category=category)
-
-    grouped = {}
-    for doc in docs:
-        grouped.setdefault(doc.category, []).append(doc)
-
-    category_order = [c[0] for c in ReferenceDoc.CATEGORY_CHOICES]
-    sections = [
-        (dict(ReferenceDoc.CATEGORY_CHOICES)[key], grouped[key])
-        for key in category_order
-        if key in grouped
-    ]
-
-    return render(
-        request,
-        "inventory/reference_list.html",
-        {"sections": sections, "categories": ReferenceDoc.CATEGORY_CHOICES, "selected_category": category},
-    )
+#
+# The reference library's views live in inventory/views/reference.py now that it is
+# something the owner edits rather than a fixed list. This signpost stays because this
+# is where people will look for it.
 
 
 @login_required

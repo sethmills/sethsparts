@@ -258,6 +258,42 @@ MUTATIONS = [
         "                pass",
         "inventory.tests.test_site_settings",
     ),
+    # --- the reference library and archiving ---------------------------------
+    (
+        "Deleting a category cascades instead of refusing (shreds documents)",
+        MODELS,
+        "        on_delete=models.PROTECT,\n        related_name=\"docs\",",
+        "        on_delete=models.CASCADE,\n        related_name=\"docs\",",
+        "inventory.tests.test_reference",
+    ),
+    (
+        "Retry redirect accepts any URL (open redirect)",
+        ROOT / "inventory" / "views" / "reference.py",
+        '    if candidate.startswith("/") and not candidate.startswith("//"):\n        return candidate\n    return ""',
+        '    return candidate or ""',
+        "inventory.tests.test_reference",
+    ),
+    (
+        "Starter loader resurrects deleted documents",
+        ROOT / "inventory" / "management" / "commands" / "load_starter_reference.py",
+        "        if site.starter_reference_loaded_at and not options['force']:",
+        "        if False:",
+        "inventory.tests.test_reference",
+    ),
+    (
+        "Archive size cap removed (one URL can fill the disk)",
+        ROOT / "inventory" / "archiving.py",
+        "            if total > max_bytes:",
+        "            if False:",
+        "inventory.tests.test_archiving",
+    ),
+    (
+        "Archive scheme allowlist removed (file:// and friends accepted)",
+        ROOT / "inventory" / "archiving.py",
+        "    if parsed.scheme not in ALLOWED_SCHEMES:",
+        "    if False:",
+        "inventory.tests.test_archiving",
+    ),
 ]
 
 

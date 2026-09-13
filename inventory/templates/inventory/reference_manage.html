@@ -1,0 +1,103 @@
+{% extends "inventory/base.html" %}
+{% block title %}Manage references — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Manage references</h1>
+  <p class="muted">Everything here is yours to change. The starter set is only a starting point — rename the categories so they match your workshop, add your own, or delete the lot and build a blank one.</p>
+  <p>
+    <a href="{% url 'inventory:reference_list' %}" class="btn secondary">← Back to reference</a>
+    <a href="{% url 'inventory:reference_add' %}" class="btn">+ Add a reference</a>
+  </p>
+  <p class="muted">
+    {{ total_docs }} reference{{ total_docs|pluralize }} across
+    {{ categories|length }} categor{{ categories|length|pluralize:"y,ies" }}.
+  </p>
+</div>
+
+<div class="card">
+  <h2>New category</h2>
+  <form method="post" action="{% url 'inventory:reference_category_add' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    {% csrf_token %}
+    <input name="name" placeholder="e.g. Woodworking" required
+           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;min-width:220px;">
+    <input name="order" placeholder="order" inputmode="numeric"
+           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100px;">
+    <button class="btn" type="submit">Add category</button>
+  </form>
+  <p class="muted">Lower order numbers sort first. Categories start empty and documents can be moved onto them afterwards.</p>
+</div>
+
+{% for category in categories %}
+<div class="card">
+  <h2>{{ category.name }}</h2>
+  <form method="post" action="{% url 'inventory:reference_category_edit' category.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+    {% csrf_token %}
+    <input name="name" value="{{ category.name }}" aria-label="Category name"
+           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;min-width:200px;">
+    <input name="order" value="{{ category.order }}" aria-label="Sort order" inputmode="numeric"
+           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;width:80px;">
+    <button class="btn secondary" type="submit">Save</button>
+    <span class="muted">key: {{ category.key }}</span>
+    {% if category.docs.count %}
+      <button class="btn danger" type="submit"
+              formaction="{% url 'inventory:reference_category_delete' category.pk %}"
+              onclick="return confirm('Delete “{{ category.name }}” and the {{ category.docs.count }} reference(s) on it?')">Delete category</button>
+    {% else %}
+      <button class="btn danger" type="submit"
+              formaction="{% url 'inventory:reference_category_delete' category.pk %}"
+              onclick="return confirm('Delete the empty category “{{ category.name }}”?')">Delete category</button>
+    {% endif %}
+  </form>
+
+  {% for doc in category.docs.all %}
+  <div style="border-top:1px solid #2c303a;padding:10px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+    <div style="flex:1;min-width:260px;">
+      <strong>{{ doc.title }}</strong>
+      {% if doc.description %}<br><span class="muted">{{ doc.description }}</span>{% endif %}
+      <br>
+      <span class="muted">
+        order {{ doc.order }}
+        {% if doc.file %}
+          · archived {{ doc.archived_at|date:"j M Y" }}{% if doc.archive_content_type %} ({{ doc.archive_content_type }}){% endif %}
+          · <a href="{{ doc.file.url }}">open the copy</a>
+        {% elif doc.archive_error %}
+          · <span style="color:#ffb4a2;">⚠ archive failed: {{ doc.archive_error }}</span>
+        {% elif doc.external_url %}
+          · <span style="color:#ffd166;">⚠ not archived yet — link only</span>
+        {% endif %}
+        {% if doc.external_url %} · <a href="{{ doc.external_url }}">source</a>{% endif %}
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      {% if doc.external_url %}
+      <form method="post" action="{% url 'inventory:reference_archive' doc.pk %}">{% csrf_token %}
+        <button class="btn secondary" type="submit"
+                title="{% if doc.file %}Re-fetch the archived copy{% else %}Fetch a local copy now{% endif %}">
+          {% if doc.file %}↻{% else %}⬇ Archive{% endif %}
+        </button>
+      </form>
+      {% endif %}
+      <form method="post" action="{% url 'inventory:reference_move' doc.pk %}">{% csrf_token %}
+        <input type="hidden" name="direction" value="up">
+        <button class="btn secondary" type="submit" title="Move up" {% if forloop.first %}disabled{% endif %}>↑</button>
+      </form>
+      <form method="post" action="{% url 'inventory:reference_move' doc.pk %}">{% csrf_token %}
+        <input type="hidden" name="direction" value="down">
+        <button class="btn secondary" type="submit" title="Move down" {% if forloop.last %}disabled{% endif %}>↓</button>
+      </form>
+      <a class="btn secondary" href="{% url 'inventory:reference_edit' doc.pk %}">Edit</a>
+      <a class="btn danger" href="{% url 'inventory:reference_delete' doc.pk %}">Delete</a>
+    </div>
+  </div>
+  {% empty %}
+  <p class="muted">Nothing on this shelf yet.
+    <a href="{% url 'inventory:reference_add' %}?category={{ category.key }}">Add the first reference →</a>
+  </p>
+  {% endfor %}
+</div>
+{% empty %}
+<div class="card">
+  <p class="muted">No categories yet. Create one above, then add references to it.</p>
+</div>
+{% endfor %}
+{% endblock %}

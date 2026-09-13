@@ -1,6 +1,5 @@
 """Everything that talks to the Pi's LED controller -- "find the part"
 locate animations, room light, and demo mode."""
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,13 +16,17 @@ from ..models import (
 
 def _led_post(endpoint, payload):
     """POST one command to the Pi's LED controller. Returns (ok, error_message)."""
-    if not settings.LED_CONTROLLER_URL:
-        return False, "No LED controller configured yet (LED_CONTROLLER_URL is unset)."
+    from ..hardware_config import led_key, led_url
+
+    url = led_url()
+    if not url:
+        return False, "No LED controller configured yet — set one up under Settings."
     import requests
 
-    headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+    key = led_key()
+    headers = {"X-Api-Key": key} if key else {}
     try:
-        resp = requests.post(f"{settings.LED_CONTROLLER_URL}/{endpoint}", json=payload, headers=headers, timeout=5)
+        resp = requests.post(f"{url}/{endpoint}", json=payload, headers=headers, timeout=5)
         resp.raise_for_status()
         return True, None
     except requests.RequestException as exc:
@@ -43,12 +46,16 @@ def _locate_drawer(drawer, row=None, col=None):
     segments = list(drawer.led_segments.all())
     if not segments:
         return 0, [], "This drawer has no LED mapping configured yet (set it in /admin/)."
-    if not settings.LED_CONTROLLER_URL:
-        return 0, [], "No LED controller configured yet (LED_CONTROLLER_URL is unset)."
+    from ..hardware_config import led_key, led_url
+
+    url = led_url()
+    if not url:
+        return 0, [], "No LED controller configured yet — set one up under Settings."
 
     import requests
 
-    headers = {"X-Api-Key": settings.LED_CONTROLLER_KEY} if settings.LED_CONTROLLER_KEY else {}
+    key = led_key()
+    headers = {"X-Api-Key": key} if key else {}
     lit, errors = 0, []
     for segment in segments:
         payload = {
@@ -61,7 +68,7 @@ def _locate_drawer(drawer, row=None, col=None):
         if col and segment.led_strip.endswith("-right"):
             payload["col"] = col
         try:
-            resp = requests.post(f"{settings.LED_CONTROLLER_URL}/locate", json=payload, headers=headers, timeout=3)
+            resp = requests.post(f"{url}/locate", json=payload, headers=headers, timeout=3)
             resp.raise_for_status()
             lit += 1
         except requests.RequestException as exc:

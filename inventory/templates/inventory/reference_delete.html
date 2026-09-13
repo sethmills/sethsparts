@@ -1,0 +1,19 @@
+{% extends "inventory/base.html" %}
+{% block title %}Delete {{ doc.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Delete this reference?</h1>
+  <p><strong>{{ doc.title }}</strong></p>
+  {% if doc.description %}<p class="muted">{{ doc.description }}</p>{% endif %}
+  <p class="muted">
+    Filed under {{ doc.category.name }}.
+    {% if doc.file %}The attached file is deleted too.{% endif %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn danger" type="submit">Yes, delete it</button>
+    <a class="btn secondary" href="{% url 'inventory:reference_manage' %}">Cancel</a>
+  </form>
+  <p class="muted" style="margin-top:14px;">This only removes it from your library. If it has a source link, the original is untouched.</p>
+</div>
+{% endblock %}

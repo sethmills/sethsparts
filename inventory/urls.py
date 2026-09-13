@@ -47,6 +47,17 @@ urlpatterns = [
     path("enrichment/import/", views.import_enrichment_results, name="import_enrichment_results"),
     path("export/", views.export_inventory, name="export_inventory"),
     path("reference/", views.reference_list, name="reference_list"),
+    # The library is the owner's to arrange, so it gets real editing pages rather than
+    # living only in /admin/.
+    path("reference/manage/", views.reference_manage, name="reference_manage"),
+    path("reference/add/", views.reference_add, name="reference_add"),
+    path("reference/<int:pk>/edit/", views.reference_edit, name="reference_edit"),
+    path("reference/<int:pk>/delete/", views.reference_delete, name="reference_delete"),
+    path("reference/<int:pk>/move/", views.reference_move, name="reference_move"),
+    path("reference/<int:pk>/archive/", views.reference_archive, name="reference_archive"),
+    path("reference/categories/add/", views.reference_category_add, name="reference_category_add"),
+    path("reference/categories/<int:pk>/edit/", views.reference_category_edit, name="reference_category_edit"),
+    path("reference/categories/<int:pk>/delete/", views.reference_category_delete, name="reference_category_delete"),
     path("reference/resistor-calculator/", views.resistor_calculator, name="resistor_calculator"),
     path("lights/", views.light_controls, name="light_controls"),
     path("lights/set-defaults/", views.led_set_defaults, name="led_set_defaults"),

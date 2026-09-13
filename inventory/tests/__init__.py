@@ -35,3 +35,28 @@ def _blocked_post(*args, **kwargs):
 
 
 requests.post = _blocked_post
+
+
+# --- and the same for outbound GETs ------------------------------------------
+#
+# Archiving documents (inventory/archiving.py) fetches external URLs. A test that let
+# a real fetch through would pass on a machine with internet and fail on one without,
+# and would depend on some third-party site staying up — which is exactly the problem
+# archiving exists to solve, so it would be a poor joke to reintroduce it here.
+#
+# Any test that exercises archiving patches `requests.get` explicitly; see
+# inventory/tests/test_archiving.py for the pattern.
+_original_get = requests.get
+
+
+def _blocked_get(*args, **kwargs):
+    target = args[0] if args else kwargs.get("url", "(no url)")
+    raise AssertionError(
+        f"A test attempted a REAL HTTP GET to {target!r}. Tests must not touch the "
+        "network: they would pass or fail depending on connectivity, and depend on "
+        "someone else's site staying up. Patch requests.get — see "
+        "inventory/tests/test_archiving.py."
+    )
+
+
+requests.get = _blocked_get

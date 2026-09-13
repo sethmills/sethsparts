@@ -9,8 +9,7 @@ from __future__ import annotations
 
 
 def site_context(request):
-    from django.conf import settings
-
+    from .hardware_config import has_leds, has_printer
     from .site_config import country, get_site_settings, site_name, unit_system
 
     obj = get_site_settings()
@@ -19,8 +18,10 @@ def site_context(request):
         "site_country": country(),
         "unit_system": unit_system(),
         "setup_complete": bool(obj and obj.setup_completed_at),
-        # Configured-but-absent is a real case: the URL is set but the Pi is off.
-        # These flags mean "the owner has this hardware", not "it is reachable".
-        "has_leds": bool(getattr(settings, "LED_CONTROLLER_URL", "")),
-        "has_printer": bool(getattr(settings, "LABEL_PRINTER_URL", "")),
+        # "Configured", not "reachable" — the URL may be set while the Pi is off, and
+        # templates should still offer the button so the failure message can explain
+        # itself. These come from hardware_config, which prefers the address saved by
+        # the setup wizard and falls back to the environment.
+        "has_leds": has_leds(),
+        "has_printer": has_printer(),
     }

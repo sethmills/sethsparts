@@ -130,7 +130,46 @@ class Part(models.Model):
         return self.name
 
 
-class Attachment(models.Model):
+class ArchivableDocument(models.Model):
+    """Shared state for anything that keeps a local copy of an external document.
+
+    Abstract, so each concrete user still gets its own table. It exists for two
+    reasons: the archiving state cannot drift between part attachments and reference
+    documents, and a third kind of document can be added later by inheriting rather
+    than by remembering to re-add four fields.
+
+    The failure field is the important one. A reference whose source is behind a login
+    wall is worth keeping *as a link* — it just has to say so, rather than looking
+    like a cached document that quietly isn't there.
+    """
+
+    archived_at = models.DateTimeField(
+        null=True, blank=True, help_text="When a local copy was last saved successfully."
+    )
+    archive_attempted_at = models.DateTimeField(
+        null=True, blank=True, help_text="When archiving was last tried, successfully or not."
+    )
+    archive_content_type = models.CharField(
+        max_length=100, blank=True, help_text="What the source actually served, e.g. application/pdf."
+    )
+    archive_error = models.CharField(
+        max_length=300, blank=True, help_text="Why the last attempt failed, shown to the owner."
+    )
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_archived(self) -> bool:
+        return bool(self.file and self.archived_at)
+
+    @property
+    def archive_failed(self) -> bool:
+        """Tried and failed — as opposed to never tried, which is a different thing."""
+        return bool(self.archive_error) and not self.archived_at
+
+
+class Attachment(ArchivableDocument):
     DATASHEET = "datasheet"
     PINOUT = "pinout"
     WIRING = "wiring"
@@ -243,27 +282,74 @@ class BuildConsumption(models.Model):
         return self.quantity_consumed < self.quantity_requested
 
 
-class ReferenceDoc(models.Model):
-    RASPBERRY_PI = "raspberry_pi"
-    ARDUINO = "arduino"
-    ELECTRONICS = "electronics"
-    PRINTING_3D = "3d_printing"
-    CATEGORY_CHOICES = [
-        (RASPBERRY_PI, "Raspberry Pi"),
-        (ARDUINO, "Arduino"),
-        (ELECTRONICS, "Electronics reference"),
-        (PRINTING_3D, "3D printing"),
-    ]
+class ReferenceCategory(models.Model):
+    """A heading in the reference library.
+
+    These used to be a hardcoded choices list, which quietly made the whole reference
+    section the developer's rather than the owner's: you could add documents but never
+    the shelf they sit on. Now it is a row, so references can be organised the way a
+    particular workshop is arranged — "3D printing" is no use to someone who does
+    woodwork or leatherwork, and "Electronics reference" is no use to someone who
+    doesn't.
+    """
+
+    name = models.CharField(max_length=100)
+    key = models.SlugField(
+        max_length=40,
+        unique=True,
+        help_text="Stable identifier used in links. Leave it alone once set — changing it changes URLs.",
+    )
+    order = models.PositiveIntegerField(default=100, help_text="Lower sorts first.")
+
+    class Meta:
+        ordering = ["order", "name"]
+        verbose_name = "reference category"
+        verbose_name_plural = "reference categories"
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            from django.utils.text import slugify
+
+            self.key = slugify(self.name)[:40] or "category"
+        super().save(*args, **kwargs)
+
+
+class ReferenceDoc(ArchivableDocument):
+    """One reference: a pinout, a chart, a guide, a photo of a label.
+
+    Deliberately free-form — a title, optional notes, an optional link out, an
+    optional uploaded file, and a category the owner controls. Nothing here is
+    specific to any one workshop, which is what lets an install start from the
+    shipped starter set and then edit, extend or delete it freely.
+    """
 
     title = models.CharField(max_length=200)
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    category = models.ForeignKey(
+        ReferenceCategory,
+        on_delete=models.PROTECT,
+        related_name="docs",
+        help_text="Which shelf this sits on.",
+    )
     description = models.TextField(blank=True)
     external_url = models.URLField(blank=True, help_text="Canonical/live source, always shown as a link out")
     file = models.FileField(upload_to="reference/%Y/", blank=True, null=True, help_text="Locally cached copy (image/PDF) so this survives even if the source goes away")
-    order = models.PositiveIntegerField(default=100)
+    order = models.PositiveIntegerField(default=100, help_text="Lower sorts first within its category.")
 
     class Meta:
-        ordering = ["category", "order", "title"]
+        ordering = ["category__order", "order", "title"]
+
+    @property
+    def needs_archiving(self) -> bool:
+        """Has a source link but no local copy of it.
+
+        This is both the to-do list the archiving command works from and what the UI
+        shows as "not archived yet" — the honest state of a link whose document was
+        never fetched, or whose fetch failed.
+        """
+        return bool(self.external_url) and not self.file
 
     def __str__(self):
         return self.title
@@ -731,6 +817,35 @@ class SiteSettings(models.Model):
         choices=UNIT_SYSTEMS,
         default="metric",
         help_text="Which units are offered first. Every unit stays selectable either way.",
+    )
+    # Hardware addresses, which is what lets the setup wizard configure them at all —
+    # before this they existed only as environment variables, so a browser-based setup
+    # could not have set them. Plain CharField rather than URLField on purpose: people
+    # type "192.168.1.50:8080" without a scheme, and a form that rejects that before
+    # the app has a chance to add "http://" is just obstructive. Blank means not
+    # configured, and the matching feature is hidden rather than broken.
+    led_controller_url = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Address of the LED 'find the part' controller, e.g. http://192.168.1.50:8080",
+    )
+    led_controller_key = models.CharField(
+        max_length=200, blank=True, help_text="Shared secret for the LED controller, if it needs one."
+    )
+    label_printer_url = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Address of the label print bridge, e.g. http://192.168.1.50:9100",
+    )
+    label_printer_key = models.CharField(
+        max_length=200, blank=True, help_text="Shared secret for the print bridge, if it needs one."
+    )
+
+    # Set the first time the starter reference set is loaded. The loader is one-shot
+    # by default: without this, re-running it would quietly resurrect documents the
+    # owner had deliberately deleted, which makes the library impossible to prune.
+    starter_reference_loaded_at = models.DateTimeField(
+        null=True, blank=True, help_text="When the starter reference library was first loaded."
     )
     setup_completed_at = models.DateTimeField(
         null=True,

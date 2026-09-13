@@ -3,32 +3,48 @@
 {% block content %}
 <div class="card">
   <h1>Reference</h1>
-  <p class="muted">Cheat sheets, pinouts, and datasheets for Raspberry Pi, Arduino, general electronics, and 3D printing — cached locally so they're still here even if the source page disappears.</p>
-  <p><a href="{% url 'inventory:resistor_calculator' %}" class="btn">Resistor color-code decoder →</a></p>
+  <p class="muted">Cheat sheets, pinouts and guides, with locally cached copies so they're still here even if the source page disappears. This library is yours — edit it, add to it, or empty it out.</p>
+  <p>
+    <a href="{% url 'inventory:resistor_calculator' %}" class="btn">Resistor color-code decoder →</a>
+    <a href="{% url 'inventory:reference_manage' %}" class="btn secondary">✎ Manage references</a>
+  </p>
+  {% if categories %}
   <form method="get">
     <select name="category" onchange="this.form.submit()" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
       <option value="">All categories</option>
-      {% for value, label in categories %}
-        <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+      {% for cat in categories %}
+        <option value="{{ cat.key }}" {% if selected_category == cat.key %}selected{% endif %}>{{ cat.name }}</option>
       {% endfor %}
     </select>
   </form>
+  {% endif %}
 </div>
 
-{% for section_name, docs in sections %}
+{% for category, docs in sections %}
 <div class="card">
-  <h2>{{ section_name }}</h2>
+  <h2>{{ category.name }}</h2>
   {% for doc in docs %}
     <p>
       <strong>{{ doc.title }}</strong>
       {% if doc.description %}<br><span class="muted">{{ doc.description }}</span>{% endif %}
       <br>
-      {% if doc.file %}<a href="{{ doc.file.url }}">cached copy</a>{% if doc.external_url %} · {% endif %}{% endif %}
-      {% if doc.external_url %}<a href="{{ doc.external_url }}">source →</a>{% endif %}
+      {% if doc.file %}
+        <a href="{{ doc.file.url }}" class="btn secondary">📄 Open the archived copy</a>
+      {% elif doc.needs_archiving %}
+        <span class="muted">⚠ Not archived yet — this is a link only, and links rot.</span>
+      {% endif %}
+      {% if doc.external_url %}
+        <br><span class="muted">source: <a href="{{ doc.external_url }}">{{ doc.external_url }}</a></span>
+      {% endif %}
     </p>
+  {% empty %}
+    <p class="muted">Nothing on this shelf yet. <a href="{% url 'inventory:reference_add' %}?category={{ category.key }}">Add the first reference →</a></p>
   {% endfor %}
 </div>
 {% empty %}
-<div class="card"><p class="muted">No reference docs match.</p></div>
+<div class="card">
+  <p class="muted">No references yet.</p>
+  <p><a href="{% url 'inventory:reference_add' %}" class="btn">Add your first reference</a></p>
+</div>
 {% endfor %}
 {% endblock %}

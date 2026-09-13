@@ -174,20 +174,22 @@ def render_label_png_bytes(text, size_key, font_pt=24, bold=False, italic=False,
 
 def print_label(text, size_key, font_pt=24, bold=False, italic=False, barcode_value=""):
     """Renders and sends the label to the Pi's print-bridge. Returns (ok, error_message)."""
-    from django.conf import settings
+    from .hardware_config import printer_key, printer_url
 
-    if not settings.LABEL_PRINTER_URL:
-        return False, "No label printer configured yet (LABEL_PRINTER_URL is unset)."
+    url = printer_url()
+    if not url:
+        return False, "No label printer configured yet — set one up under Settings."
 
     image, width_px, height_px = render_label(text, size_key, font_pt, bold, italic, barcode_value)
     zpl = image_to_zpl(image, width_px, height_px)
 
     import requests
 
-    headers = {"X-Api-Key": settings.LABEL_PRINTER_KEY} if settings.LABEL_PRINTER_KEY else {}
+    key = printer_key()
+    headers = {"X-Api-Key": key} if key else {}
     try:
         resp = requests.post(
-            f"{settings.LABEL_PRINTER_URL}/print",
+            f"{url}/print",
             data=zpl.encode("utf-8"),
             headers={**headers, "Content-Type": "application/x-zpl"},
             timeout=10,

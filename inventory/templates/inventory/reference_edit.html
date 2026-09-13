@@ -1,0 +1,71 @@
+{% extends "inventory/base.html" %}
+{% block title %}{% if doc %}Edit {{ doc.title }}{% else %}Add a reference{% endif %} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if doc %}Edit reference{% else %}Add a reference{% endif %}</h1>
+  <p class="muted">A title and a category are all that's required. A link, a description and an uploaded file are all optional — a photo of a hand-written pinout on the cabinet door is a perfectly good reference.</p>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="card">
+    <p>
+      <label for="title"><strong>Title</strong></label><br>
+      <input id="title" name="title" required value="{{ doc.title|default:'' }}" placeholder="e.g. Resistor colour code chart"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">
+    </p>
+
+    <p>
+      <label for="category"><strong>Category</strong></label><br>
+      {% if categories %}
+        <select id="category" name="category" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;min-width:260px;">
+          {% for cat in categories %}
+            <option value="{{ cat.pk }}" {% if cat.pk|stringformat:"s" == preselected_category|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <span class="muted">No categories exist yet — <a href="{% url 'inventory:reference_manage' %}">create one first</a>.</span>
+      {% endif %}
+    </p>
+
+    <p>
+      <label for="description"><strong>Description</strong> <span class="muted">(optional)</span></label><br>
+      <textarea id="description" name="description" rows="3"
+                style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">{{ doc.description|default:'' }}</textarea>
+    </p>
+
+    <p>
+      <label for="external_url"><strong>Link out</strong> <span class="muted">(optional)</span></label><br>
+      <input id="external_url" name="external_url" type="url" value="{{ doc.external_url|default:'' }}" placeholder="https://…"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">
+      <br><span class="muted">Where the reference came from. Shown alongside any cached copy, not instead of it.</span>
+    </p>
+
+    <p>
+      <label for="file"><strong>Attach a file</strong> <span class="muted">(optional)</span></label><br>
+      <input id="file" name="file" type="file">
+      {% if doc.file %}
+        <br><span class="muted">Currently attached: <a href="{{ doc.file.url }}">{{ doc.file.name }}</a></span><br>
+        <label><input type="checkbox" name="remove_file" value="1"> Remove the attached file</label>
+      {% endif %}
+      <br><span class="muted">Stored on your own machine, so it survives the source page disappearing.</span>
+      <br><span class="muted">If you leave this empty but give a link below, the app fetches and keeps its own copy automatically — that's the whole point, since datasheets and product pages disappear.</span>
+    </p>
+
+    <p>
+      <label for="order"><strong>Order</strong></label><br>
+      <input id="order" name="order" inputmode="numeric" value="{{ doc.order|default:100 }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:110px;">
+      <br><span class="muted">Lower sorts first within the category. The arrows on the manage page are usually quicker.</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <button class="btn" type="submit">{% if doc %}Save changes{% else %}Add reference{% endif %}</button>
+    <a class="btn secondary" href="{% url 'inventory:reference_manage' %}">Cancel</a>
+    {% if doc %}
+      <a class="btn danger" href="{% url 'inventory:reference_delete' doc.pk %}">Delete</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

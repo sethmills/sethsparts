@@ -178,6 +178,15 @@ LED_CONTROLLER_KEY = os.environ.get("LED_CONTROLLER_KEY", "")
 LABEL_PRINTER_URL = os.environ.get("LABEL_PRINTER_URL", "")
 LABEL_PRINTER_KEY = os.environ.get("LABEL_PRINTER_KEY", "")
 
+# Archiving external documents (see inventory/archiving.py). When an owner adds a link
+# to a datasheet or a reference, the app fetches a local copy and serves that instead,
+# because the originals rot. Set this false to keep links without ever fetching them —
+# the right choice for anyone who does not want the app making outbound requests.
+# The database value in SiteSettings takes precedence over these for the hardware
+# addresses above; these are the fallback, and the only source for the archive knobs.
+ARCHIVE_ON_SAVE = os.environ.get("ARCHIVE_ON_SAVE", "true").lower() == "true"
+ARCHIVE_TIMEOUT = int(os.environ.get("ARCHIVE_TIMEOUT", "20"))
+
 # Lets the Pi kiosk's own launch script auto-establish a real, properly-issued session
 # on every boot (device-pairing style) without ever storing or typing Seth's account
 # password anywhere. Empty means the endpoint always rejects.
