@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PKG = ROOT / "inventory" / "views"
 MODELS = ROOT / "inventory" / "models.py"
+COMMUNITY = ROOT / "inventory" / "community.py"
 PY = str(ROOT / "venv" / "bin" / "python")
 
 MUTATIONS = [
@@ -88,6 +89,109 @@ MUTATIONS = [
         "lines = [line for line in lines if line]",
         "lines = lines",
         "inventory.tests.test_intake",
+    ),
+    # --- community sharing: the privacy defaults -----------------------------
+    # These three are the promises the feature makes. If any of them flips, an
+    # install shares something its owner never agreed to, so each one must have a
+    # test that fails loudly.
+    (
+        "Peers can search inventory by default (sharing without consent)",
+        MODELS,
+        "    shares_parts = models.BooleanField(\n        default=False,",
+        "    shares_parts = models.BooleanField(\n        default=True,",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "Categories are shareable by default (everything exposed)",
+        MODELS,
+        '    is_shareable = models.BooleanField(\n        default=False,',
+        '    is_shareable = models.BooleanField(\n        default=True,',
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "Instances are discoverable by default (on the map without asking)",
+        MODELS,
+        "    discoverable = models.BooleanField(\n        default=False,",
+        "    discoverable = models.BooleanField(\n        default=True,",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "can_publish drops the location requirement",
+        MODELS,
+        "return self.discoverable and self.has_location",
+        "return self.discoverable",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "A pending peer is treated as active (unconfirmed keys honoured)",
+        MODELS,
+        "return self.status == self.ACTIVE",
+        "return True",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "Pairing codes never expire",
+        MODELS,
+        "return self.claimed_at is None and now < self.expires_at",
+        "return self.claimed_at is None",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "Pairing codes can be claimed more than once",
+        MODELS,
+        "return self.claimed_at is None and now < self.expires_at",
+        "return now < self.expires_at",
+        "inventory.tests.test_community_models",
+    ),
+    (
+        "Pairing code lookalike folding removed (typed codes stop matching)",
+        MODELS,
+        'return cleaned.replace("O", "0").replace("I", "1").replace("L", "1")',
+        "return cleaned",
+        "inventory.tests.test_community_models",
+    ),
+    # --- community sharing: pin signing --------------------------------------
+    (
+        "Pin version guard removed (unknown formats interpreted)",
+        COMMUNITY,
+        "    if version not in SUPPORTED_PIN_VERSIONS:\n        return False",
+        "    if False:\n        return False",
+        "inventory.tests.test_community_crypto",
+    ),
+    (
+        "Pin version not covered by the signature (relabelable in transit)",
+        COMMUNITY,
+        '        "v": v,',
+        '        "v": 0,',
+        "inventory.tests.test_community_crypto",
+    ),
+    (
+        "Pin name not covered by the signature (renameable in transit)",
+        COMMUNITY,
+        '        "name": name or "",',
+        '        "name": "",',
+        "inventory.tests.test_community_crypto",
+    ),
+    (
+        "Coordinate precision reduced (signed bytes become platform-dependent)",
+        COMMUNITY,
+        "COORD_DECIMALS = 6",
+        "COORD_DECIMALS = 4",
+        "inventory.tests.test_community_crypto",
+    ),
+    (
+        "Public key no longer derived from the private key",
+        COMMUNITY,
+        "Ed25519PrivateKey.from_private_bytes(bytes.fromhex(private_hex)).public_key().public_bytes_raw().hex()",
+        "        private_hex",
+        "inventory.tests.test_community_crypto",
+    ),
+    (
+        "Signature verification always succeeds (forged pins accepted)",
+        COMMUNITY,
+        "    except (InvalidSignature, ValueError, TypeError):\n        return False",
+        "    except (InvalidSignature, ValueError, TypeError):\n        return True",
+        "inventory.tests.test_community_crypto",
     ),
 ]
 

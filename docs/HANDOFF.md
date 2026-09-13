@@ -406,6 +406,69 @@ free), not at module scope.
 **Deploy reminder:** nothing here changes behaviour, but the production checkout is still on
 `a7903aa` (3 doc-only commits behind `main`) — a deploy would also pick up items 20–22.
 
+### 23. Community sharing — data model, instance identity, pin signing — ✅ foundation built (2026-09-13)
+
+First slice of the cross-instance feature planned in `docs/PLAN_community_sharing.md`. This is the
+**model layer only** — no views, no URLs, no UI yet — because the model is the part that is expensive
+to change once Seth's and his dad's instances hold real data.
+
+**What exists now** (migration `0014_communityidentity_communityprofile_peer_and_more`):
+
+- `CommunityIdentity` — this instance's Ed25519 keypair, singleton, generated on first use. The public
+  half is the instance's stable identity on the network.
+- `CommunityProfile` — whether this instance appears on maps, plus an approximate location.
+- `Peer` — another workshop's instance, with the credentials for talking to it.
+- `PairingCode` — one-time, 24-hour invite codes.
+- `PeerSearchLog` — an audit log of what each peer has searched.
+- `Category.is_shareable` — per-category opt-in, default off.
+
+**The decision that shaped everything else: three separate permissions.** Whether an instance appears
+on the map (`CommunityProfile.discoverable`), whether a given workshop can *search its parts*
+(`Peer.shares_parts`, default **off**), and whether a given workshop *exchanges map pins* with it
+(`Peer.exchanges_pins`, default **on**) are independent. Collapsing any two would mean connecting for
+pins — which is exactly what the default seed connection does — silently handing over inventory
+access. The two per-peer flags are flags rather than a type so that the same person can be a pin
+neighbour without being a search peer.
+
+**Location is postcode-AREA only.** UK outcode or US ZIP centroid; a full UK postcode identifies
+roughly fifteen households, so publishing one publishes a doorstep. The geocoder returns the centroid
+directly, which is why there is no rounding or grid-snapping anywhere in this feature. Note what is
+*not* stored: the postcode the owner typed. Keeping it would mean a serialisation mistake could leak
+it, and nothing needs it once the centroid exists.
+
+**Why Ed25519, and not a shared secret or a chain.** A pin is relayed between instances that have
+never met, so it must be verifiable by a node that does not hold the publisher's secret — which rules
+out HMAC. A chain adds consensus and, decisively, immutability: an append-only ledger cannot honour
+the erasure the rest of this feature promises (§5.2, §7 of the plan). Signatures plus timestamps give
+authentication and freshness, which is all the map needs.
+
+**Bug found and fixed while testing.** `v` (the pin format version) was in the pin dict but *not* in
+the signed bytes — `canonical_pin` always signed the module constant. A relaying instance could
+therefore relabel a pin in transit and the signature would still verify, meaning the pin's own
+statement about its format was the one field nothing checked. `canonical_pin` now takes the version as
+a parameter, and `verify_pin` passes the version the pin claims *and* refuses versions it does not
+know. Both halves are needed: the first stops relabelling, the second stops guesswork. See
+`test_the_version_is_inside_the_signed_bytes` and
+`test_a_correctly_signed_pin_from_a_future_version_is_still_rejected`.
+
+**Verified:**
+
+- `manage.py check` → no issues.
+- **`manage.py test inventory` → 280 tests, OK** (was 211; +69 across `test_community_crypto.py` and
+  `test_community_models.py`). `test_community_crypto.py` is a `SimpleTestCase` — the signing rules are
+  plain functions with no database access, so they are tested exactly rather than through a view.
+- **`scripts/mutation_check.py` → 24/24 mutations caught** (was 10/10). The 14 new mutations target the
+  privacy defaults — flipping `shares_parts`, `is_shareable` or `discoverable` to `True` by default —
+  and the signing rules, including the version bug above. Flipping any of those defaults now fails the
+  suite loudly, which is the point: they are the feature's promises, not implementation details.
+- Private-key handling asserted three ways: it never appears in `__str__`, never in `repr`, and is
+  absent from `CommunityIdentityAdmin.fields` — so it cannot be read back out through the admin.
+- `cryptography==50.0.1` added to `requirements.txt`. It installs from wheels on both macOS and Linux,
+  so the Pi and the Docker image need no compiler.
+
+**Not built yet:** pairing views/URLs/UI, the location geocoder, the noticeboard service, pin
+publishing and sync, the map page. Next slice is pairing.
+
 ### Backlog / discussed, not built
 
 - **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."

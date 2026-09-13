@@ -1,4 +1,8 @@
+import secrets
+
 from django.db import models
+
+from .community import generate_keypair
 
 
 class Location(models.Model):
@@ -64,6 +68,13 @@ class DrawerLedSegment(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    is_shareable = models.BooleanField(
+        default=False,
+        help_text=(
+            "Visible to connected workshops via community search. Off by default — "
+            "sharing is opted into per category, and a part with no category is never shareable."
+        ),
+    )
 
     class Meta:
         ordering = ["name"]
@@ -374,3 +385,273 @@ class StockItem(models.Model):
     def __str__(self):
         where = self.drawer or self.container
         return f"{self.part.name} x{self.quantity_raw or self.quantity} @ {where}"
+
+
+# --- Community: identity, peers, and the map ----------------------------------
+#
+# Three things are deliberately independent here, because collapsing them is how
+# a privacy model breaks:
+#
+#   1. Whether this instance appears on other people's maps  (CommunityProfile.discoverable)
+#   2. Whether a given workshop can SEARCH this one's parts   (Peer.shares_parts)
+#   3. Whether a given workshop exchanges MAP PINS with it    (Peer.exchanges_pins)
+#
+# (1) is about strangers; (2) and (3) are per-person. Being visible on the map never
+# implies being searchable, and being connected for pins never grants inventory
+# access. See docs/PLAN_community_sharing.md.
+
+
+def new_api_key() -> str:
+    """A per-peer API credential. Used for authenticating the peer's requests.
+
+    Distinct from the peer's signing key on purpose: this one is a shared secret
+    between exactly two instances (fine for request auth), while pin signatures are
+    public-key so that any relaying instance can verify them without a secret.
+    """
+    return secrets.token_urlsafe(32)
+
+
+class Peer(models.Model):
+    """Another workshop's instance that this one is connected to.
+
+    The two capabilities are separate flags, not a type, so the same person can be
+    a pin neighbour without ever seeing the inventory — which is exactly what the
+    default seed connection needs to be.
+    """
+
+    PENDING = "pending"
+    ACTIVE = "active"
+    REVOKED = "revoked"
+    STATUS_CHOICES = [
+        (PENDING, "Pending — asked, not yet accepted"),
+        (ACTIVE, "Active"),
+        (REVOKED, "Revoked"),
+    ]
+
+    name = models.CharField(max_length=200, help_text="e.g. \"Dad's workshop\"")
+    base_url = models.URLField(help_text="Their instance's public address")
+    public_key = models.CharField(
+        max_length=64, blank=True,
+        help_text="Their Ed25519 signing key — their stable identity, used to verify the pins they publish",
+    )
+    inbound_api_key = models.CharField(
+        max_length=64, unique=True, default=new_api_key,
+        help_text="The credential we issued to them, checked on requests they make to us",
+    )
+    outbound_api_key = models.CharField(
+        max_length=64, blank=True,
+        help_text="The credential they issued to us, sent when we query them",
+    )
+    is_seed = models.BooleanField(
+        default=False,
+        help_text="The maintainer's instance, connected by default so a new install has a way onto the map",
+    )
+    exchanges_pins = models.BooleanField(
+        default=True,
+        help_text="Exchange anonymous map pins. Never grants access to inventory.",
+    )
+    shares_parts = models.BooleanField(
+        default=False,
+        help_text="May search categories marked shareable. Off until opted in for this specific person.",
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    contact_note = models.CharField(
+        max_length=300, blank=True, help_text="How to reach them, e.g. an email. Shown on search results."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_status_display()})"
+
+    @property
+    def is_active(self) -> bool:
+        """Only an active peer is queried, and only an active peer's key is accepted."""
+        return self.status == self.ACTIVE
+
+
+class PairingCode(models.Model):
+    """A one-time invite a workshop shows so another can connect to it.
+
+    Single use and short-lived: the code is a bearer credential on its own, so its
+    protection is the expiry and the single use, not its length. Eight characters of
+    base32 (Crockford, so no ambiguous 0/O or 1/I/L) is ~40 bits, which is far past
+    guessable inside a 24-hour window that closes after one successful claim.
+    """
+
+    ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32
+    LENGTH = 8
+    GROUPS = (4, 4)
+    LIFETIME_HOURS = 24
+
+    code = models.CharField(max_length=16, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    claimed_by = models.ForeignKey(
+        Peer, null=True, blank=True, on_delete=models.SET_NULL, related_name="claimed_codes"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.display
+
+    @classmethod
+    def issue(cls, now=None):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = now or timezone.now()
+        raw = "".join(secrets.choice(cls.ALPHABET) for _ in range(cls.LENGTH))
+        return cls.objects.create(code=raw, expires_at=now + timedelta(hours=cls.LIFETIME_HOURS))
+
+    @property
+    def display(self) -> str:
+        """Grouped for reading aloud: K7F2-9QX3."""
+        a, b = self.GROUPS
+        return f"{self.code[:a]}-{self.code[a:a + b]}"
+
+    def is_usable(self, now=None) -> bool:
+        """Unclaimed and unexpired. Checked with the same care as the token compare."""
+        from django.utils import timezone
+
+        now = now or timezone.now()
+        return self.claimed_at is None and now < self.expires_at
+
+    @classmethod
+    def parse_display(cls, text: str) -> str:
+        """Accept 'K7F2-9QX3', 'k7f29qx3', 'K7F2 9QX3' — people type it how they like."""
+        cleaned = "".join(c for c in (text or "").upper() if c.isalnum())
+        # Crockford's whole point: characters that look alike are folded together.
+        return cleaned.replace("O", "0").replace("I", "1").replace("L", "1")
+
+
+class PeerSearchLog(models.Model):
+    """One inbound search from a peer.
+
+    Exists so an owner can see what a connected workshop has actually been looking
+    for, instead of having to take it on trust. Without this, "your peers can only
+    search what you shared" is an assertion; with it, it is checkable.
+    """
+
+    peer = models.ForeignKey(Peer, on_delete=models.CASCADE, related_name="searches")
+    query = models.CharField(max_length=200)
+    result_count = models.PositiveIntegerField(default=0)
+    searched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-searched_at"]
+
+    def __str__(self):
+        return f"{self.peer.name}: {self.query!r} -> {self.result_count}"
+
+
+class CommunityIdentity(models.Model):
+    """This instance's own keypair — its stable identity on the network.
+
+    Singleton: exactly one row, created with a fresh keypair on first use.
+
+    The private key lives in the database rather than in `.env` because it is
+    application data generated at runtime, not operator-supplied configuration.
+    That is consistent with this app's existing trust boundary — the database
+    already holds the whole inventory — but it does mean two rules hold:
+    **never render it, never serialise it into an API response, and never log it.**
+    The test suite asserts all three.
+    """
+
+    public_key = models.CharField(max_length=64, unique=True)
+    private_key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "community identity"
+
+    def __str__(self):
+        return f"this instance ({self.public_key[:12]}…)"
+
+    @classmethod
+    def load(cls):
+        """The one identity row, generating the keypair on first use.
+
+        Tolerates a race between two workers starting at once: the unique
+        constraint on `public_key` means the loser re-reads rather than crashing.
+        """
+        existing = cls.objects.first()
+        if existing is not None:
+            return existing
+        private_hex, public_hex = generate_keypair()
+        try:
+            return cls.objects.create(private_key=private_hex, public_key=public_hex)
+        except Exception:
+            return cls.objects.get(public_key=public_hex)
+
+
+class CommunityProfile(models.Model):
+    """This instance's public presence: whether it appears on maps, and where.
+
+    Singleton, same as CommunityIdentity.
+
+    **Location is stored only at postcode-AREA granularity.** For the UK that means
+    the outcode (``SW1A``), never the full postcode — a full UK postcode identifies
+    roughly fifteen households, so publishing one publishes a doorstep. The
+    geocoder returns that centroid directly, which is why there is no rounding or
+    grid-snapping step anywhere in this feature.
+
+    Note what is *not* stored: the postcode the owner typed. Keeping the input
+    around would mean a serialisation mistake could leak it, and nothing needs it
+    once the centroid exists.
+    """
+
+    OUTCODE = "outcode"
+    ZIP = "zip"
+    NOMINATIM = "nominatim"
+    MANUAL = "manual"
+    SOURCE_CHOICES = [
+        (OUTCODE, "UK outcode"),
+        (ZIP, "US ZIP"),
+        (NOMINATIM, "Postcode via OpenStreetMap"),
+        (MANUAL, "Entered by hand"),
+    ]
+
+    discoverable = models.BooleanField(
+        default=False,
+        help_text=(
+            "Appear as an anonymous pin on other workshops' maps. Off by default. "
+            "Independent of who can search this instance — see Peer.shares_parts."
+        ),
+    )
+    display_name = models.CharField(
+        max_length=100, blank=True,
+        help_text="Optional. The map shows anonymous pins, so this is not published by default.",
+    )
+    country = models.CharField(max_length=2, blank=True, help_text="ISO 3166-1 alpha-2, e.g. GB")
+    location_lat = models.FloatField(null=True, blank=True)
+    location_lon = models.FloatField(null=True, blank=True)
+    location_source = models.CharField(max_length=20, choices=SOURCE_CHOICES, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "community profile"
+
+    def __str__(self):
+        return "discoverable" if self.discoverable else "private"
+
+    @classmethod
+    def load(cls):
+        obj = cls.objects.first()
+        return obj if obj is not None else cls.objects.create()
+
+    @property
+    def has_location(self) -> bool:
+        return self.location_lat is not None and self.location_lon is not None
+
+    @property
+    def can_publish(self) -> bool:
+        """Both halves are required before a pin may go out, and both are opt-ins."""
+        return self.discoverable and self.has_location

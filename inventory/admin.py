@@ -8,13 +8,18 @@ from .models import (
     Build,
     BuildConsumption,
     Category,
+    CommunityIdentity,
+    CommunityProfile,
     Container,
     ContainerPhoto,
     Drawer,
     DrawerLedSegment,
     IntakeNote,
     Location,
+    PairingCode,
     Part,
+    Peer,
+    PeerSearchLog,
     Project,
     ReferenceDoc,
     StockItem,
@@ -189,6 +194,131 @@ class ReferenceDocAdmin(admin.ModelAdmin):
     list_display = ["title", "category", "order", "external_url"]
     list_filter = ["category"]
     search_fields = ["title", "description"]
+
+
+@admin.register(CommunityIdentity)
+class CommunityIdentityAdmin(admin.ModelAdmin):
+    """Read-only, and the signing key is not listed here at all.
+
+    `private_key` is deliberately absent from `fields` and `readonly_fields`: this
+    page is reachable by anyone who gets into the admin, and the private key can
+    forge this instance's pins for as long as it exists. It has no reason to be
+    displayed, so it is not.
+    """
+
+    fields = ["public_key", "created_at"]
+    readonly_fields = ["public_key", "created_at"]
+    list_display = ["public_key", "created_at"]
+
+    def has_add_permission(self, request):
+        # One identity per instance; it is generated on first use, not created by hand.
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Deleting it would silently change this instance's identity on the network.
+        return False
+
+
+@admin.register(CommunityProfile)
+class CommunityProfileAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (
+            "Appearing on the map",
+            {
+                "fields": ("discoverable", "display_name", "country"),
+                "description": (
+                    "Discoverable shows this workshop as an anonymous pin on other "
+                    "instances' maps. It is independent of who can search your parts — "
+                    "that is set per person under Community → Peers."
+                ),
+            },
+        ),
+        (
+            "Approximate location",
+            {
+                "fields": ("location_lat", "location_lon", "location_source"),
+                "description": (
+                    "Postcode-AREA only: a UK outcode or a US ZIP centroid. Never store a "
+                    "full UK postcode here — one identifies roughly fifteen households. "
+                    "The postcode you typed is deliberately not kept."
+                ),
+            },
+        ),
+        ("Meta", {"fields": ("updated_at",)}),
+    )
+    readonly_fields = ["updated_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Peer)
+class PeerAdmin(admin.ModelAdmin):
+    list_display = ["name", "status", "exchanges_pins", "shares_parts", "is_seed", "last_seen_at"]
+    list_filter = ["status", "exchanges_pins", "shares_parts", "is_seed"]
+    search_fields = ["name", "base_url"]
+    readonly_fields = ["public_key", "created_at", "last_seen_at"]
+    fieldsets = (
+        (None, {"fields": ("name", "base_url", "status", "contact_note")}),
+        (
+            "What they may do",
+            {
+                "fields": ("exchanges_pins", "shares_parts"),
+                "description": (
+                    "Two separate permissions. Exchanging pins puts you on the same map and "
+                    "never grants access to inventory. Sharing parts lets them search the "
+                    "categories you marked shareable — turn that on for one person at a time."
+                ),
+            },
+        ),
+        (
+            "Credentials",
+            {
+                "fields": ("public_key", "inbound_api_key", "outbound_api_key"),
+                "description": (
+                    "inbound_api_key is the credential you issued them; outbound_api_key is "
+                    "the one they issued you. Set automatically when pairing succeeds."
+                ),
+            },
+        ),
+        ("Meta", {"fields": ("is_seed", "created_at", "last_seen_at")}),
+    )
+
+
+@admin.register(PairingCode)
+class PairingCodeAdmin(admin.ModelAdmin):
+    list_display = ["code_display", "created_at", "expires_at", "claimed_at", "claimed_by", "usable"]
+    readonly_fields = ["code", "created_at", "expires_at", "claimed_at", "claimed_by"]
+
+    @admin.display(description="Code")
+    def code_display(self, obj):
+        return obj.display
+
+    @admin.display(boolean=True, description="Usable")
+    def usable(self, obj):
+        return obj.is_usable()
+
+    def has_add_permission(self, request):
+        # Issued from the Community page so the code is shown to the owner once it exists.
+        return False
+
+
+@admin.register(PeerSearchLog)
+class PeerSearchLogAdmin(admin.ModelAdmin):
+    """An audit log. Read-only by design — a log you can edit is not a log."""
+
+    list_display = ["peer", "query", "result_count", "searched_at"]
+    list_filter = ["peer"]
+    search_fields = ["query"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 admin.site.site_header = "Seth's Parts"
