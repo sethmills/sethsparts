@@ -1,26 +1,181 @@
 # Seth's Parts
 
-Self-hosted workshop/home inventory tool (planned domain: sethsparts.com), originally imported from `TOR Inventory.xlsx`. Django + SQLite for now; Docker-ready for later deployment.
+A self-hosted inventory system for a home workshop — parts, tools, and general
+storage — originally imported from a spreadsheet, now a full Django app with
+barcode scanning, BOM/build tracking, LED "find the part" cabinet indicators,
+label printing, and more. Live at **sethsparts.com**.
 
-## Local dev
+This file is the orientation point for picking the project back up, whether
+that's you or a different AI coding assistant. **Read `docs/HANDOFF.md` next**
+— it's a continuously-updated running log of exactly what's built, what's in
+progress, and what's next, in the order it happened. This README covers the
+stable "how the project is put together" facts that don't change session to
+session; HANDOFF.md covers the "what's true right now" facts that do.
+
+## What this actually is
+
+Seth catalogued his workshop (electronics parts cabinets, storage totes,
+general tools) into this app so he can scan a barcode on a drawer/tote and see
+what's in it, get low-stock alerts, plan builds against a bill of materials,
+and — because the electronics cabinet drawers are further subdivided into 16
+bins each — get a physical LED indicator lighting up exactly which drawer
+(and which bin within it) has the part he's looking for.
+
+It's built to run as one person's private, self-hosted tool — not a SaaS
+product. A second instance for someone else's workshop is a real goal (see
+"Cloning this for someone else" below) but isn't built yet.
+
+## Architecture
+
+- **Django + SQLite**, served by gunicorn, in one Docker container.
+- **Cloudflare Tunnel** (`cloudflared`, a sidecar container) exposes it at the
+  public domain with zero open ports on the host — no reverse proxy, no TLS
+  cert management, all handled by Cloudflare.
+- **Deploy = `git push` + a manual pull/rebuild on the server** (see
+  "Deployment" below). There's no CI/CD pipeline; it's small enough not to
+  need one yet.
+- **Two small hardware bridges run on a Raspberry Pi** in the workshop, each
+  reachable from the Django app over its own Cloudflare Tunnel hostname:
+  - `led-controller/` — drives WS2812B LED strips lining the electronics
+    cabinets, via a Feather RP2040 Scorpio, to light up the drawer/bin a part
+    lives in.
+  - `label-printer/` — relays raw ZPL to a Zebra GK420T thermal label printer
+    over USB.
+  - The same Pi also runs a **kiosk touchscreen** (`pi-kiosk/`) showing the
+    site itself, auto-logged-in, as a physical terminal in the workshop.
+  - Each of those three has its own README with full setup steps — this repo
+    doesn't auto-deploy them, they're copied to the Pi manually.
+
+## Repo layout
 
 ```
-cd ~/tor-inventory
+config/                  Django project settings/urls/wsgi
+inventory/               The one Django app -- models, views, templates, admin
+  management/commands/   One-off/maintenance scripts (import, enrichment, etc.)
+  migrations/
+  templates/inventory/
+  static/inventory/
+  label_printing.py       Renders custom labels (Pillow -> ZPL), see below
+docs/
+  HANDOFF.md              Start here after this file -- running log + backlog
+  clarification_workstream.md   Parts too ambiguous for automated enrichment
+scripts/
+  export_parts_review.py  Regenerates docs/parts_review.xlsx (merge-safe)
+led-controller/           LED "find the part" system -- Pi bridge + firmware
+label-printer/            Zebra GK420T print-bridge
+pi-kiosk/                 Pi touchscreen kiosk setup (Chromium, autologin, etc.)
+Dockerfile
+docker-compose.yml
+requirements.txt
+.env.example              Every environment variable this app reads, documented
+```
+
+## Local development
+
+```bash
+cd tor-inventory
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+./venv/bin/python manage.py migrate
+./venv/bin/python manage.py createsuperuser
 ./venv/bin/python manage.py runserver 8800
 ```
 
-Or via Claude's preview: `.claude/launch.json` has a `tor-inventory` entry on port 8800.
+Admin UI: http://localhost:8800/admin/ — useful for direct model editing
+(bulk edits, fixing bad data) alongside the regular UI.
 
-Admin: http://localhost:8800/admin/
+No `.env` is needed for local dev — `config/settings.py` falls back to
+sensible local defaults for everything (SQLite in the repo root, debug mode
+on, etc.). See `.env.example` for what production actually needs.
 
-## Re-running the import
+### Re-running the spreadsheet import
 
-The import is a one-time load, not a sync — re-running it against a DB that already has data will create duplicate `Container`s (unique on `number`, so it'll actually raise on the `get_or_create` for anything already present... in practice: wipe `db.sqlite3` and re-migrate before re-importing from a fresh spreadsheet export).
+The import is a one-time load, not a sync (`import_tor_inventory`). If you
+need to redo it from scratch, wipe `db.sqlite3` and re-migrate first — running
+it against an already-populated DB will collide on `Container.number`, which
+is unique.
 
+## Deployment
+
+Production runs on a Hetzner VPS. There's no automation — deploying is:
+
+```bash
+git push                                      # from your machine
+ssh <server>
+cd /opt/sethsparts
+git pull
+docker compose up -d --build
 ```
-./venv/bin/python manage.py import_tor_inventory "/Users/seth/Downloads/TOR Inventory.xlsx"
-```
 
-## Status
+`docker compose` runs two containers: the app itself, and `cloudflared` as a
+sidecar that tunnels it to the public domain. Secrets live only in that
+server's `/opt/sethsparts/.env` (gitignored) — see `.env.example` for the full
+list and what each one does. The server pulls via its own **read-only** deploy
+key, separate from whatever key you push with.
 
-Phase 1 (data model + import + admin) is done — see `/Users/seth/.claude/plans/luminous-enchanting-kernighan.md` for the full roadmap (barcode scanning, parts enrichment/docs, BOM & build history, reorder dashboard, full export).
+## Feature tour
+
+- **Browse / Scan / Search** — `/` lists every drawer up front (day-to-day
+  browsing is almost always "which drawer", not "which cabinet"), with the
+  full container list below for when cabinet-level organization is what's
+  wanted. `/scan/` takes a camera scan or a USB HID barcode scanner's input.
+  `/search/` does fuzzy name/category/manufacturer search with a synonym map
+  (`inventory/search.py`) so "display" finds OLED/TFT/e-ink parts, etc.
+- **Bins & sub-bins** (`/bins/`) — the electronics cabinet drawers (1-27) are
+  each subdivided into a 16-bin grid (4 rows × 4 columns); bins can further
+  have 0-4 small/medium sub-bins. Both get their own physical barcode,
+  scannable via a rapid bulk-scan flow (`/bins/scan/`) that auto-advances
+  with zero taps between scans.
+- **LED locate** — clicking "Locate" on a part/bin/drawer lights up the
+  physical LED strip on that cabinet: breathes for a few seconds, then holds
+  a static, multi-colored row/column readout (the drawer's left-side strip
+  shows the row, the right-side strip shows the column) for ~12s. See
+  `led-controller/`.
+- **Custom label designer** (`/labels/custom/`) — type text, optionally add a
+  barcode, pick one of the physical label sizes on hand, adjust font
+  size/bold/italic, live preview, print — renders as a bitmap (real font
+  control) packed into a ZPL graphic field, sent to the Zebra printer via
+  `label-printer/`.
+- **Moving-day intake** — `/intake/new-box/` quick-creates a new container
+  with an auto-assigned number and an immediate printable barcode.
+  `/intake/add/` captures a batch of typed/dictated notes about contents (one
+  per line), optionally unassigned to a container until `/intake/queue/` is
+  used to sort them out.
+- **Enrichment queue** (`/enrichment/`) — finds product pages/images/pinouts/
+  datasheets/pricing for parts worth the lookup. Classification is pure local
+  logic (safe to run any time); the actual web research needs a live agent
+  pass (there's a JSON worklist export for that), then the results get
+  imported back through the same page.
+- **Projects / BOM / Build** — versioned bills of materials per project, with
+  live stock-coverage math and a "Build" action that FIFO-consumes real stock
+  and records what was actually available vs. requested.
+- **Reorder dashboard**, **full export** (DB + media as a zip), **reference
+  docs** section (pinouts/datasheets/cheat sheets, cached locally).
+
+## Cloning this for someone else
+
+The long-term goal is for Seth's dad (or anyone else) to clone this repo and
+stand up their own instance for their own workshop — different LED array,
+possibly a different label printer, but the same drawer/row/bin structure.
+That needs a guided setup (rebranding the name/URL, flashing a Scorpio for
+their wiring, and — the biggest difference — running entirely on their own
+Pi locally instead of an externally-hosted server). **Not built yet** —
+deliberately deferred until Seth considers his own instance finished. See the
+backlog section of `docs/HANDOFF.md` for the current thinking.
+
+## Picking this up with a different AI assistant / on a different machine
+
+1. Read this file, then `docs/HANDOFF.md` top to bottom — its "Current live
+   state" section at the top has the load-bearing facts (server address,
+   deploy flow, where secrets live, what's mid-flight), and everything below
+   that is a dated log of what's been built and why, newest at the bottom.
+2. `led-controller/README.md`, `label-printer/README.md`, and
+   `pi-kiosk/README.md` each cover their own hardware bridge in detail —
+   read the relevant one before touching that part of the system.
+3. `docs/clarification_workstream.md` is a standing worklist of inventory
+   items too ambiguous to enrich automatically — not something to "complete"
+   in one pass, just work through opportunistically.
+4. When you finish a unit of work, add a dated entry to `docs/HANDOFF.md`
+   (what changed, why, how it was verified) rather than just leaving it in
+   git history — that log is what makes picking this up cold actually
+   tractable, for a human or another assistant.
