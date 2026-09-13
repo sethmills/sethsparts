@@ -659,6 +659,12 @@ forward, back, forward.
 anyone pressing the button would have been told "no releases or tags published yet". The tag
 is **local only**; neither it nor tonight's commits have been pushed.
 
+Worth being precise about what that does and does not fix: `updates.py` asks **GitHub**
+(`releases/latest`, then `tags`), so a tag that has never been pushed is invisible to the
+very thing it exists to fix. Cutting it was the right first step, but the update check only
+starts working when the tag reaches GitHub — `git push origin v0.1.0` — and that is a push,
+so it waits for Seth.
+
 **A bug found in the mutation tool itself, worth knowing about.** `scripts/mutation_check.py`
 restored each file it mutated — but restoring the *content* is not enough. Python decides
 whether cached bytecode is current by comparing the source file's mtime at one-second
