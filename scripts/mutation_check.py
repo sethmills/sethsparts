@@ -294,6 +294,35 @@ MUTATIONS = [
         "    if False:",
         "inventory.tests.test_archiving",
     ),
+    # --- the setup wizard ----------------------------------------------------
+    (
+        "Account step reopens after setup (anyone can create an admin)",
+        ROOT / "inventory" / "views" / "setup.py",
+        '    if wizard.account_exists():\n        raise Http404("This install already has an account.")',
+        '    if False:\n        raise Http404("This install already has an account.")',
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "Account step skips password validation (weak admin password)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "                validate_password(password1, user=None)",
+        "                pass",
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "Reachability check accepts anything with a scheme (fetches junk)",
+        ROOT / "inventory" / "views" / "setup.py",
+        '    if not parsed.netloc or " " in parsed.netloc:',
+        "    if False:",
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "LED mapping count not clamped (a mapping that lights nothing)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "        drawer=drawer, led_strip=strip, led_start_index=int(start), led_count=max(1, int(count))",
+        "        drawer=drawer, led_strip=strip, led_start_index=int(start), led_count=int(count)",
+        "inventory.tests.test_setup_wizard",
+    ),
 ]
 
 

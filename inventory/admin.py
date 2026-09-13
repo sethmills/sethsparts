@@ -225,7 +225,7 @@ class CommunityProfileAdmin(admin.ModelAdmin):
         (
             "Appearing on the map",
             {
-                "fields": ("discoverable", "display_name", "country"),
+                "fields": ("discoverable", "display_name"),
                 "description": (
                     "Discoverable shows this workshop as an anonymous pin on other "
                     "instances' maps. It is independent of who can search your parts — "

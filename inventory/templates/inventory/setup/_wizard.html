@@ -1,0 +1,33 @@
+{% extends "inventory/base.html" %}
+{% block content %}
+<div class="card">
+  <p class="muted" style="margin-bottom:6px;">
+    {% if site.setup_complete %}Settings{% else %}Setting up{% endif %} — {{ site.site_name }}
+  </p>
+  <ol style="display:flex;flex-wrap:wrap;gap:6px 14px;list-style:none;padding:0;margin:0 0 4px;">
+    <li><a href="{% url 'inventory:setup_hub' %}" {% if not current %}style="font-weight:700;"{% endif %}>Overview</a></li>
+    {% for step in steps %}
+      <li>
+        {% if current and step.key == current.key %}
+          <strong>{{ step.title }}</strong>
+        {% else %}
+          <a href="{% url step.url_name %}">{{ step.title }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+    <li><a href="{% url 'inventory:setup_finish' %}">Finish</a></li>
+  </ol>
+</div>
+
+{% block step_body %}{% endblock %}
+
+{% if next_step %}
+<div class="card">
+  <a class="btn" href="{% url next_step.url_name %}">{{ next_step.title }} →</a>
+  <a class="btn secondary" href="{% url 'inventory:setup_hub' %}">Overview</a>
+  {% if current %}
+    <span class="muted">Every step is optional except your account and your workshop's name. Skipping one changes nothing later.</span>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

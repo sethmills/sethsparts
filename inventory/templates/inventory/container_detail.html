@@ -130,7 +130,7 @@
     {% for si in stock_items %}
     <tr>
       <td><a href="{% url 'inventory:part_detail' si.part.pk %}">{{ si.part.name }}</a></td>
-      <td>{{ si.quantity_raw|default:si.quantity }}</td>
+      <td>{{ si.quantity_label }}</td>
       <td class="muted">{{ si.source_notes }}</td>
     </tr>
     {% endfor %}

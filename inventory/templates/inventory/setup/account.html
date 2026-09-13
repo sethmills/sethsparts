@@ -1,0 +1,38 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Your account — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Your account</h1>
+  <p class="muted">This is the login you'll use from now on. It's the only step that isn't optional, because without it there's nothing to log in with.</p>
+  <p class="muted">It's created right here rather than on a command line, so setting this app up never sends you to a terminal.</p>
+
+  <form method="post" style="max-width:420px;">
+    {% csrf_token %}
+    <p>
+      <label for="username"><strong>Username</strong></label><br>
+      <input id="username" name="username" autocomplete="username" autofocus required
+             value="{{ request.POST.username|default:'' }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      {% if errors.username %}<br><span style="color:#ffb4a2;">{{ errors.username }}</span>{% endif %}
+    </p>
+    <p>
+      <label for="password1"><strong>Password</strong></label><br>
+      <input id="password1" name="password1" type="password" autocomplete="new-password" required
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      {% if errors.password1 %}<br><span style="color:#ffb4a2;">{{ errors.password1 }}</span>{% endif %}
+    </p>
+    <p>
+      <label for="password2"><strong>Password again</strong></label><br>
+      <input id="password2" name="password2" type="password" autocomplete="new-password" required
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      {% if errors.password2 %}<br><span style="color:#ffb4a2;">{{ errors.password2 }}</span>{% endif %}
+    </p>
+    <p><button class="btn" type="submit">Create my account →</button></p>
+  </form>
+
+  <p class="muted" style="margin-top:16px;">
+    This page stops working the moment the account exists — after that it returns a
+    “not found”, so nobody else can create one by finding this URL.
+  </p>
+</div>
+{% endblock %}

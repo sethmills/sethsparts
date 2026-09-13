@@ -95,6 +95,21 @@ from .enrichment import (
     export_inventory,
     resistor_calculator,
 )
+from .help import (
+    help_index,
+    help_topic,
+)
+from .setup import (
+    setup_hub,
+    setup_account,
+    setup_site,
+    setup_lights,
+    setup_printer,
+    setup_reference,
+    setup_community,
+    setup_access,
+    setup_finish,
+)
 from .reference import (
     reference_list,
     reference_manage,
@@ -182,6 +197,17 @@ __all__ = [
     "export_enrichment_worklist",
     "import_enrichment_results",
     "export_inventory",
+    "setup_hub",
+    "setup_account",
+    "setup_site",
+    "setup_lights",
+    "setup_printer",
+    "setup_reference",
+    "setup_community",
+    "setup_access",
+    "setup_finish",
+    "help_index",
+    "help_topic",
     "reference_list",
     "reference_manage",
     "reference_add",

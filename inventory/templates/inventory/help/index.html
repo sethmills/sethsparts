@@ -1,0 +1,22 @@
+{% extends "inventory/base.html" %}
+{% block title %}Help — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Help</h1>
+  <p class="muted">How this app is put together, how to use it, and how to organise a workshop so it stays usable as it fills up.</p>
+</div>
+
+{% for topic in topics %}
+<div class="card">
+  <h2><a href="{% url 'inventory:help_topic' topic.slug %}">{{ topic.title }}</a></h2>
+  <p class="muted">{{ topic.summary }}</p>
+</div>
+{% endfor %}
+
+<div class="card">
+  <h2>Where everything else is</h2>
+  <p><a href="{% url 'inventory:setup_hub' %}">Settings</a> — <span class="muted">your workshop's name, timezone, hardware, and the community map.</span></p>
+  <p><a href="{% url 'inventory:reference_manage' %}">Reference library</a> — <span class="muted">add, edit and remove your own charts and pinouts.</span></p>
+  <p><a href="{% url 'inventory:browse' %}">Browse</a> — <span class="muted">start here day to day.</span></p>
+</div>
+{% endblock %}

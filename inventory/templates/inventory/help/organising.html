@@ -1,0 +1,73 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>The shape of the thing</h2>
+  <p>Everything is a <strong>part</strong>. A part is the thing you'd search for by name — “M3 x 12 socket cap screw”, “DS18B20 sensor”, “1k resistor”.</p>
+  <p>A part doesn't live anywhere by itself. It has one or more <strong>stock rows</strong>, and each row says <em>how many</em> of it are <em>where</em>. That split is the single most useful thing to understand about this app, because it means the same part can be in three places at once:</p>
+  <ul>
+    <li>40 × M3 screws in drawer 12</li>
+    <li>200 × the same screws in a moving box in the loft</li>
+    <li>8 × the same screws in the small parts tin on the bench</li>
+  </ul>
+  <p>Search once, and the app tells you all three locations with quantities. Search for the part name, not the drawer number.</p>
+</div>
+
+<div class="card">
+  <h2>Containers, drawers, bins</h2>
+  <p>Three levels, in this order:</p>
+  <ul>
+    <li><strong>Container</strong> — a cabinet, a shelf unit, or a moving box. Numbered, and usually named. “Cabinet 1”, “Box A”.</li>
+    <li><strong>Drawer</strong> — inside a container. “drawer 12”.</li>
+    <li><strong>Bin</strong> — one of sixteen subdivided spots inside a drawer, four rows of four.</li>
+  </ul>
+  <p>A sub-bin splits a bin further when a single bin of resistors is really four different values. Use them when you need them; most parts don't.</p>
+  <p class="muted">Containers have barcodes, drawers and bins can have them, and scanning either takes you straight to it.</p>
+</div>
+
+<div class="card">
+  <h2>Category is for finding, location is for fetching</h2>
+  <p>A <strong>category</strong> answers “what kind of thing is this?” — Fasteners, Electronics, 3D printing. <strong>Location</strong> answers “where do I have to walk?”.</p>
+  <p>They're independent, and both matter. Categories are how you browse when you're not sure of a name. Locations are how you get the part into your hand.</p>
+  <p class="muted">Categories are also what decide sharing, if you ever turn on community search — you tick which categories another workshop may search, rather than exposing everything or nothing.</p>
+</div>
+
+<div class="card">
+  <h2>What to do every time you add a part</h2>
+  <ol>
+    <li><strong>Name it how you'd say it out loud.</strong> “M3 x 12 socket cap”, not “screw”. You'll be searching for it by the words in your head, not by what a supplier called it.</li>
+    <li><strong>Put it somewhere you'll look.</strong> A real drawer beats a logical one. If you'd never think to look in drawer 4 for it, don't put it there.</li>
+    <li><strong>Give it a category.</strong> Uncategorised parts are invisible when you browse, and invisible is nearly as bad as lost.</li>
+    <li><strong>Set a reorder threshold</strong> if running out would annoy you. The reorder page then tells you what to buy, instead of you discovering it mid-project.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>Where this goes wrong</h2>
+  <p class="muted">The app won't stop you doing any of these, and every one of them is a trap:</p>
+  <ul>
+    <li><strong>Putting everything in one drawer.</strong> Fine at twenty parts, miserable at two hundred. Split by the question you'll actually ask — “where are the fasteners?” — not by what fits.</li>
+    <li><strong>Vague names.</strong> “Screws” is unusable once you have six kinds. The name is the search key, so make it specific.</li>
+    <li><strong>Skipping the location.</strong> A part with no location is a part you own and can't find, which is the problem this app exists to solve.</li>
+    <li><strong>Recording quantities you can't keep accurate.</strong> An approximate number you trust beats an exact one you don't. Where a count is genuinely fuzzy, put the rough figure in and move on — this is an inventory, not an audit.</li>
+    <li><strong>Never pruning.</strong> Old projects’ leftover stock accumulates. The reorder page filters by category, so a periodic look is worth more than any schema.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>A layout that works</h2>
+  <p class="muted">One arrangement that survives contact with a real workshop, in case it's useful as a starting point:</p>
+  <ul>
+    <li><strong>Cabinet 1</strong> — fasteners and hardware. Drawers by type: machine screws, wood screws, washers, nuts, inserts, misc.</li>
+    <li><strong>Cabinet 2</strong> — electronics. Passive components by value bands, then semiconductors, then modules.</li>
+    <li><strong>Cabinet 3</strong> — tools, adhesives, consumables, and the things that don't fit a category.</li>
+    <li><strong>Moving boxes</strong> — bulk and overflow, with their real location in the name (“Box A — loft”).</li>
+  </ul>
+  <p class="muted">The point isn't this exact layout. It's that each drawer answers one question, and you'd know where to look without the app's help — because then the app is a lookup rather than a lifeline.</p>
+</div>
+{% endblock %}

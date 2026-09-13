@@ -1,0 +1,75 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Community — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Community</h1>
+  <p class="muted">
+    This app can show you other workshops running it nearby, and let you ask to
+    connect to them. All of it is off until you turn it on, and turning it on shares
+    <strong>nothing but a rough area</strong> — no name, no inventory, no address.
+  </p>
+  <p class="muted">
+    Two separate things, deliberately: whether you appear on a map at all, and whether
+    a specific person you connect to can search your parts. Being findable never gives
+    anyone your inventory.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Where are you, roughly?</h2>
+  <p class="muted">
+    Type your postcode or ZIP code. What gets stored is the <strong>district</strong> —
+    the outward part of a UK postcode, or a US ZIP — never the full thing, because a
+    full UK postcode points at about fifteen houses. Even if you type the whole
+    postcode, only the district is kept.
+  </p>
+
+  {% if has_location %}
+    <p class="muted">
+      Currently set to a point at {{ profile.location_lat|floatformat:4 }}, {{ profile.location_lon|floatformat:4 }}
+      ({{ profile.get_location_source_display|default:"saved" }}).
+    </p>
+  {% endif %}
+
+  <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;max-width:560px;">
+    {% csrf_token %}
+    <label>Country<br>
+      <input name="country" maxlength="2" value="{{ site.country }}" placeholder="GB"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;width:90px;text-transform:uppercase;">
+    </label>
+    <label>Postcode or ZIP<br>
+      <input name="where" placeholder="SW1A 1AA or 90210"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;min-width:220px;">
+    </label>
+    <button class="btn secondary" type="submit" name="action" value="lookup">Find my district</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Appear on the map?</h2>
+  <form method="post" style="max-width:560px;">
+    {% csrf_token %}
+    <p>
+      <label>
+        <input type="checkbox" name="discoverable" value="1" {% if profile.discoverable %}checked{% endif %}>
+        <strong>Show my workshop as a pin on other people's maps</strong>
+      </label>
+      <br><span class="muted">Off by default. Anonymous unless you set a name below, and it needs a district saved above to have anywhere to put the pin. Turning it back off removes the pin.</span>
+    </p>
+    <p>
+      <label for="display_name"><strong>Name to show</strong> <span class="muted">(optional)</span></label><br>
+      <input id="display_name" name="display_name" maxlength="100" value="{{ profile.display_name }}"
+             placeholder="leave blank to stay anonymous"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <br><span class="muted">If you leave this blank, other people see a pin and nothing else until you've connected.</span>
+    </p>
+    <p><button class="btn" type="submit" name="action" value="save">Save and continue →</button></p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Worth knowing</h2>
+  <p class="muted">There is no central server. Your instance asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know — which is why connecting to one other person is enough to start seeing the map.</p>
+  <p class="muted">None of this works on a home network alone. To be found by anyone else, your instance has to be reachable from outside — the next step covers that.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "inventory/base.html" %}
+{% block title %}{% if setup_complete %}Settings{% else %}Set up{% endif %} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if setup_complete %}Settings{% else %}Welcome — let's get you set up{% endif %}</h1>
+  {% if setup_complete %}
+    <p class="muted">Everything here stays editable. Change your workshop's name, point the app at different hardware, or turn the community map on and off whenever you like.</p>
+  {% else %}
+    <p>This is a fresh install, so a few things need telling. It takes a couple of minutes, and every step except your account and your workshop's name can be skipped — nothing later depends on you having a printer or lights.</p>
+  {% endif %}
+</div>
+
+{% if outstanding and not setup_complete %}
+<div class="card" style="border-color:#7a6a2f;">
+  <h2>Still to do</h2>
+  <ul>
+    {% for step in outstanding %}
+      <li><a href="{% url step.url_name %}">{{ step.title }}</a> — {{ step.blurb }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>The steps</h2>
+  {% for step in steps %}
+    <p>
+      <strong><a href="{% url step.url_name %}">{{ step.title }}</a></strong>
+      {% if step.required %}<span class="muted">· not optional</span>{% endif %}
+      <br><span class="muted">{{ step.blurb }}</span>
+    </p>
+  {% endfor %}
+  <p>
+    <strong><a href="{% url 'inventory:setup_finish' %}">Done</a></strong>
+    <br><span class="muted">Marks setup finished. You can still change everything afterwards.</span>
+  </p>
+</div>
+
+<div class="card">
+  <h2>Other things worth knowing</h2>
+  <p><a href="{% url 'inventory:reference_manage' %}">Reference library</a> — <span class="muted">add, edit or remove the charts and pinouts the app keeps for you.</span></p>
+  <p><a href="{% url 'inventory:help_index' %}">Help</a> — <span class="muted">how the app is organised, and how to lay out a workshop so it stays findable.</span></p>
+  <p><a href="/admin/">Django admin</a> — <span class="muted">the raw database views, if you ever need them.</span></p>
+</div>
+{% endblock %}

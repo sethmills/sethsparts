@@ -1,0 +1,46 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>Both are optional, and both are expected to be missing</h2>
+  <p>This app runs perfectly well with no lights and no printer. Those features appear when you configure an address for them and stay hidden until you do — so nobody gets a button that only ever fails.</p>
+  <p class="muted">The app never touches hardware directly. It talks to a small service running on a Raspberry Pi next to the hardware, over your network. That's why the same app runs in a container, on a laptop, or on a Pi.</p>
+</div>
+
+<div class="card">
+  <h2>The LED “find the part” indicator</h2>
+  <p>A strip of addressable LEDs along each side of a cabinet. Ask the app where a part is, and the relevant drawer lights up.</p>
+  <p>Two pieces: the app stores <em>which LEDs belong to which drawer</em>, and the Pi stores <em>which strip is wired to which output</em>. The app can't know the second part — that's physical wiring you can see and it can't.</p>
+  <p>So when you press <em>find the part</em> and nothing lights:</p>
+  <ol>
+    <li>Does the connection test on the settings page pass? If not, the Pi or the address is the problem.</li>
+    <li>Does the drawer have an LED mapping? Without one there's nothing to light, and the app says so.</li>
+    <li>Is the strip named in the mapping present in the Pi's <code>strip_map.json</code>? That file maps a strip name to a physical channel.</li>
+  </ol>
+  <p class="muted">A drawer usually has two mappings — one per side of the cabinet — and both light together. Within a drawer, one strip shows the row and the other shows the column, so a bin's position reads across the two.</p>
+</div>
+
+<div class="card">
+  <h2>The label printer</h2>
+  <p>The app renders a label as an image and sends the finished bytes to a print bridge on the Pi, which relays them to the printer over USB. Nothing needs a driver on the machine running the app.</p>
+  <p>Pick your printer's language on the settings page. Zebra (ZPL) is what this was built and tested against; Brother QL, Dymo and a generic CUPS route are offered as well.</p>
+  <p class="muted">A printer that answers a health check but prints nothing is the common failure, which is why the test button actually sends a label rather than pinging it.</p>
+</div>
+
+<div class="card">
+  <h2>Matching labels to the stock you buy</h2>
+  <p>Label sizes are defined in <code>inventory/label_printing.py</code> as <code>LABEL_SIZES</code> — a name, a display label, and width and height in inches. The three defaults are the sizes this was built around.</p>
+  <p>Change that dictionary to match what you actually buy and every label in the app follows. The renderer assumes 203 dpi, which is what a GK420T and most desktop label printers use; a printer at a different density needs that number changed too.</p>
+</div>
+
+<div class="card">
+  <h2>Using it without the lights</h2>
+  <p>Everything else still works: search, browse, scanning, labels if you have a printer, projects, reorder. The “find the part” button simply isn't offered.</p>
+  <p class="muted">The barcode on the drawer is doing most of the work anyway — scanning it takes you to the same place the lights would have pointed at, and needs no wiring at all.</p>
+</div>
+{% endblock %}

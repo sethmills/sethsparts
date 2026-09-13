@@ -1,0 +1,47 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>Why the app keeps its own copies</h2>
+  <p>Datasheets for obscure parts disappear constantly. Small manufacturers redesign their websites, hobby shops close, forum attachments rot, and a product page that worked last year returns a 404 today.</p>
+  <p>A link is not a document. So when you give the app a link, it fetches a copy and keeps it, and <strong>the copy becomes what the app shows you</strong>. The original address stays alongside as provenance — you can still see where it came from, and you're never depending on it.</p>
+  <p class="muted">This applies to reference documents and to part attachments alike. Scanning a datasheet to a file still works and is often the better answer for something you care about.</p>
+</div>
+
+<div class="card">
+  <h2>What it won't archive</h2>
+  <p><strong>Repurchase links.</strong> Those are a live action, not a document — a saved copy of a product page would show a stale price, which is worse than no page at all.</p>
+  <p>It also won't pretend. If the source sits behind a login wall or blocks automated requests, the document stays a link and <em>says</em> the archive failed and why. You'll see “archive failed: the source returned HTTP 403” rather than a cached copy that quietly isn't there.</p>
+  <p class="muted">If you've already got a good copy, a later failed refresh will never throw it away.</p>
+</div>
+
+<div class="card">
+  <h2>Organising your library</h2>
+  <p>Categories are yours — rename them, add your own, reorder them, delete the ones you don't want. Nothing is baked in.</p>
+  <p>Some groupings that hold up:</p>
+  <ul>
+    <li><strong>By discipline</strong> — Electronics, 3D printing, Woodwork. Best when different people use the bench.</li>
+    <li><strong>By job</strong> — Pinouts, Wire and connectors, Consumables. Best when you're usually looking for a kind of answer rather than a subject.</li>
+    <li><strong>By machine</strong> — one shelf per printer or lathe. Best when a machine has its own particular reference material.</li>
+  </ul>
+  <p class="muted">A shelf with three things on it is worth having. Waiting for a category to fill up before creating it means the first three documents end up somewhere wrong.</p>
+</div>
+
+<div class="card">
+  <h2>Starting from scratch, or from a set</h2>
+  <p>Setup offers a starter set of 27 references — resistor colour codes, common pinouts, wire gauge charts, soldering guides, 3D printing troubleshooting. They're generic reference material rather than anyone's personal notes.</p>
+  <p>Take them, ignore them, or take them and delete two thirds. Loading the set is a one-off: it won't put back anything you've since removed.</p>
+  <p class="muted">The shipped set contains links only. Each install fetches its own copies of what it chooses to keep.</p>
+</div>
+
+<div class="card">
+  <h2>Bulk-fetching the copies</h2>
+  <p>After loading the starter set, nothing has a local copy yet. Use <em>Archive the next 5</em> on the setup page, or run <code>python manage.py archive_documents</code> to fetch the lot with a polite pause between requests.</p>
+  <p class="muted">Some will fail. That's expected and recorded — a dead link is information, not an error you have to fix.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>Part, stock row, quantity</h2>
+  <p>A <strong>part</strong> is the name. A <strong>stock row</strong> is a count of that part in one location. One part, many rows.</p>
+  <p>Edit a quantity on the part's page and only that row changes — the screws in the loft box stay where they are.</p>
+</div>
+
+<div class="card">
+  <h2>“10 aprox” and other honest numbers</h2>
+  <p>Importing a spreadsheet left some quantities unreadable — “10 aprox”, “~50”, “several bags”. Rather than throw those away, a stock row keeps the original text alongside an optional number.</p>
+  <p>So a row can be:</p>
+  <ul>
+    <li>A number, if you know it. “12”.</li>
+    <li>A number with the original wording kept beside it, if you parsed one out.</li>
+    <li>Just text, if you genuinely don't know. It shows as “unknown” and asks nothing of you.</li>
+  </ul>
+  <p class="muted">An approximate number you trust is more useful than an exact one you don't. Don't turn this into an audit.</p>
+</div>
+
+<div class="card">
+  <h2>Units</h2>
+  <p>Most parts count in <strong>each</strong> — nine resistors, four screws. That's the default and it renders as a bare number, so nothing looks different.</p>
+  <p>Some things aren't countable: wire, tubing, heat-shrink, filament, solder, glue. For those, set the part's <strong>unit</strong> to metres, feet, grams and so on, and every quantity for that part reads as “5 m” instead of a bare “5”.</p>
+  <p class="muted">The app never converts between units. Converting would silently rewrite numbers you counted by hand — “5 metres” becoming “500 centimetres” is a decision for you, not for software. Change the unit and you're saying what the number means, not doing arithmetic on it.</p>
+  <p class="muted">A single stock row can override the part's unit, because one shelf might hold a part counted individually while another holds it by length.</p>
+</div>
+
+<div class="card">
+  <h2>Reorder thresholds</h2>
+  <p>Set a <strong>minimum quantity</strong> on a part and the <a href="{% url 'inventory:reorder' %}">reorder page</a> lists it once your total across all locations drops below that. Filter by category when you're placing an order.</p>
+  <p class="muted">This is the difference between discovering you're out mid-project and knowing a week earlier.</p>
+</div>
+
+<div class="card">
+  <h2>Projects and builds</h2>
+  <p>A <strong>project</strong> has a bill of materials: the parts and how many of each it needs. Building it deducts those quantities from stock, oldest rows first, and records what it used.</p>
+  <p class="muted">The build page shows coverage — what you have against what you need — so a shortfall is visible before you start rather than halfway through.</p>
+</div>
+{% endblock %}

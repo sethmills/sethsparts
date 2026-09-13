@@ -1,0 +1,73 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Reaching it from outside — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Reaching it from outside</h1>
+  <p class="muted">
+    Entirely optional. Everything works on your home network without this — but if you
+    want to look up a part from your phone while you're out, or be reachable by other
+    workshops in the community map, you need an address the internet can get to.
+  </p>
+</div>
+
+<div class="card">
+  <h2>What this app is doing right now</h2>
+  <p class="muted">
+    Your browser asked for <code>{{ current_host }}</code>{% if secure %} over HTTPS{% else %} over plain HTTP{% endif %}.
+    {% if not secure %}
+      Behind a tunnel that's normally fine — Cloudflare terminates HTTPS at its edge and
+      forwards plain HTTP to a container that isn't exposed to the internet at all.
+    {% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>If you'd like your own address, using Cloudflare Tunnel</h2>
+  <p class="muted">This is the route this app was built around. It gives you a real domain with a valid certificate, and <strong>no open ports on your router</strong> — the tunnel makes outbound connections, so nothing on the internet can reach in directly.</p>
+  <ol>
+    <li>Put your domain on Cloudflare (free plan is fine) so Cloudflare manages its DNS.</li>
+    <li>In the Cloudflare dashboard: <strong>Zero Trust → Networks → Tunnels → Create a tunnel</strong>. Choose the <strong>Docker</strong> connector and name it, e.g. <code>parts</code>.</li>
+    <li>Copy the tunnel token it gives you.</li>
+    <li>Under the tunnel's <strong>Public Hostname</strong> tab, add your domain, and point it at <code>http://sethsparts:3200</code> — that's the app container's name and port inside Docker. (If you renamed the service in <code>docker-compose.yml</code>, use that name.)</li>
+    <li>Put the token in your <code>.env</code> file as <code>TUNNEL_TOKEN=…</code>, next to the other secrets.</li>
+    <li>Run <code>docker compose up -d</code> — that starts a <code>cloudflared</code> container alongside the app, which is already configured in <code>docker-compose.yml</code>.</li>
+    <li>Set <code>DJANGO_ALLOWED_HOSTS</code> in <code>.env</code> to your domain, e.g. <code>parts.example.com</code>. Django refuses requests claiming a host it doesn't recognise, and this is that setting.</li>
+  </ol>
+  <p class="muted">Then paste the address below and check it.</p>
+</div>
+
+<div class="card">
+  <h2>Your address</h2>
+  <form method="post" style="max-width:560px;">
+    {% csrf_token %}
+    <p>
+      <label for="public_url"><strong>Where you reach this app</strong></label><br>
+      <input id="public_url" name="public_url" value="{{ site.public_url }}" placeholder="https://parts.example.com"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <br><span class="muted">Paste the address from your tunnel or reverse proxy. Only used to check that it works — nothing else depends on it.</span>
+    </p>
+    <p>
+      <button class="btn" type="submit" name="action" value="save">Save and finish →</button>
+      <button class="btn secondary" type="submit" name="action" value="check">Save and check it's reachable</button>
+    </p>
+  </form>
+  <p class="muted" style="margin-top:10px;">
+    The check fetches that address from this machine, so it sees what anyone else
+    would. A redirect to the login page means it's working.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Not using Cloudflare?</h2>
+  <p class="muted">
+    Any reverse proxy that terminates HTTPS and forwards to the app will do — nginx,
+    Caddy, Traefik, a Tailscale funnel. Two things matter: forward the
+    <code>X-Forwarded-Proto</code> header, which the app already expects, and set
+    <code>DJANGO_ALLOWED_HOSTS</code> to your domain.
+  </p>
+  <p class="muted">
+    If you only ever use this at home, skip all of it. The community map won't work
+    until your instance is reachable, and nothing else cares.
+  </p>
+</div>
+{% endblock %}

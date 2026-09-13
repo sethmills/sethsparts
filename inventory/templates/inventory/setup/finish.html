@@ -1,0 +1,29 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Done — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>That's everything</h1>
+  {% if outstanding %}
+    <p class="muted">Still outstanding (and fine to leave, you can come back):</p>
+    <ul>
+      {% for step in outstanding %}<li><a href="{% url step.url_name %}">{{ step.title }}</a></li>{% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Nothing outstanding. Marking this done just stops the app nudging you — it doesn't lock anything.</p>
+  {% endif %}
+
+  <form method="post" style="margin-top:14px;">
+    {% csrf_token %}
+    <button class="btn" type="submit">Finish and start using it →</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Where things live afterwards</h2>
+  <p class="muted">All of these stay available — nothing here is one-shot:</p>
+  <p><a href="{% url 'inventory:setup_hub' %}">Settings</a> — <span class="muted">this whole set of pages again, any time.</span></p>
+  <p><a href="{% url 'inventory:help_index' %}">Help</a> — <span class="muted">how the app is organised and how to lay out a workshop.</span></p>
+  <p><a href="{% url 'inventory:reference_manage' %}">Reference library</a> — <span class="muted">your charts and pinouts.</span></p>
+  <p><a href="{% url 'inventory:browse' %}">Browse</a> — <span class="muted">where you'll spend most of your time.</span></p>
+</div>
+{% endblock %}

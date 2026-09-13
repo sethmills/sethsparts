@@ -3,7 +3,7 @@ import secrets
 from django.db import models
 
 from .community import generate_keypair
-from .units import DEFAULT_UNIT, STOCK_UNIT_CHOICES, UNIT_SYSTEMS, format_quantity
+from .units import DEFAULT_UNIT, STOCK_UNIT_CHOICES, UNIT_SYSTEMS, format_quantity, symbol as unit_symbol
 
 
 class Location(models.Model):
@@ -503,6 +503,29 @@ class StockItem(models.Model):
         """The quantity with its unit, e.g. '5 m'. Plain counts render as just '5'."""
         return format_quantity(self.quantity, self.effective_unit)
 
+    @property
+    def quantity_label(self) -> str:
+        """What to show for this row in a list.
+
+        Preserves the display that was already there — including the original
+        spreadsheet text for rows whose quantity was never parsed into a number — and
+        only appends a unit when there is a real one. Every row in production is
+        'each', so in practice this renders exactly as it always did.
+        """
+        base = self.quantity_raw or (str(self.quantity) if self.quantity is not None else "unknown")
+        sym = unit_symbol(self.effective_unit)
+        return f"{base} {sym}".strip() if sym else base
+
+    @property
+    def quantity_spoken(self) -> str:
+        """For the voice API. Keeps that endpoint's existing wording exactly —
+        including "unknown qty", which reads better aloud than "unknown" — and
+        appends the unit only when there is one.
+        """
+        base = self.quantity_raw or (str(self.quantity) if self.quantity is not None else "unknown qty")
+        sym = unit_symbol(self.effective_unit)
+        return f"{base} {sym}".strip() if sym else base
+
     def __str__(self):
         where = self.drawer or self.container
         return f"{self.part.name} x{self.quantity_raw or self.quantity} @ {where}"
@@ -751,7 +774,9 @@ class CommunityProfile(models.Model):
         max_length=100, blank=True,
         help_text="Optional. The map shows anonymous pins, so this is not published by default.",
     )
-    country = models.CharField(max_length=2, blank=True, help_text="ISO 3166-1 alpha-2, e.g. GB")
+    # Note there is no country field here. Which country the owner is in is a fact
+    # about the install, so it lives on SiteSettings; duplicating it here would mean
+    # two places to update and one of them eventually going stale.
     location_lat = models.FloatField(null=True, blank=True)
     location_lon = models.FloatField(null=True, blank=True)
     location_source = models.CharField(max_length=20, choices=SOURCE_CHOICES, blank=True)
@@ -839,6 +864,25 @@ class SiteSettings(models.Model):
     )
     label_printer_key = models.CharField(
         max_length=200, blank=True, help_text="Shared secret for the print bridge, if it needs one."
+    )
+    label_driver = models.CharField(
+        max_length=20,
+        default="zpl",
+        choices=[
+            ("zpl", "Zebra / ZPL"),
+            ("brother_ql", "Brother QL"),
+            ("dymo", "Dymo LabelWriter"),
+            ("cups", "Any printer via CUPS"),
+        ],
+        help_text="Which printer language the label renderer should produce.",
+    )
+    public_url = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text=(
+            "The address you reach this app at, e.g. https://parts.example.com. Pasted "
+            "from your tunnel or reverse proxy. Only used to check that it works."
+        ),
     )
 
     # Set the first time the starter reference set is loaded. The loader is one-shot

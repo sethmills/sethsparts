@@ -1,0 +1,96 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Lights — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Lights</h1>
+  <p class="muted">If you've built the LED “find the part” indicator, this is where the app learns to reach it. The LEDs live on a Raspberry Pi running the controller in <code>led-controller/</code>; the app talks to it over HTTP and never touches the hardware directly, which is why this app runs fine on a laptop with no lights at all.</p>
+  {% if not configured %}
+    <p class="muted">No controller configured. If you don't have one, skip this — nothing else depends on it.</p>
+  {% elif source == 'environment' %}
+    <p class="muted">Currently set by an environment variable. Anything you save here takes precedence from now on.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>The controller</h2>
+  <form method="post" style="max-width:560px;">
+    {% csrf_token %}
+    <p>
+      <label for="led_controller_url"><strong>Address</strong></label><br>
+      <input id="led_controller_url" name="led_controller_url" value="{{ site.led_controller_url }}"
+             placeholder="http://192.168.1.50:8080"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <br><span class="muted">Just the host and port is fine — “http://” gets added for you.</span>
+    </p>
+    <p>
+      <label for="led_controller_key"><strong>Shared secret</strong> <span class="muted">(if it needs one)</span></label><br>
+      <input id="led_controller_key" name="led_controller_key" value="{{ site.led_controller_key }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+    </p>
+    <p>
+      <button class="btn" type="submit" name="action" value="save">Save</button>
+      <button class="btn secondary" type="submit" name="action" value="test">Save and test the connection</button>
+    </p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Which LEDs are on which drawer</h2>
+  <p class="muted">
+    The app can light LEDs, but it can't know which physical strip is wired to which
+    channel — that part lives on the Pi. What it stores here is: for this drawer, on
+    this named strip, the LEDs from this index onwards.
+  </p>
+
+  {% if mappings %}
+    <table style="width:100%;border-collapse:collapse;">
+      {% for m in mappings %}
+        <tr style="border-top:1px solid #2c303a;">
+          <td style="padding:6px 0;">{{ m.drawer }}</td>
+          <td><code>{{ m.led_strip }}</code></td>
+          <td class="muted">LEDs {{ m.led_start_index }}–{{ m.led_start_index|add:m.led_count }}</td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;">{% csrf_token %}
+              <input type="hidden" name="mapping" value="{{ m.pk }}">
+              <button class="btn secondary" type="submit" name="action" value="delete_mapping">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <form method="post" style="margin-top:12px;">{% csrf_token %}
+      <button class="btn secondary" type="submit" name="action" value="clear_mappings"
+              onclick="return confirm('Remove every LED mapping?')">Clear all mappings</button>
+    </form>
+  {% else %}
+    <p class="muted">No mappings yet. Without these, “find the part” has nothing to light.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Add a mapping</h2>
+  <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+    {% csrf_token %}
+    <label>Drawer<br>
+      <select name="drawer" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;min-width:200px;">
+        {% for d in drawers %}<option value="{{ d.pk }}">{{ d }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Strip name<br>
+      <input name="led_strip" placeholder="cabinet1-left" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;">
+    </label>
+    <label>First LED<br>
+      <input name="led_start_index" inputmode="numeric" placeholder="0" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;width:100px;">
+    </label>
+    <label>How many<br>
+      <input name="led_count" inputmode="numeric" value="1" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;width:100px;">
+    </label>
+    <button class="btn" type="submit" name="action" value="add_mapping">Add</button>
+  </form>
+  <p class="muted" style="margin-top:10px;">
+    A drawer usually has two mappings — one per side of the cabinet — and they light
+    together. Light-testing individual strips is on the
+    <a href="{% url 'inventory:light_controls' %}">light controls</a> page.
+  </p>
+</div>
+{% endblock %}

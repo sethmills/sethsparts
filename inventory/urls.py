@@ -46,6 +46,20 @@ urlpatterns = [
     path("enrichment/worklist.json", views.export_enrichment_worklist, name="export_enrichment_worklist"),
     path("enrichment/import/", views.import_enrichment_results, name="import_enrichment_results"),
     path("export/", views.export_inventory, name="export_inventory"),
+    # Setup and settings are the same pages, deliberately — see inventory/wizard.py.
+    # Every one stays reachable after setup, because "change my workshop's name" should
+    # not need a rebuild or a trip into /admin/.
+    path("setup/", views.setup_hub, name="setup_hub"),
+    path("setup/account/", views.setup_account, name="setup_account"),
+    path("setup/site/", views.setup_site, name="setup_site"),
+    path("setup/lights/", views.setup_lights, name="setup_lights"),
+    path("setup/printer/", views.setup_printer, name="setup_printer"),
+    path("setup/reference/", views.setup_reference, name="setup_reference"),
+    path("setup/community/", views.setup_community, name="setup_community"),
+    path("setup/access/", views.setup_access, name="setup_access"),
+    path("setup/finish/", views.setup_finish, name="setup_finish"),
+    path("help/", views.help_index, name="help_index"),
+    path("help/<slug:slug>/", views.help_topic, name="help_topic"),
     path("reference/", views.reference_list, name="reference_list"),
     # The library is the owner's to arrange, so it gets real editing pages rather than
     # living only in /admin/.

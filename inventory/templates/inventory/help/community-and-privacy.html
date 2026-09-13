@@ -1,0 +1,47 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>The three separate things</h2>
+  <p>They sound like one feature and are deliberately three, because collapsing them is how a privacy model breaks:</p>
+  <ol>
+    <li><strong>Appearing on the map.</strong> Off by default. A pin at district level, with no name unless you set one.</li>
+    <li><strong>Exchanging map pins</strong> with a workshop you've connected to. On by default for the one connection every install starts with. This never gives anyone your inventory.</li>
+    <li><strong>Being searchable.</strong> Off until you turn it on for one specific person, and even then only for the categories you tick.</li>
+  </ol>
+  <p class="muted">Connecting with someone for the map can never hand them your parts. If that ever stops being true, it's a bug.</p>
+</div>
+
+<div class="card">
+  <h2>What your location actually is</h2>
+  <p>A <strong>district</strong> — the outward part of a UK postcode like <code>SW1A</code>, or a US ZIP. Never a full postcode, never a street, never a point you're standing in.</p>
+  <p>This matters more than it sounds: a full UK postcode identifies roughly fifteen households, so publishing one publishes a doorstep. Even if you type your full postcode, the app reduces it to the district before storing anything.</p>
+  <p class="muted">There's no rounding or fuzzing step, because there's nothing to fuzz — the district is what comes back from the lookup.</p>
+</div>
+
+<div class="card">
+  <h2>There is no central server</h2>
+  <p>Nothing about the community feature lives on a server anyone runs on your behalf. When you look at the map, your instance asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know.</p>
+  <p>That's why one connection is enough to start seeing a map, and why connecting to any other workshop keeps it working if one goes away.</p>
+  <p class="muted">Every install starts connected to the app's maintainer, so a brand-new instance has somewhere to ask. That connection is pins only, and you can remove it.</p>
+</div>
+
+<div class="card">
+  <h2>Turning it off, properly off</h2>
+  <p>Untick <em>show my workshop as a pin</em> and the pin goes. What gets published afterwards is a signed “I'm gone” note, which every instance that sees it deletes rather than keeps — so an opt-out genuinely removes the data rather than hiding it.</p>
+  <p>Revoke a connection and it stops being asked anything, immediately.</p>
+  <p class="muted">This is the reason the app signs entries instead of using a blockchain. An append-only ledger cannot honour “delete my data” — the entry would survive on every node forever, which is the opposite of what an opt-out has to mean.</p>
+</div>
+
+<div class="card">
+  <h2>What other people can see</h2>
+  <p>On the map, before you're connected: an anonymous pin. Nothing else.</p>
+  <p>After you connect: whatever you've chosen to share — your workshop's display name, if you set one, and the categories you've ticked for that person.</p>
+  <p class="muted">Every search a connected workshop makes against your inventory is logged, and you can read that log. So “they can only search what I shared” is something you can check rather than something you have to take on trust.</p>
+</div>
+{% endblock %}

@@ -82,10 +82,7 @@ def api_locate_part(request):
                 "name": part.name,
                 "manufacturer": part.manufacturer,
                 "locations": locations,
-                "quantity_summary": ", ".join(
-                    si.quantity_raw or (str(si.quantity) if si.quantity is not None else "unknown qty")
-                    for si in part.stock_items.all()
-                ),
+                "quantity_summary": ", ".join(si.quantity_spoken for si in part.stock_items.all()),
             }
         )
 

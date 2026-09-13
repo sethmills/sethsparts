@@ -1,0 +1,48 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Reference library — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Reference library</h1>
+  <p class="muted">Charts, pinouts and guides, kept inside the app so they're still there when the page they came from isn't. Entirely optional, and entirely yours afterwards — edit it, add to it, or empty it out.</p>
+  <p class="muted">Currently: {{ doc_count }} reference{{ doc_count|pluralize }}{% if missing %}, of which {{ missing }} have no local copy yet{% endif %}.</p>
+</div>
+
+<div class="card">
+  <h2>Start with a set</h2>
+  {% if already_loaded %}
+    <p class="muted">You've already loaded the starter set once. Loading it again would put back anything you've since deleted, so it won't — use <code>manage.py load_starter_reference --force</code> if you genuinely want that.</p>
+  {% else %}
+    <p>A set of 27 references — resistor colour codes, common pinouts, wire gauge charts, soldering guides, 3D printing troubleshooting. Generic reference material rather than anyone's personal notes, and deletable one by one.</p>
+    <form method="post">{% csrf_token %}
+      <button class="btn" type="submit" name="action" value="load">Load the starter set</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Keep local copies</h2>
+  <p class="muted">
+    The starter set arrives as <strong>links only</strong>. Datasheets and product pages
+    disappear off the internet constantly, so the app can fetch each one and keep its
+    own copy, then serve that instead of the link. The original address is kept
+    alongside as provenance.
+  </p>
+  {% if missing %}
+    <form method="post">{% csrf_token %}
+      <button class="btn" type="submit" name="action" value="archive">Archive the next 5</button>
+    </form>
+    <p class="muted" style="margin-top:10px;">
+      Press it repeatedly, or run <code>python manage.py archive_documents</code> to do
+      the lot with a polite pause between requests. Failures are recorded against each
+      document — a link behind a login wall stays as a link, and says so.
+    </p>
+  {% else %}
+    <p class="muted">Nothing outstanding.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Once you're set up</h2>
+  <p class="muted"><a href="{% url 'inventory:reference_manage' %}">Manage references</a> is where you add, edit, reorder and remove them, and create your own categories.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Name and place — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Name and place</h1>
+  <p class="muted">Three things this app was previously hardcoded to somebody else's answers about.</p>
+
+  <form method="post" style="max-width:560px;">
+    {% csrf_token %}
+    <p>
+      <label for="site_name"><strong>What's your workshop called?</strong></label><br>
+      <input id="site_name" name="site_name" required value="{{ site.site_name }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <br><span class="muted">Shown in the header, every page title and the admin. “Eric's Parts”, “The Shed”, whatever you'd call it.</span>
+    </p>
+
+    <p>
+      <label for="timezone"><strong>Which timezone are you in?</strong></label><br>
+      <select id="timezone" name="timezone" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+        {% for zone in timezones %}
+          <option value="{{ zone }}" {% if zone == site.timezone %}selected{% endif %}>{{ zone }}</option>
+        {% endfor %}
+      </select>
+      <br><span class="muted">Every timestamp in the app displays in this zone. Set it wrong and everything looks like it happened at the wrong time of day.</span>
+    </p>
+
+    <p>
+      <label for="country"><strong>Country</strong></label><br>
+      <input id="country" name="country" maxlength="2" value="{{ site.country }}" placeholder="GB"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:110px;text-transform:uppercase;">
+      <br><span class="muted">Two letters, ISO style — GB, US, DE. Used later to know whether you type postcodes or ZIP codes.</span>
+    </p>
+
+    <p>
+      <label for="unit_system"><strong>Units</strong></label><br>
+      <select id="unit_system" name="unit_system" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+        <option value="metric" {% if site.unit_system == 'metric' %}selected{% endif %}>Metric — metres, grams</option>
+        <option value="imperial" {% if site.unit_system == 'imperial' %}selected{% endif %}>Imperial — feet, ounces</option>
+      </select>
+      <br><span class="muted">Only decides which units are offered first. Every unit stays available either way, because a UK workshop stocked from US suppliers genuinely has both.</span>
+    </p>
+
+    <p><button class="btn" type="submit">Save and continue →</button></p>
+  </form>
+</div>
+{% endblock %}

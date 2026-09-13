@@ -1,0 +1,57 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Labels — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Labels</h1>
+  <p class="muted">The app renders labels itself and sends the finished bytes to a small print bridge running on a Raspberry Pi next to your printer. It never needs a printer driver on the machine running the app, which is how it works from a container or a laptop.</p>
+  {% if not configured %}
+    <p class="muted">No printer configured. If you don't have one, skip this — labels are the only thing that needs it.</p>
+  {% elif source == 'environment' %}
+    <p class="muted">Currently set by an environment variable. Anything you save here takes precedence from now on.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>The print bridge</h2>
+  <form method="post" style="max-width:560px;">
+    {% csrf_token %}
+    <p>
+      <label for="label_printer_url"><strong>Address of the print bridge</strong></label><br>
+      <input id="label_printer_url" name="label_printer_url" value="{{ site.label_printer_url }}"
+             placeholder="http://192.168.1.50:9100"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <br><span class="muted">The bridge's address, not the printer's — the bridge relays to the printer over USB.</span>
+    </p>
+    <p>
+      <label for="label_printer_key"><strong>Shared secret</strong> <span class="muted">(if it needs one)</span></label><br>
+      <input id="label_printer_key" name="label_printer_key" value="{{ site.label_printer_key }}"
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+    </p>
+    <p>
+      <label for="label_driver"><strong>What kind of printer is it?</strong></label><br>
+      <select id="label_driver" name="label_driver" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+        <option value="zpl" {% if site.label_driver == 'zpl' %}selected{% endif %}>Zebra / ZPL (GK420T and similar)</option>
+        <option value="brother_ql" {% if site.label_driver == 'brother_ql' %}selected{% endif %}>Brother QL series</option>
+        <option value="dymo" {% if site.label_driver == 'dymo' %}selected{% endif %}>Dymo LabelWriter</option>
+        <option value="cups" {% if site.label_driver == 'cups' %}selected{% endif %}>Any printer, via CUPS</option>
+      </select>
+      <br><span class="muted">This decides what language the label renderer produces. Zebra is the one this was built against.</span>
+    </p>
+    <p>
+      <button class="btn" type="submit" name="action" value="save">Save</button>
+      <button class="btn secondary" type="submit" name="action" value="test">Save and print a test label</button>
+    </p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Label stock sizes</h2>
+  <p class="muted">
+    Sizes are defined in <code>inventory/label_printing.py</code> as
+    <code>LABEL_SIZES</code> — height, width and how dense the printer is. The
+    defaults match the three sizes this was built around; edit that dictionary to
+    match the stock you actually buy, and every label in the app follows.
+  </p>
+  <p class="muted">If your printer is a different resolution, its dots-per-inch matters: the renderer is set for 203 dpi, which is what a GK420T and most desktop label printers use.</p>
+</div>
+{% endblock %}

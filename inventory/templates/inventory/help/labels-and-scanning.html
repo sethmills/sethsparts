@@ -1,0 +1,38 @@
+{% extends "inventory/base.html" %}
+{% block title %}{{ topic.title }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="{% url 'inventory:help_index' %}">← All help</a></p>
+  <h1>{{ topic.title }}</h1>
+</div>
+
+<div class="card">
+  <h2>Why scanning beats searching</h2>
+  <p>Searching needs you to remember a name and spell it the way you did last time. Scanning needs you to be holding the thing.</p>
+  <p>Every container, drawer and bin can carry a barcode. Scan one and you go straight to it — what's inside, what's in each bin, and what to add. This is the fastest path to an answer once the barcodes are on.</p>
+</div>
+
+<div class="card">
+  <h2>Printing labels</h2>
+  <p>Labels are drawn by the app and sent to the print bridge described under <em>Lights and the label printer</em>. There are three sizes defined by default — a general 4″×2″, a tote 2″×1″ and a small 1″×0.5″ barcode label.</p>
+  <p>A label can carry free text, a barcode, or both, at whatever size and weight you like. The custom label page shows a preview before you commit it to paper.</p>
+  <p class="muted"><strong>Put the barcode on before the thing goes in the drawer.</strong> Barcoding afterwards means taking it all out again.</p>
+</div>
+
+<div class="card">
+  <h2>Barcoding a cabinet of drawers</h2>
+  <p>The <a href="{% url 'inventory:bin_setup' %}">bin barcodes</a> page walks the whole cabinet one bin at a time, so you print as you go rather than trying to plan a sheet of labels up front. It remembers where you got to.</p>
+  <p class="muted">If a code is already in use elsewhere, the app tells you where, and refuses to silently reassign it — a barcode pointing at two places is worse than no barcode.</p>
+</div>
+
+<div class="card">
+  <h2>The scan box</h2>
+  <p>Paste or type a code into the scan page and it resolves it: a container takes you to that container, a drawer to that drawer, a bin to its position within the drawer, and a part code to that part.</p>
+  <p class="muted">Unknown codes say so plainly rather than guessing at a near match.</p>
+</div>
+
+<div class="card">
+  <h2>A phone works too</h2>
+  <p>Nothing here needs special hardware. A phone camera and a barcode app, or a cheap USB scanner, both feed the same box.</p>
+</div>
+{% endblock %}
