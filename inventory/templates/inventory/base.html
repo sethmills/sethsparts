@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Seth's Parts{% endblock %}</title>
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'inventory/favicon.svg' %}">
   <link rel="stylesheet" href="{% static 'inventory/style.css' %}">
   {% block extra_head %}{% endblock %}
@@ -19,7 +19,7 @@
         <line x1="6" y1="12.75" x2="9" y2="12.75" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         <line x1="6" y1="19.25" x2="9" y2="19.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
-      Seth's Parts
+      {{ site_name }}
     </a>
     <button type="button" class="btn secondary pi-only" onclick="history.back()" title="Go back">← Back</button>
     <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse">🏠 Home</a>

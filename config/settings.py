@@ -57,6 +57,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Renders every timestamp in the owner's configured timezone, and points a
+    # browser at the setup wizard while setup is still outstanding. Both need to run
+    # before anything renders, so they sit above the session/auth layers.
+    'inventory.middleware.SiteTimezoneMiddleware',
+    'inventory.middleware.SetupRedirectMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,6 +82,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Site name and which optional hardware this install has, so
+                # templates can hide what isn't configured instead of offering
+                # buttons that fail.
+                'inventory.context_processors.site_context',
             ],
         },
     },
@@ -173,7 +182,7 @@ LABEL_PRINTER_KEY = os.environ.get("LABEL_PRINTER_KEY", "")
 # on every boot (device-pairing style) without ever storing or typing Seth's account
 # password anywhere. Empty means the endpoint always rejects.
 KIOSK_AUTOLOGIN_TOKEN = os.environ.get("KIOSK_AUTOLOGIN_TOKEN", "")
-KIOSK_AUTOLOGIN_USERNAME = os.environ.get("KIOSK_AUTOLOGIN_USERNAME", "seth")
+KIOSK_AUTOLOGIN_USERNAME = os.environ.get("KIOSK_AUTOLOGIN_USERNAME", "")
 
 
 # Email

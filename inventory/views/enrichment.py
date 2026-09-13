@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
+from ..site_config import site_name
 from ..models import (
     Part,
     ReferenceDoc,
@@ -130,7 +131,7 @@ def export_inventory(request):
                     zf.write(file_path, arcname=str(Path("media") / file_path.relative_to(media_root)))
 
         readme = (
-            "Seth's Parts export\n"
+            f"{site_name()} export\n"
             "=====================\n"
             "To restore: drop db.sqlite3 into a fresh checkout of the tor-inventory project\n"
             "(replacing its empty one) and copy media/ alongside it, then run migrate as normal.\n"

@@ -32,7 +32,7 @@ GENERIC_SKIP_KEYWORDS = [
 class Command(BaseCommand):
     help = (
         "Classify every not-yet-enriched Part into: pending (autonomous research candidate), "
-        "needs_clarification (ambiguous label — needs Seth to disambiguate), or leaves it "
+        "needs_clarification (ambiguous label — needs a human to disambiguate), or leaves it "
         "not_needed (generic bulk hardware)."
     )
 
@@ -65,7 +65,7 @@ class Command(BaseCommand):
                 left_alone.append(part)
 
         self.stdout.write(f"pending (autonomous research): {len(pending)}")
-        self.stdout.write(f"needs_clarification (ask Seth): {len(needs_clarification)}")
+        self.stdout.write(f"needs_clarification: {len(needs_clarification)}")
         self.stdout.write(f"left alone (generic, no action): {len(left_alone)}")
 
         if not dry_run:
@@ -82,7 +82,7 @@ class Command(BaseCommand):
         output_path = options.get("output")
         if output_path:
             with open(output_path, "w", encoding="utf-8") as f:
-                f.write("Parts needing Seth's clarification before enrichment can help\n")
+                f.write("Parts needing clarification before enrichment can help\n")
                 f.write("=" * 60 + "\n\n")
                 for part in sorted(needs_clarification, key=lambda p: p.name):
                     f.write(f"[{part.id}] {part.name}\n")

@@ -101,7 +101,16 @@ class JumpToContainerTests(TestCase):
 
 
 class LoginWallTests(TestCase):
-    """Anonymous access must never reach inventory data."""
+    """Anonymous access must never reach inventory data.
+
+    An account has to exist for this to describe anything real: the wall being tested
+    is "log in to see this", which presumes there is something to log in with. On a
+    genuinely virgin install — no account at all — the app sends you to the setup
+    wizard instead, which is a different behaviour tested alongside the wizard.
+    """
+
+    def setUp(self):
+        self.user = make_user()
 
     def test_scan_resolver_requires_login(self):
         resp = self.client.get(reverse("inventory:go"), {"code": "C38"})

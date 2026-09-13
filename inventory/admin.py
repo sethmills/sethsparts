@@ -321,4 +321,6 @@ class PeerSearchLogAdmin(admin.ModelAdmin):
         return False
 
 
-admin.site.site_header = "Seth's Parts"
+# The admin's header is no longer set here. It comes from SiteSettings via
+# inventory.site_config.apply_site_branding(), called in InventoryConfig.ready() and
+# again whenever the name changes — so a clone shows its owner's name, not Seth's.

@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from inventory.models import ReferenceDoc
 
-USER_AGENT = "Mozilla/5.0 (compatible; SethsParts/1.0; personal workshop reference library)"
+USER_AGENT = "Mozilla/5.0 (compatible; WorkshopParts/1.0; personal workshop reference library)"
 
 
 class Command(BaseCommand):

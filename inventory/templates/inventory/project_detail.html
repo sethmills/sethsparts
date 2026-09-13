@@ -1,5 +1,5 @@
 {% extends "inventory/base.html" %}
-{% block title %}{{ project.name }} — Seth's Parts{% endblock %}
+{% block title %}{{ project.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <div class="card">
   <h1>{{ project.name }} <span class="pill">{{ project.get_status_display }}</span></h1>

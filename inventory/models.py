@@ -3,6 +3,7 @@ import secrets
 from django.db import models
 
 from .community import generate_keypair
+from .units import DEFAULT_UNIT, STOCK_UNIT_CHOICES, UNIT_SYSTEMS, format_quantity
 
 
 class Location(models.Model):
@@ -93,7 +94,7 @@ class Part(models.Model):
     ENRICHMENT_CHOICES = [
         (ENRICHMENT_NOT_NEEDED, "Not needed"),
         (ENRICHMENT_PENDING, "Pending"),
-        (ENRICHMENT_NEEDS_CLARIFICATION, "Needs clarification (ask Seth)"),
+        (ENRICHMENT_NEEDS_CLARIFICATION, "Needs clarification"),
         (ENRICHMENT_NEEDS_REVIEW, "Needs review"),
         (ENRICHMENT_DONE, "Done"),
     ]
@@ -102,6 +103,15 @@ class Part(models.Model):
     normalized_name = models.CharField(max_length=300, db_index=True, editable=False)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="parts")
     is_electronic = models.BooleanField(default=False)
+    default_unit = models.CharField(
+        max_length=8,
+        choices=STOCK_UNIT_CHOICES,
+        default=DEFAULT_UNIT,
+        help_text=(
+            "What this part's quantities count. Leave as 'each' for countable parts; "
+            "set metres, grams and so on for wire, tubing, filament and solder."
+        ),
+    )
     manufacturer = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
     min_quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Reorder threshold (Phase 5)")
@@ -359,6 +369,16 @@ class StockItem(models.Model):
     drawer = models.ForeignKey(Drawer, null=True, blank=True, on_delete=models.CASCADE, related_name="stock_items")
     quantity = models.IntegerField(null=True, blank=True)
     quantity_raw = models.CharField(max_length=50, blank=True, help_text="Original spreadsheet value, e.g. '10 aprox'")
+    unit = models.CharField(
+        max_length=8,
+        choices=STOCK_UNIT_CHOICES,
+        blank=True,
+        default="",
+        help_text=(
+            "Overrides the part's unit for just this location. Blank means use the part's, "
+            "which is what every pre-existing row gets — so old data reads exactly as before."
+        ),
+    )
     source_notes = models.CharField(max_length=300, blank=True, help_text="Non-drawer freeform notes from the spreadsheet")
     bin_number = models.PositiveSmallIntegerField(
         null=True, blank=True,
@@ -381,6 +401,21 @@ class StockItem(models.Model):
         if self.bin_number is None:
             return None
         return ((self.bin_number - 1) % 4) + 1
+
+    @property
+    def effective_unit(self) -> str:
+        """This row's unit: its own if set, otherwise the part's, otherwise 'each'.
+
+        Blank means inherit, which is deliberately what the migration leaves on
+        every existing row — so nothing that was counted as a plain number starts
+        claiming to be metres.
+        """
+        return self.unit or (self.part.default_unit if self.part_id else "") or DEFAULT_UNIT
+
+    @property
+    def quantity_display(self) -> str:
+        """The quantity with its unit, e.g. '5 m'. Plain counts render as just '5'."""
+        return format_quantity(self.quantity, self.effective_unit)
 
     def __str__(self):
         where = self.drawer or self.container
@@ -655,3 +690,75 @@ class CommunityProfile(models.Model):
     def can_publish(self) -> bool:
         """Both halves are required before a pin may go out, and both are opt-ins."""
         return self.discoverable and self.has_location
+
+
+class SiteSettings(models.Model):
+    """Singleton: what this instance is called and how it behaves.
+
+    Every field here is one that used to be hardcoded to Seth's own setup — the app
+    name in thirty templates, Europe/London, and 'each' as the only unit a quantity
+    could be. A clone would have shown someone else's name and timestamps in the
+    wrong timezone, which is exactly why this is a row in the database rather than a
+    constant in settings.py: these are the *owner's* answers, not the developer's.
+
+    `setup_completed_at` is the switch the setup wizard hangs off. Null means the
+    instance has not been set up, which is what sends a browser to the wizard.
+    """
+
+    site_name = models.CharField(
+        max_length=60,
+        default="My Parts",
+        help_text="Shown in the header, every page title, and the admin.",
+    )
+    timezone = models.CharField(
+        max_length=64,
+        default="UTC",
+        help_text=(
+            "IANA name, e.g. Europe/London or America/New_York. Every timestamp displays "
+            "in this zone — set it to where the workshop actually is."
+        ),
+    )
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        help_text=(
+            "ISO 3166-1 alpha-2, e.g. GB or US. Decides whether postcodes or ZIP codes "
+            "are expected when finding nearby workshops."
+        ),
+    )
+    unit_system = models.CharField(
+        max_length=10,
+        choices=UNIT_SYSTEMS,
+        default="metric",
+        help_text="Which units are offered first. Every unit stays selectable either way.",
+    )
+    setup_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the setup wizard finished. Null means setup is still outstanding.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "site settings"
+        verbose_name_plural = "site settings"
+
+    def __str__(self):
+        return self.site_name
+
+    @classmethod
+    def load(cls):
+        obj = cls.objects.first()
+        return obj if obj is not None else cls.objects.create()
+
+    @property
+    def setup_complete(self) -> bool:
+        return self.setup_completed_at is not None
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Keep the admin header in step with a rename. The alternative is the admin
+        # still showing the old name until the process happens to restart.
+        from .site_config import apply_site_branding
+
+        apply_site_branding()

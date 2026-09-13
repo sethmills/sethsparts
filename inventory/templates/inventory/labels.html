@@ -1,5 +1,5 @@
 {% extends "inventory/base.html" %}
-{% block title %}Labels — Seth's Parts{% endblock %}
+{% block title %}Labels — {{ site_name }}{% endblock %}
 {% block content %}
 <form method="post" action="{% url 'inventory:generate_labels' %}">
   {% csrf_token %}

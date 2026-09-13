@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from inventory.models import Attachment, Part
 
-USER_AGENT = "Mozilla/5.0 (compatible; SethsParts/1.0; personal workshop catalog)"
+USER_AGENT = "Mozilla/5.0 (compatible; WorkshopParts/1.0; personal workshop catalog)"
 
 MANUFACTURER_BY_DOMAIN = {
     "adafruit.com": "Adafruit",

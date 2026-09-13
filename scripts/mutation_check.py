@@ -222,6 +222,42 @@ MUTATIONS = [
         "with open(path) as f:",
         "inventory.tests.test_portability",
     ),
+    # --- site settings, branding and the setup gate --------------------------
+    (
+        "Unit inheritance ignored (existing plain counts start claiming metres)",
+        MODELS,
+        '        return self.unit or (self.part.default_unit if self.part_id else "") or DEFAULT_UNIT',
+        '        return self.unit or "m"',
+        "inventory.tests.test_units",
+    ),
+    (
+        "Setup gate widened to every install (walls off a working workshop)",
+        ROOT / "inventory" / "middleware.py",
+        "            return not get_user_model().objects.exists()",
+        "            return True",
+        "inventory.tests.test_site_settings",
+    ),
+    (
+        "Machine endpoints no longer exempt (voice search breaks on a fresh install)",
+        ROOT / "inventory" / "middleware.py",
+        '        "/api/",',
+        '        # "/api/",',
+        "inventory.tests.test_site_settings",
+    ),
+    (
+        "Site name ignores the configured value (every clone shows the default)",
+        ROOT / "inventory" / "site_config.py",
+        "    return (obj.site_name if obj and obj.site_name else DEFAULT_SITE_NAME)",
+        "    return DEFAULT_SITE_NAME",
+        "inventory.tests.test_site_settings",
+    ),
+    (
+        "Timezone middleware stops activating the owner's zone",
+        ROOT / "inventory" / "middleware.py",
+        "                timezone.activate(zone)",
+        "                pass",
+        "inventory.tests.test_site_settings",
+    ),
 ]
 
 
