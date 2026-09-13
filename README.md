@@ -55,12 +55,14 @@ inventory/               The one Django app -- models, views, templates, admin
   migrations/
   templates/inventory/
   static/inventory/
+  tests/                 The test suite -- one module per area, see "Tests" below
   label_printing.py       Renders custom labels (Pillow -> ZPL), see below
 docs/
   HANDOFF.md              Start here after this file -- running log + backlog
   clarification_workstream.md   Parts too ambiguous for automated enrichment
 scripts/
   export_parts_review.py  Regenerates docs/parts_review.xlsx (merge-safe)
+  mutation_check.py       Verifies the test suite actually catches broken logic
 led-controller/           LED "find the part" system -- Pi bridge + firmware
 label-printer/            Zebra GK420T print-bridge
 pi-kiosk/                 Pi touchscreen kiosk setup (Chromium, autologin, etc.)
@@ -72,9 +74,13 @@ requirements.txt
 
 ## Local development
 
+Django 6.1 requires **Python 3.12 or newer**. On a machine whose default
+`python3` is older (macOS still ships 3.11 in places), use an explicit
+interpreter — creating the venv with the wrong one fails at install time with a
+Django version error.
+
 ```bash
-cd tor-inventory
-python3 -m venv venv
+python3.12 -m venv venv          # must be 3.12+ — see note above
 ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python manage.py migrate
 ./venv/bin/python manage.py createsuperuser
@@ -87,6 +93,43 @@ Admin UI: http://localhost:8800/admin/ — useful for direct model editing
 No `.env` is needed for local dev — `config/settings.py` falls back to
 sensible local defaults for everything (SQLite in the repo root, debug mode
 on, etc.). See `.env.example` for what production actually needs.
+
+## Tests
+
+```bash
+./venv/bin/python manage.py test inventory
+```
+
+The suite lives in `inventory/tests/` (one module per area: models, search,
+scan resolution, stock/builds, bins, LED, labels, intake, the voice API, kiosk
+auth). It uses Django's own test database, so it never touches `db.sqlite3`.
+External HTTP — the Pi's LED controller and the label print-bridge — is mocked,
+so the whole suite runs offline in a few seconds and needs no hardware.
+
+Two deliberate conventions worth knowing before you add tests:
+
+- **Behaviour contracts, not snapshots.** Assert how two pieces of data relate,
+  not today's constants. `assertEqual(BINS_PER_DRAWER, 16)` would be a
+  change-detector; `_ensure_bins_seeded()` producing 16 rows per eligible drawer
+  is the real contract.
+- **Pin footguns and known limits explicitly.** Some tests assert behaviour that
+  is *surprising but intentional* (an empty `build_search_query("")` matches
+  everything; blank quantity input is rejected rather than cleared) with a
+  docstring saying so. That is on purpose: if someone later "fixes" it, the test
+  should fail and make them read the reasoning first.
+
+`scripts/mutation_check.py` is the safety net for the safety net — it deliberately
+breaks real logic (reverses the FIFO consumption order, swaps the LED
+row/column split, disables the bin-scan conflict check, and so on), runs the
+relevant tests, and reports anything that stayed green:
+
+```bash
+./venv/bin/python scripts/mutation_check.py
+```
+
+A test suite that passes proves nothing; this proves it *fails* when the code it
+claims to protect is broken. Run it after adding tests for a new area — a
+mutation that isn't caught is a blind spot.
 
 ### Re-running the spreadsheet import
 
@@ -185,3 +228,7 @@ merged into local search. Full spec: `docs/PLAN_community_search.md`.
    (what changed, why, how it was verified) rather than just leaving it in
    git history — that log is what makes picking this up cold actually
    tractable, for a human or another assistant.
+5. Run the test suite before and after any change — `./venv/bin/python
+   manage.py test inventory`. It is the shared safety net that lets two
+   different assistants work on this repo without holding the whole context in
+   one head. See the "Tests" section for the conventions it follows.
