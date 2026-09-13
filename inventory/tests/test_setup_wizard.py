@@ -170,7 +170,7 @@ class SiteStepTests(WizardFlowTestCase):
         self.client.logout()
         response = self.client.get(reverse("inventory:setup_site"))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertTrue(response["Location"].startswith("/login/"), response["Location"])
 
     def test_it_moves_on_to_the_next_step(self):
         response = self.client.post(

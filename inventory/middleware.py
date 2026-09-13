@@ -82,6 +82,10 @@ class SetupRedirectMiddleware:
         # meaningless there, and redirecting would break voice search on every fresh
         # install rather than fixing anything.
         "/api/",
+        # The admin's login is exempt so a browser can reach it on a virgin install.
+        # This app's own /login/ deliberately is NOT exempt: on an install with no
+        # account there is nothing to log in with, and the wizard is where that account
+        # gets created, so pointing a visitor there is the more useful of the two.
         "/admin/login/",
         "/admin/logout/",
         "/admin/jsi18n/",

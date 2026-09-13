@@ -19,6 +19,8 @@ from ._shared import (
     _drawer_number,
 )
 from .auth import (
+    AppLoginView,
+    AppLogoutView,
     kiosk_autologin,
 )
 from .browse import (
@@ -150,6 +152,8 @@ __all__ = [
     "_slugify_drawer_code",
     "_location_choices",
     "_drawer_number",
+    "AppLoginView",
+    "AppLogoutView",
     "kiosk_autologin",
     "browse",
     "scan",

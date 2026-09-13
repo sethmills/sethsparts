@@ -28,11 +28,13 @@ class ReferenceViewTestCase(TestCase):
 class LoginWallTests(ReferenceViewTestCase):
     def test_the_library_needs_a_login(self):
         self.client.logout()
-        self.assertIn("/admin/login/", self.client.get(reverse("inventory:reference_list"))["Location"])
+        location = self.client.get(reverse("inventory:reference_list"))["Location"]
+        self.assertTrue(location.startswith("/login/"), location)
 
     def test_the_manage_page_needs_a_login(self):
         self.client.logout()
-        self.assertIn("/admin/login/", self.client.get(reverse("inventory:reference_manage"))["Location"])
+        location = self.client.get(reverse("inventory:reference_manage"))["Location"]
+        self.assertTrue(location.startswith("/login/"), location)
 
 
 class CategoryEditingTests(ReferenceViewTestCase):

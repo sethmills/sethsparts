@@ -402,6 +402,44 @@ MUTATIONS = [
         "    if False:",
         "inventory.tests.test_community_pairing",
     ),
+    # --- the login page ------------------------------------------------------
+    # The app's own login replaced Django's admin login as the front door. These are
+    # the decisions that make that true rather than cosmetic.
+    (
+        "Login wall back to the Django admin's login page (/login/ a 404 again)",
+        ROOT / "config" / "settings.py",
+        "LOGIN_URL = '/login/'",
+        "LOGIN_URL = '/admin/login/'",
+        "inventory.tests.test_login",
+    ),
+    (
+        "Login page falls back to the admin's own template",
+        ROOT / "inventory" / "views" / "auth.py",
+        'template_name = "inventory/login.html"',
+        'template_name = "admin/login.html"',
+        "inventory.tests.test_login",
+    ),
+    (
+        "A signed-in visitor is shown the login form again",
+        ROOT / "inventory" / "views" / "auth.py",
+        "redirect_authenticated_user = True",
+        "redirect_authenticated_user = False",
+        "inventory.tests.test_login",
+    ),
+    (
+        "Logout lands on the admin login rather than the app's",
+        ROOT / "config" / "settings.py",
+        "LOGOUT_REDIRECT_URL = '/login/'",
+        "LOGOUT_REDIRECT_URL = '/admin/login/'",
+        "inventory.tests.test_login",
+    ),
+    (
+        "Fresh install shows a dead login form instead of the setup wizard",
+        ROOT / "inventory" / "middleware.py",
+        '        "/api/",',
+        '        "/api/",\n        "/login/",',
+        "inventory.tests.test_login",
+    ),
 ]
 
 

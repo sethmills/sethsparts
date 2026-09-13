@@ -153,13 +153,13 @@ class SetupRedirectTests(TestCase):
         make_user()
         resp = self.client.get(reverse("inventory:browse"))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/admin/login/", resp["Location"], "should hit the normal login wall")
+        self.assertTrue(resp["Location"].startswith("/login/"), "should hit the normal login wall")
 
     def test_a_finished_install_is_not_redirected(self):
         make_user()
         SiteSettings.objects.create(setup_completed_at=timezone.now())
         resp = self.client.get(reverse("inventory:browse"))
-        self.assertIn("/admin/login/", resp["Location"])
+        self.assertTrue(resp["Location"].startswith("/login/"), resp["Location"])
 
     def test_the_wizard_itself_is_exempt(self):
         """Otherwise the redirect would point at a page that redirects to itself."""
@@ -241,7 +241,7 @@ class WizardGateTests(TestCase):
         self.assertIn("/setup", self.client.get(reverse("inventory:browse"))["Location"])
 
         make_user(username="eric")
-        self.assertIn("/admin/login/", self.client.get(reverse("inventory:browse"))["Location"])
+        self.assertTrue(self.client.get(reverse("inventory:browse"))["Location"].startswith("/login/"))
 
     def test_setup_state_is_separate_from_reachability(self):
         make_user(username="eric")
@@ -249,4 +249,4 @@ class WizardGateTests(TestCase):
         # No SiteSettings row at all, yet the app is perfectly usable.
         self.assertFalse(site_config.setup_is_complete())
         self.assertFalse(SetupRedirectMiddleware._is_virgin_install())
-        self.assertIn("/admin/login/", self.client.get(reverse("inventory:browse"))["Location"])
+        self.assertTrue(self.client.get(reverse("inventory:browse"))["Location"].startswith("/login/"))

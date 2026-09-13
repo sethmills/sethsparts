@@ -272,7 +272,7 @@ class JoinFlowTests(PairingTestCase):
         self.client.logout()
         response = self.client.post(reverse("inventory:community_join"), {"host_url": "x", "code": "y"})
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertTrue(response["Location"].startswith("/login/"), response["Location"])
 
 
 @override_settings(ALLOWED_HOSTS=["*"])
@@ -387,7 +387,7 @@ class ConnectionsPageTests(PairingTestCase):
         self.client.logout()
         response = self.client.get(reverse("inventory:community_connections"))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertTrue(response["Location"].startswith("/login/"), response["Location"])
 
     def test_it_renders(self):
         self.assertEqual(self.client.get(reverse("inventory:community_connections")).status_code, 200)

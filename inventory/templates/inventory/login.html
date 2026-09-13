@@ -1,0 +1,48 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in — {{ site_name }}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'inventory/favicon.svg' %}">
+  <link rel="stylesheet" href="{% static 'inventory/style.css' %}">
+</head>
+{% comment %}
+Deliberately not extending base.html: the topbar is a list of places to go, and
+someone who is not signed in has nowhere to go yet.
+{% endcomment %}
+<body>
+  <main class="login-main">
+    <div class="card">
+      <h1>{{ site_name }}</h1>
+      <p class="muted">Sign in to your workshop inventory.</p>
+
+      {% for error in form.non_field_errors %}
+        <p class="msg-error">{{ error }}</p>
+      {% endfor %}
+
+      <form method="post">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <p>
+          <label for="{{ form.username.id_for_label }}"><strong>Username</strong></label>
+          {{ form.username }}
+        </p>
+        <p>
+          <label for="{{ form.password.id_for_label }}"><strong>Password</strong></label>
+          {{ form.password }}
+        </p>
+        <p>
+          <button class="btn" type="submit">Log in</button>
+        </p>
+      </form>
+    </div>
+
+    <p class="muted" style="font-size:0.88rem;">
+      No “forgot password”, because this app doesn’t send email. If you’re locked out,
+      run <code>python manage.py changepassword &lt;username&gt;</code> where this is
+      installed.
+    </p>
+  </main>
+</body>
+</html>

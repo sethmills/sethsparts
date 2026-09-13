@@ -115,9 +115,9 @@ class LoginWallTests(TestCase):
     def test_scan_resolver_requires_login(self):
         resp = self.client.get(reverse("inventory:go"), {"code": "C38"})
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/admin/login/", resp.url)
+        self.assertTrue(resp.url.startswith("/login/"), resp.url)
 
     def test_browse_requires_login(self):
         resp = self.client.get(reverse("inventory:browse"))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/admin/login/", resp.url)
+        self.assertTrue(resp.url.startswith("/login/"), resp.url)

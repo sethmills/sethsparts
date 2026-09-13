@@ -172,7 +172,7 @@ input[type=text], input[type=search], input[type=url], input[type=number], selec
   font-family: inherit;
   min-height: var(--tap-min);
 }
-input[type=text], input[type=search], input[type=url], textarea { width: 100%; }
+input[type=text], input[type=search], input[type=url], input[type=password], textarea { width: 100%; }
 textarea { min-height: 70px; resize: vertical; }
 select { cursor: pointer; }
 
@@ -181,6 +181,31 @@ select { cursor: pointer; }
    sized well above a comfortable tap target, just not full .btn size. */
 .btn-sm { padding: 8px 14px; font-size: 0.88rem; min-height: 40px; }
 html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
+
+/* The login page. A narrow column and no topbar, because someone who isn't signed in
+   has nowhere to navigate to yet -- so this is the one page that doesn't inherit
+   base.html. */
+.login-main { max-width: 420px; padding-top: 8vh; }
+.login-main h1 { color: var(--accent); }
+.login-main form p { margin: 0 0 14px; }
+.login-main form label { display: block; margin-bottom: 5px; }
+
+/* "Log out" sits in the More menu alongside links, so it has to look like one while
+   still being a button (it posts a form -- see base.html). */
+.nav-more .nav-more-menu form { margin: 0; display: flex; }
+.nav-more .nav-more-menu button {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-more .nav-more-menu button:hover { background: var(--panel); }
 
 /* One card per "where it lives" location on the part page -- replaces a wide
    table whose cells crammed several small buttons together on one side. */
@@ -257,7 +282,7 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
 @media (pointer: coarse) {
   .btn { padding: 13px 20px; font-size: 1.02rem; }
   header.topbar nav a { padding: 11px 14px; font-size: 1rem; }
-  input[type=text], input[type=search], input[type=url], input[type=number], select, textarea {
+  input[type=text], input[type=search], input[type=url], input[type=number], input[type=password], select, textarea {
     padding: 13px 14px;
     font-size: 1.05rem;
   }
@@ -276,7 +301,7 @@ html.pi-kiosk main { max-width: 1400px; }
 html.pi-kiosk .btn { padding: 16px 26px; font-size: 1.15rem; }
 html.pi-kiosk header.topbar nav a { padding: 14px 18px; font-size: 1.1rem; }
 html.pi-kiosk input[type=text], html.pi-kiosk input[type=search], html.pi-kiosk input[type=url],
-html.pi-kiosk input[type=number], html.pi-kiosk select, html.pi-kiosk textarea {
+html.pi-kiosk input[type=number], html.pi-kiosk input[type=password], html.pi-kiosk select, html.pi-kiosk textarea {
   padding: 15px 16px;
   font-size: 1.15rem;
 }

@@ -48,7 +48,7 @@ class HelpPageTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse("inventory:help_index"))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertTrue(response["Location"].startswith("/login/"), response["Location"])
 
     def test_topics_are_reachable_from_the_index(self):
         response = self.client.get(reverse("inventory:help_index"))

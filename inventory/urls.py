@@ -6,6 +6,10 @@ app_name = "inventory"
 
 urlpatterns = [
     path("", views.browse, name="browse"),
+    # The app's own login/logout. Before these existed, signing in meant the Django
+    # admin login page and /login/ was a 404.
+    path("login/", views.AppLoginView.as_view(), name="login"),
+    path("logout/", views.AppLogoutView.as_view(), name="logout"),
     path("kiosk-autologin/", views.kiosk_autologin, name="kiosk_autologin"),
     path("scan/", views.scan, name="scan"),
     path("go/", views.go, name="go"),

@@ -152,9 +152,14 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Reuse the admin's own login page — no separate auth UI yet (single user for now).
-LOGIN_URL = '/admin/login/'
+# The app's own login page, not the admin's. `@login_required` sends people here, and
+# so does anyone who types /login/ — which used to be a 404 while the root URL greeted
+# a visitor with a page branded "Django administration". Neither is a good front door
+# for a project other people are meant to clone and run. The admin keeps its own
+# /admin/login/ for the admin itself; that is untouched and still works.
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 # Long-lived sessions -- the Pi kiosk display logs in once and should stay logged in
 # indefinitely rather than getting kicked back to the login page after Django's
