@@ -323,6 +323,49 @@ MUTATIONS = [
         "        drawer=drawer, led_strip=strip, led_start_index=int(start), led_count=int(count)",
         "inventory.tests.test_setup_wizard",
     ),
+    # --- pushing LED config to the Pi ----------------------------------------
+    (
+        "A blank channel box saves 0 (lights a strip that isn't wired yet)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "        if not raw:\n            LedStrip.objects.filter(name=name).delete()",
+        "        if raw is None:\n            LedStrip.objects.filter(name=name).delete()",
+        "inventory.tests.test_led_push",
+    ),
+    (
+        "Channel range not checked when saving (channel 40 accepted)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "        if not raw.isdigit() or not (0 <= int(raw) <= 7):",
+        "        if False:",
+        "inventory.tests.test_led_push",
+    ),
+    (
+        "Strips with no channel pushed as null (whole push fails on an unwired strip)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "        for strip in LedStrip.objects.filter(channel__isnull=False)",
+        "        for strip in LedStrip.objects.all()",
+        "inventory.tests.test_led_push",
+    ),
+    (
+        "A 404 from the Pi not explained (owner never learns to update the Pi)",
+        ROOT / "inventory" / "views" / "setup.py",
+        "    if response.status_code == 404:",
+        "    if False:",
+        "inventory.tests.test_led_push",
+    ),
+    (
+        "Pi accepts a channel outside the Scorpio's range",
+        ROOT / "led-controller" / "pi" / "server.py",
+        "        if not (0 <= channel <= MAX_CHANNEL):",
+        "        if False:",
+        "inventory.tests.test_led_push",
+    ),
+    (
+        "Pi accepts a boolean channel (True sails through as channel 1)",
+        ROOT / "led-controller" / "pi" / "server.py",
+        "        if isinstance(channel, bool) or not isinstance(channel, int):",
+        "        if not isinstance(channel, int):",
+        "inventory.tests.test_led_push",
+    ),
     # --- community pairing ---------------------------------------------------
     (
         "Pairing code never spent (one invite, unlimited workshops)",

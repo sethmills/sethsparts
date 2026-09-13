@@ -15,6 +15,7 @@ from .models import (
     Drawer,
     DrawerLedSegment,
     IntakeNote,
+    LedStrip,
     Location,
     PairingCode,
     Part,
@@ -69,6 +70,16 @@ class IntakeNoteAdmin(admin.ModelAdmin):
 class DrawerLedSegmentInline(admin.TabularInline):
     model = DrawerLedSegment
     extra = 0
+
+
+@admin.register(LedStrip)
+class LedStripAdmin(admin.ModelAdmin):
+    """The strip-to-channel map, which the setup wizard pushes to the Pi."""
+
+    list_display = ["name", "channel"]
+    list_editable = ["channel"]
+    search_fields = ["name"]
+    ordering = ["channel"]
 
 
 class BinInline(admin.TabularInline):

@@ -6,10 +6,13 @@ Tunnel) and relays it to the Feather RP2040 Scorpio over USB serial, which drive
 the actual WS2812B strip.
 
 strip_map.json maps logical strip names (matching Drawer.led_strip in Seth's Parts)
-to physical Scorpio channel numbers (0-7). It starts empty on purpose -- fill it in
-once the cabinet-to-strip wiring is actually decided; until an entry exists for a
-given strip name, /locate just returns a clear "not mapped yet" error instead of
-guessing.
+to physical Scorpio channel numbers (0-7). Until an entry exists for a given strip
+name, /locate returns a clear "not mapped yet" error instead of guessing.
+
+That mapping can be written two ways: by editing strip_map.json by hand, or by
+POSTing to /strips, which is what the app's setup wizard does. Only you can see
+which strip is wired to which channel, so the app asks and then pushes the answer
+here rather than trying to work it out.
 """
 import json
 import os
@@ -17,7 +20,13 @@ import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-import serial
+try:
+    import serial
+except ImportError:  # pragma: no cover - pyserial is only needed to actually drive LEDs
+    # Imported lazily so the strip-map logic can be read, tested and corrected on a
+    # machine with no serial port and no pyserial — which is every machine except
+    # the Pi, and the place where the logic is most likely to be worked on.
+    serial = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STRIP_MAP_PATH = os.path.join(BASE_DIR, "strip_map.json")
@@ -35,7 +44,7 @@ _serial_conn = None
 
 def _load_strip_map():
     try:
-        with open(STRIP_MAP_PATH) as f:
+        with open(STRIP_MAP_PATH, encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return {}
@@ -43,8 +52,50 @@ def _load_strip_map():
         return {}
 
 
+MAX_CHANNEL = 7
+
+
+def _write_strip_map(mapping):
+    """Replace strip_map.json atomically.
+
+    Written to a temporary file and moved into place, because the alternative is a
+    window where the file is half-written and /locate reads garbage. Small window,
+    but the failure it causes — a drawer lighting up wrongly, or an error that makes
+    no sense a week later — is not worth the few lines saved.
+    """
+    tmp = STRIP_MAP_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, indent=2, sort_keys=True)
+        f.write("\n")
+    os.replace(tmp, STRIP_MAP_PATH)
+
+
+def validate_strip_map(mapping):
+    """Check a proposed mapping. Returns (cleaned, error).
+
+    Validated here rather than trusting the caller, because a channel number outside
+    the Scorpio's range would either be ignored silently or light up something
+    unintended, and neither shows up until somebody presses the button.
+    """
+    if not isinstance(mapping, dict):
+        return None, "strips must be an object of name -> channel"
+    cleaned = {}
+    for name, channel in mapping.items():
+        name = str(name).strip()
+        if not name:
+            return None, "a strip name cannot be empty"
+        if isinstance(channel, bool) or not isinstance(channel, int):
+            return None, f"channel for '{name}' must be a whole number"
+        if not (0 <= channel <= MAX_CHANNEL):
+            return None, f"channel for '{name}' must be 0-{MAX_CHANNEL}"
+        cleaned[name] = channel
+    return cleaned, ""
+
+
 def _get_serial():
     global _serial_conn
+    if serial is None:
+        raise RuntimeError("pyserial isn't installed, so the Scorpio can't be reached")
     if _serial_conn is None or not _serial_conn.is_open:
         _serial_conn = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=2)
     return _serial_conn
@@ -81,6 +132,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if self.path == "/strips":
+            self._json_response(200, {"ok": True, "strips": _load_strip_map()})
+            return
         if self.path == "/health":
             strip_map = _load_strip_map()
             self._json_response(200, {"ok": True, "strips_configured": sorted(strip_map)})
@@ -122,6 +176,8 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_demo(payload)
         elif self.path == "/set_defaults":
             self._handle_set_defaults(payload)
+        elif self.path == "/strips":
+            self._handle_strips(payload)
         else:
             self._json_response(404, {"error": "not found"})
 
@@ -164,6 +220,19 @@ class Handler(BaseHTTPRequestHandler):
         if col is not None:
             command["col"] = col
         self._relay(command)
+
+    def _handle_strips(self, payload):
+        """Replace the strip map. Called by the app's setup wizard."""
+        cleaned, error = validate_strip_map(payload.get("strips", {}))
+        if error:
+            self._json_response(400, {"error": error})
+            return
+        try:
+            _write_strip_map(cleaned)
+        except OSError as exc:
+            self._json_response(500, {"error": f"couldn't save strip_map.json: {exc}"})
+            return
+        self._json_response(200, {"ok": True, "strips": cleaned})
 
     def _handle_room_light(self, payload):
         command = {"cmd": "room_light", "on": payload.get("on", True)}

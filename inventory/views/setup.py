@@ -19,7 +19,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from .. import archiving, geocoding, hardware_config, updates, wizard
-from ..models import CommunityProfile, Drawer, DrawerLedSegment, ReferenceDoc, SiteSettings
+from ..models import CommunityProfile, Drawer, DrawerLedSegment, LedStrip, ReferenceDoc, SiteSettings
 from ..site_config import get_site_settings
 
 
@@ -191,6 +191,11 @@ def setup_lights(request):
             (messages.success if ok else messages.error)(request, detail)
         elif action == "add_mapping":
             _add_led_mapping(request)
+        elif action == "save_channels":
+            _save_strip_channels(request)
+        elif action == "push_strips":
+            ok, detail = _push_strip_map()
+            (messages.success if ok else messages.error)(request, detail)
         elif action == "clear_mappings":
             count = DrawerLedSegment.objects.count()
             DrawerLedSegment.objects.all().delete()
@@ -215,6 +220,7 @@ def setup_lights(request):
             source=hardware_config.led_source(),
             mappings=DrawerLedSegment.objects.select_related("drawer__container").order_by("led_strip", "led_start_index"),
             drawers=Drawer.objects.select_related("container").order_by("container__number", "label"),
+            strips=_strip_rows(),
         ),
     )
 
@@ -236,6 +242,89 @@ def _add_led_mapping(request):
         drawer=drawer, led_strip=strip, led_start_index=int(start), led_count=max(1, int(count))
     )
     messages.success(request, f"Mapped {drawer} to {strip} from LED {start}.")
+
+
+def _strip_rows():
+    """Every strip the app knows about, with its channel if it has one recorded.
+
+    Two sources on purpose. A strip only exists in `LedStrip` once somebody has said
+    which channel it is wired to, but the name first appears in a drawer's LED
+    mappings — so the union is what the owner actually needs to see: every strip the
+    app expects to exist, and which of them are still unaccounted for.
+    """
+    recorded = {strip.name: strip for strip in LedStrip.objects.all()}
+    named = set(DrawerLedSegment.objects.values_list("led_strip", flat=True).distinct())
+    rows = []
+    for name in sorted(named | set(recorded)):
+        strip = recorded.get(name)
+        rows.append({"name": name, "channel": strip.channel if strip else None, "recorded": strip is not None})
+    return rows
+
+
+def _save_strip_channels(request):
+    """Record the channel each strip is plugged into.
+
+    Blank clears the channel rather than saving a zero, because channel 0 is a real
+    output and "I haven't wired this one yet" is a different thing from "this is on
+    channel 0". Getting those confused would light up the wrong strip.
+    """
+    saved = cleared = 0
+    for name in request.POST.getlist("strip_name"):
+        raw = (request.POST.get(f"channel_{name}") or "").strip()
+        if not raw:
+            LedStrip.objects.filter(name=name).delete()
+            cleared += 1
+            continue
+        if not raw.isdigit() or not (0 <= int(raw) <= 7):
+            messages.error(request, f"Channel for “{name}” must be a number from 0 to 7.")
+            continue
+        LedStrip.objects.update_or_create(name=name, defaults={"channel": int(raw)})
+        saved += 1
+    if saved or cleared:
+        messages.success(request, f"Recorded {saved} strip channel{'s' if saved != 1 else ''}.")
+
+
+def _push_strip_map() -> tuple[bool, str]:
+    """Send the recorded channels to the Pi, which is where they have to live.
+
+    The app cannot apply this itself: /locate runs on the Pi and reads strip_map.json
+    there. So the wizard writes the file by asking the controller to.
+    """
+    import requests
+
+    url = hardware_config.led_url()
+    if not url:
+        return False, "No LED controller address set yet."
+
+    # Only strips that are actually wired. Sending a strip with no channel would push a
+    # null, which the Pi rejects -- correctly, since it has no way to light nothing.
+    mapping = {
+        strip.name: strip.channel
+        for strip in LedStrip.objects.filter(channel__isnull=False)
+    }
+    if not mapping:
+        return False, "No strip channels recorded yet — fill them in below first."
+
+    key = hardware_config.led_key()
+    headers = {"X-Api-Key": key} if key else {}
+    try:
+        response = requests.post(f"{url}/strips", json={"strips": mapping}, headers=headers, timeout=10)
+    except requests.RequestException as exc:
+        return False, f"Couldn't reach {url}: {exc}"
+
+    if response.status_code == 404:
+        return False, (
+            "The controller answered 404. It's running an older version that has no /strips "
+            "endpoint — update the code in led-controller/pi/ on the Pi and restart it."
+        )
+    if response.status_code >= 400:
+        try:
+            detail = response.json().get("error")
+        except ValueError:
+            detail = None
+        return False, detail or f"The controller refused it (HTTP {response.status_code})."
+
+    return True, f"Sent {len(mapping)} strip channel{'s' if len(mapping) != 1 else ''} to the Pi."
 
 
 def _test_led_controller() -> tuple[bool, str]:

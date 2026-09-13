@@ -67,6 +67,45 @@ class DrawerLedSegment(models.Model):
         return f"{self.drawer} @ {self.led_strip}[{self.led_start_index}:{self.led_start_index + self.led_count}]"
 
 
+class LedStrip(models.Model):
+    """A physical LED strip, and which channel it is wired to.
+
+    The app already knows which drawer an LED range belongs to (see
+    `DrawerLedSegment`), but it cannot know which strip is plugged into which output
+    on the Scorpio — that is physical wiring, visible only to whoever is holding the
+    strip and the board. Rather than guess, the owner records it here and the setup
+    wizard pushes it to the Pi, because that is where it has to live for /locate to
+    work at all.
+    """
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Matches the strip name used in that drawer's LED mappings, e.g. cabinet1-left",
+    )
+    channel = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="The Scorpio output this strip is plugged into, 0-7",
+    )
+
+    class Meta:
+        ordering = ["channel", "name"]
+        verbose_name = "LED strip"
+
+    def __str__(self):
+        return f"{self.name} (channel {self.channel})"
+
+    @property
+    def is_wired(self) -> bool:
+        """Whether anything is plugged into this strip's channel.
+
+        A strip with no channel is one the owner has named but not yet plugged in,
+        which is a normal halfway state while wiring a cabinet.
+        """
+        return self.channel is not None
+
+
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_shareable = models.BooleanField(
