@@ -95,6 +95,15 @@ from .enrichment import (
     export_inventory,
     resistor_calculator,
 )
+from .community import (
+    api_community_claim,
+    community_connections,
+    community_forget,
+    community_issue_code,
+    community_join,
+    community_revoke,
+    community_update_peer,
+)
 from .help import (
     help_index,
     help_topic,
@@ -206,6 +215,13 @@ __all__ = [
     "setup_community",
     "setup_access",
     "setup_finish",
+    "community_connections",
+    "community_join",
+    "community_issue_code",
+    "community_update_peer",
+    "community_revoke",
+    "community_forget",
+    "api_community_claim",
     "help_index",
     "help_topic",
     "reference_list",

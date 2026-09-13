@@ -323,6 +323,42 @@ MUTATIONS = [
         "        drawer=drawer, led_strip=strip, led_start_index=int(start), led_count=int(count)",
         "inventory.tests.test_setup_wizard",
     ),
+    # --- community pairing ---------------------------------------------------
+    (
+        "Pairing code never spent (one invite, unlimited workshops)",
+        ROOT / "inventory" / "community_api.py",
+        '        pairing.claimed_at = timezone.now()\n        pairing.claimed_by = peer\n        pairing.save(update_fields=["claimed_at", "claimed_by"])',
+        "        pass",
+        "inventory.tests.test_community_pairing",
+    ),
+    (
+        "Pairing code expiry no longer checked",
+        ROOT / "inventory" / "community_api.py",
+        "        if pairing is None or not pairing.is_usable():",
+        "        if pairing is None:",
+        "inventory.tests.test_community_pairing",
+    ),
+    (
+        "A new connection can search parts by default (inventory handed over)",
+        ROOT / "inventory" / "community_api.py",
+        '                "shares_parts": False,\n                "outbound_api_key": callback_key or "",',
+        '                "shares_parts": True,\n                "outbound_api_key": callback_key or "",',
+        "inventory.tests.test_community_pairing",
+    ),
+    (
+        "Revoking leaves the permissions in place (disconnect does nothing)",
+        ROOT / "inventory" / "views" / "community.py",
+        '    peer.status = Peer.REVOKED\n    peer.shares_parts = False\n    peer.exchanges_pins = False\n    peer.save(update_fields=["status", "shares_parts", "exchanges_pins"])',
+        '    peer.status = Peer.REVOKED\n    peer.save(update_fields=["status"])',
+        "inventory.tests.test_community_pairing",
+    ),
+    (
+        "Claim endpoint no longer rate-limited (free brute force on a short code)",
+        ROOT / "inventory" / "views" / "community.py",
+        "    if _claim_rate_limited(request):",
+        "    if False:",
+        "inventory.tests.test_community_pairing",
+    ),
 ]
 
 

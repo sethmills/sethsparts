@@ -469,6 +469,85 @@ know. Both halves are needed: the first stops relabelling, the second stops gues
 **Not built yet:** pairing views/URLs/UI, the location geocoder, the noticeboard service, pin
 publishing and sync, the map page. Next slice is pairing.
 
+### 24. Making it releasable: portability, a setup wizard, and a library you own — ✅ built (2026-09-13)
+
+A long session whose single goal was: **this should be something other people can run**,
+not just Seth's install. Six pieces, each committed and verified separately.
+
+**Portability.** Audited the app for anything that ties it to one operating system, and
+found it portable by construction already — no POSIX-only imports, no Unix process
+APIs, no shell-outs, and all hardware reached over HTTP through settings that default
+to empty. The hardware code is correctly quarantined in `pi-kiosk/`,
+`led-controller/pi/` and `label-printer/pi/`. Four things did block a Windows user:
+gunicorn (needs `fork()`; `waitress` added behind a `sys_platform == "win32"` marker),
+four file reads with no explicit encoding (Windows defaults to cp1252, and the data
+involved is `µ`, `Ω` and `×`), no Windows font in the label renderer, and a
+leaked-handle `json.load(open(...))` that the new guard caught rather than the manual
+audit. `inventory/tests/test_portability.py` now enforces all of it by reading the
+source, because a rule nobody runs is a rule that erodes.
+
+**Site settings, and everything that was hardcoded to Seth.** The app called itself
+"Seth's Parts" in 27 templates, used `Europe/London` for every timestamp, and had
+exactly one unit for quantities. `SiteSettings` is now a row holding the owner's
+answers — name, timezone, country, unit system, hardware addresses — and the same
+pages are both the first-run wizard and the settings pages, because a wizard you can
+only run once is a wizard people work around. A timezone middleware renders every
+timestamp in the owner's zone; that was a real bug for a US install, not a nicety.
+
+**Units.** `Part.default_unit` and `StockItem.unit`, blank meaning *inherit*. `each` is
+the default and renders as a bare number, so all 1,379 production rows display exactly
+as they did. Deliberately not a conversion layer: converting would silently rewrite
+numbers somebody counted by hand.
+
+**The reference library is now the owner's.** Categories were a hardcoded choices
+list, so you could add a document but never the shelf it belonged on. They are rows
+now, with full editing — rename, reorder, add, delete — and documents get the same.
+Deleting a shelf with documents on it is refused rather than cascading. Migration 0018
+converts the column to a foreign key on live rows; it also gives the old column a
+default before dropping it, without which **reversing the migration fails** with a NOT
+NULL constraint, because the column gets re-added to a table that already has
+documents in it. Both directions verified against a seeded database.
+
+**Documents are archived locally.** Datasheets rot, so a link is not a document. When
+a link is added the app fetches a copy and serves that; the URL stays as provenance.
+It refuses non-http schemes, caps size so one bad URL cannot fill the disk, and
+records *why* a fetch failed — a document behind a login wall stays as a link that
+says so. A failed refresh never discards an earlier good copy. Repurchase links are
+deliberately excluded: a cached product page shows a stale price.
+
+**Setup wizard, help, geocoding, update check.** The wizard covers the account (the
+only unauthenticated write in the app, and it 404s on both GET and POST once an account
+exists), name and place, lights, printer, reference library, community opt-in and
+public address. Six help pages, including how to lay out a workshop — advice that
+earns its place because the app will happily let you put everything in one drawer.
+Geocoding reduces even a full postcode to its **district** before storing anything.
+The update check reads GitHub releases, is off-switchable, caches for a day, and makes
+**no request during a page render** — a settings page that phones home on every load
+is a surprise, and it would fail offline.
+
+**Verified end to end:** `manage.py test inventory` → **581 tests OK** (was 211 at the
+start of the day). `scripts/mutation_check.py` → **47/47 mutations caught** (was 10/10),
+each new mutation targeting a real decision: the privacy defaults, the pin-signing
+rules, the setup gate, the archive guards, the account step, and the pairing
+credentials. Every migration was exercised against a real database with rows in it,
+forward and back.
+
+**Still to do:**
+- **Printer driver layer.** The settings page offers Zebra / Brother QL / Dymo / CUPS,
+  but only the ZPL renderer is implemented and only ZPL has been tested against real
+  hardware. `SiteSettings.label_driver` is stored and read; the drivers behind it are
+  the next piece of work.
+- **Pushing LED config to the Pi.** The wizard writes `DrawerLedSegment` rows and can
+  test the controller, but the Pi's own `strip_map.json` still has to be edited on the
+  Pi. A `POST /strips` endpoint on the controller would close that.
+- **Community pins and the map.** Pairing works end to end (short code, handshake,
+  revocation, search log). Publishing signed pins, exchanging them with peers, and the
+  MapLibre/OpenFreeMap map page are designed (`docs/PLAN_community_sharing.md`) and not
+  yet built. `inventory/community.py` has the signing core, tested.
+- **A first release tag.** `inventory/version.py` says `0.1.0` and nothing has been
+  tagged in git, so the update check compares against nothing. Tag a release before
+  telling anyone about the update check.
+
 ### Backlog / discussed, not built
 
 - **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."

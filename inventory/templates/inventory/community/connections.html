@@ -1,0 +1,98 @@
+{% extends "inventory/base.html" %}
+{% block title %}Connections — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Connections</h1>
+  <p class="muted">Other workshops running this app. Connecting lets you see each other on the community map and, if you choose, search each other's parts. There's no central server — your instance asks the workshops you're connected to, and they pass on what they know.</p>
+  <p class="muted">
+    Your address for others to reach you: <code>{{ my_url }}</code>
+    {% if not has_location %}
+      <br><span style="color:#ffd166;">⚠ You haven't set a district yet, so you won't appear on anyone's map. <a href="{% url 'inventory:setup_community' %}">Sort that out →</a></span>
+    {% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>Connect to someone</h2>
+  <p class="muted">Ask them to press <em>Show a code</em> below and read it out. Then enter their address and the code here.</p>
+  <form method="post" action="{% url 'inventory:community_join' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+    {% csrf_token %}
+    <label>Their address<br>
+      <input name="host_url" placeholder="https://parts.example.com" required
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;min-width:260px;">
+    </label>
+    <label>Their code<br>
+      <input name="code" placeholder="K7F2-9QX3" required
+             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;width:150px;text-transform:uppercase;">
+    </label>
+    <button class="btn" type="submit">Connect</button>
+  </form>
+  <p class="muted" style="margin-top:10px;">Codes work once and expire after 24 hours. They can be typed in any case, with or without the dash.</p>
+</div>
+
+<div class="card">
+  <h2>Let someone connect to you</h2>
+  <form method="post" action="{% url 'inventory:community_issue_code' %}">{% csrf_token %}
+    <button class="btn" type="submit">Show a code</button>
+  </form>
+  <p class="muted" style="margin-top:10px;">Issuing a fresh code cancels any code you showed before, so there's only ever one live at a time.</p>
+</div>
+
+<div class="card">
+  <h2>Connected workshops</h2>
+  {% for peer in peers %}
+    <div style="border-top:1px solid #2c303a;padding:12px 0;">
+      <form method="post" action="{% url 'inventory:community_update_peer' peer.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% csrf_token %}
+        <input name="name" value="{{ peer.name }}" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;min-width:180px;">
+        <span class="muted">{{ peer.get_status_display }}</span>
+        <label><input type="checkbox" name="exchanges_pins" value="1" {% if peer.exchanges_pins %}checked{% endif %}> map pins</label>
+        <label><input type="checkbox" name="shares_parts" value="1" {% if peer.shares_parts %}checked{% endif %}> may search my parts</label>
+        <button class="btn secondary" type="submit">Save</button>
+      </form>
+      <p class="muted" style="margin:6px 0 0;">
+        {{ peer.base_url }}
+        {% if not peer.exchanges_pins %} · not on the map together{% endif %}
+        {% if not peer.shares_parts %} · cannot see any of your parts{% endif %}
+        {% if peer.last_seen_at %} · last heard from {{ peer.last_seen_at|date:"j M Y" }}{% endif %}
+      </p>
+      <form method="post" action="{% url 'inventory:community_revoke' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+        <button class="btn danger" type="submit" onclick="return confirm('Disconnect from {{ peer.name }}?')">Disconnect</button>
+      </form>
+      {% if peer.status == 'revoked' %}
+        <form method="post" action="{% url 'inventory:community_forget' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+          <button class="btn secondary" type="submit" onclick="return confirm('Remove {{ peer.name }} and everything recorded about them?')">Forget entirely</button>
+        </form>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="muted">No connections yet.</p>
+    <p class="muted">Every install starts connected to the app's maintainer so a new workshop has somewhere to ask about nearby ones. If you removed that, connect to any other workshop and the map works again.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>What other workshops have searched</h2>
+  {% if recent_searches %}
+    <table style="width:100%;border-collapse:collapse;">
+      {% for entry in recent_searches %}
+        <tr style="border-top:1px solid #2c303a;">
+          <td style="padding:6px 0;">{{ entry.peer.name }}</td>
+          <td>{{ entry.query }}</td>
+          <td class="muted">{{ entry.result_count }} result{{ entry.result_count|pluralize }}</td>
+          <td class="muted">{{ entry.searched_at|date:"j M Y H:i" }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <p class="muted" style="margin-top:10px;">So “they can only search what I shared” is something you can check rather than take on trust.</p>
+  {% else %}
+    <p class="muted">Nothing searched yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Turning it all off</h2>
+  <p class="muted">Untick <em>map pins</em> on everyone and remove your district, and this instance is invisible — no pin, no map, no connection requests. Turning sharing off per person is the same idea one level down.</p>
+  <p><a class="btn secondary" href="{% url 'inventory:setup_community' %}">Community settings →</a></p>
+</div>
+{% endblock %}
