@@ -172,6 +172,12 @@ key, separate from whatever key you push with.
 
 ## Feature tour
 
+- **Signing in** (`/login/`) — the app's own login page rather than Django's admin
+  one, with **Log out** under **More** in the navigation. A fresh clone sends
+  first-time visitors to the setup wizard instead, because until an account exists
+  there is nothing to log in with. There is deliberately no password-reset email:
+  `manage.py changepassword <username>` is the way back in. `/admin/login/` still
+  exists for the Django admin itself.
 - **Browse / Scan / Search** — `/` lists every drawer up front (day-to-day
   browsing is almost always "which drawer", not "which cabinet"), with the
   full container list below for when cabinet-level organization is what's

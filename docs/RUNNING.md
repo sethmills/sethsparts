@@ -10,6 +10,12 @@ in, and offers the optional pieces one at a time. Every step is skippable, and e
 step stays available afterwards under **Settings** — a wizard you can only run once is
 a wizard people work around.
 
+After that, signing in happens at `/login/` and **Log out** sits under **More** in the
+navigation. There's no "forgot password" link, because this app doesn't send email: if
+you're locked out, run `python manage.py changepassword <username>` where it's
+installed. The Django admin keeps its own separate login at `/admin/login/`, which you
+never need for day-to-day use.
+
 ---
 
 ## Docker (recommended, works on Linux, macOS and Windows)
@@ -110,9 +116,10 @@ Both are optional and neither is needed to use the app.
 
 **LEDs.** A Raspberry Pi with the controller in `led-controller/` and a strip of
 addressable LEDs along each cabinet. The wizard takes the controller's address, tests
-the connection, and stores which LEDs belong to which drawer. The Pi's own
-`strip_map.json` still has to be edited on the Pi, because only you can see which strip
-is wired to which output.
+the connection, and stores which LEDs belong to which drawer. It also asks which
+controller output each strip is plugged into and **sends that to the Pi** — only you
+can see the wiring, so the app asks rather than guessing, and the Pi's `strip_map.json`
+is written by that push.
 
 **Label printer.** A Pi with the print bridge in `label-printer/`, next to the printer.
 The app renders the label and sends the finished bytes; nothing needs a driver on the
@@ -145,6 +152,8 @@ python manage.py check_updates --quiet
   if you're running `runserver`.
 - **"DisallowedHost"** — `DJANGO_ALLOWED_HOSTS` doesn't include the name you used.
 - **Timestamps are in the wrong timezone** — Settings → Name and place.
+- **Locked out** — there is no password-reset email by design. Run
+  `python manage.py changepassword <username>` on the machine running the app.
 - **Labels print but the text is tiny** — the label sizes in
   `inventory/label_printing.py` don't match your stock. See Help → Lights and the label
   printer.

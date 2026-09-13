@@ -10,13 +10,13 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **GitHub:** private repo `sethmills/sethsparts`, `main` branch.
 - **Secrets:** live only in `/opt/sethsparts/.env` on the server (gitignored, never committed) — see `.env.example` in the repo root for the full list with explanations: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `TUNNEL_TOKEN` (required), plus optional `VOICE_SEARCH_API_KEY`, `LED_CONTROLLER_URL`/`KEY`, `LABEL_PRINTER_URL`/`KEY`, `KIOSK_AUTOLOGIN_TOKEN`/`USERNAME`.
 - **Cloudflare:** one account, multiple tunnels — `sethsparts.com` (the main site, Hetzner-hosted) and `sethsparts-led-controller` (runs on the workshop Pi itself, currently carrying **two** public hostnames on its "Published application routes" tab: `led.sethsparts.com` → `localhost:9000` and `label.sethsparts.com` → `localhost:9020`). **Gotcha worth remembering:** this tunnel's dashboard "Hostname routes" tab is empty/unused — routes actually live under the differently-named "Published application routes" tab. Don't assume a tunnel's routes aren't configured just because one tab looks empty; check both.
-- **Admin login:** username `seth`, password was set by Seth directly (not recorded here).
+- **Logins:** the app has its own login page at `/login/` (item 25), with **Log out** in the More menu. The Django admin keeps its own separate login at `/admin/login/`. Username `seth` for both; passwords were set by Seth directly (not recorded here).
 - **Workshop Pi:** `seth@192.168.1.92`, hostname `pi5` (a Raspberry Pi 5; the original Pi 4 was fully migrated off and is no longer part of anything live). Hosts: the kiosk display, `led-controller` (systemd system service) driving a Feather RP2040 Scorpio over USB serial, `label-printer` (systemd system service) driving a Zebra GK420T over USB, and `kiosk-helper`/`screen-idle` (systemd **user** services, `loginctl enable-linger seth`).
 - **Drawer numbering:** the 3 original parts-cabinet containers (#38/#39/#40) have drawers labeled "Drawer 1"–"Drawer 27" (a=1-9, b=10-18, c=19-27). Two more cabinets exist: #119 "Cabinet 4" (9 drawers, 28-36, one LED strip, no bins — oversized/different items) and #120 "Cabinet 5" (5 drawers, 37-41, no LED mapping yet). Only drawers 1-27 have the 16-bin subdivision (`Bin`/`SubBin` models).
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
 - **Parts-review workbook:** `docs/parts_review.xlsx`, regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>` — merges in whatever Seth already typed into the "fill in" columns by Part ID, so re-running never clobbers his progress. He's still actively working through it, alongside `docs/clarification_workstream.md`.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
-- **Test suite:** `./venv/bin/python manage.py test inventory` — 211 tests, ~7s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py`, which proves the suite fails when the logic it protects is broken. See "Tests" in `README.md`, and item 21 below.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 635 tests, ~37s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py`, which proves the suite fails when the logic it protects is broken and must stay at 100%. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -537,9 +537,9 @@ forward and back.
   but only the ZPL renderer is implemented and only ZPL has been tested against real
   hardware. `SiteSettings.label_driver` is stored and read; the drivers behind it are
   the next piece of work.
-- **Pushing LED config to the Pi.** The wizard writes `DrawerLedSegment` rows and can
-  test the controller, but the Pi's own `strip_map.json` still has to be edited on the
-  Pi. A `POST /strips` endpoint on the controller would close that.
+- ~~**Pushing LED config to the Pi.**~~ **Done — see item 25.** The wizard now records
+  each strip's channel and pushes the map to a new `POST /strips` endpoint on the
+  controller, so `strip_map.json` no longer has to be edited on the Pi by hand.
 - **Community pins and the map.** Pairing works end to end (short code, handshake,
   revocation, search log). Publishing signed pins, exchanging them with peers, and the
   MapLibre/OpenFreeMap map page are designed (`docs/PLAN_community_sharing.md`) and not
@@ -547,6 +547,61 @@ forward and back.
 - **A first release tag.** `inventory/version.py` says `0.1.0` and nothing has been
   tagged in git, so the update check compares against nothing. Tag a release before
   telling anyone about the update check.
+
+### 25. The app's own login page, and the LED strip map pushed to the Pi — ✅ done (2026-09-13)
+
+Two pieces of work, both committed locally on top of `12172b4`. **Not pushed, not
+deployed** — production is unchanged at `12172b4`.
+
+**The login page.** The app had no login of its own: `LOGIN_URL` was `/admin/login/`,
+so the first thing anyone landing on a fresh install saw was a Django admin page, and
+`/login/` — the address a person actually types — was a 404. That is the wrong front
+door for something other people are meant to clone and run, which is where item 24's
+release work is heading (and it's the thing worth fixing before the repo is ever made
+public).
+
+The fix is deliberately small. `AppLoginView`/`AppLogoutView` are subclasses of
+Django's own `LoginView`/`LogoutView`, so credential checking, session handling and the
+`next`-URL safety are unchanged library code rather than hand-rolled. What's new: the
+page belongs to the app (`inventory/templates/inventory/login.html`, styled from the
+app's own stylesheet, no admin chrome), it lives at `/login/`, and `/logout/` exists at
+all — there was previously **no way to sign out anywhere in the app**. The admin keeps
+`/admin/login/`, untouched.
+
+Two things found while verifying, both worth remembering:
+
+- **Django's `LoginView` puts `site_name` into the template context itself**, from
+  `get_current_site()`. Without `django.contrib.sites` that is a `RequestSite`, whose
+  `.name` is the bare host — so the page greeted the owner with `sethsparts.com`
+  instead of the name they chose, silently overriding the context processor.
+  `AppLoginView.get_context_data` puts the owner's own name back; there's a test.
+- **The onboarding redirect deliberately does NOT exempt `/login/`**, though it does
+  exempt `/admin/login/`. On an install with no account there is nothing to log in
+  with, and the wizard is where that account gets created, so sending a visitor there
+  is the more useful of the two. That reasoning is now a comment in `middleware.py`,
+  so the asymmetry doesn't read as an oversight.
+
+**The LED strip map** — the in-flight work item 24 left open, now finished and
+committed as `d413343`. The wizard records which controller output each strip is
+plugged into and pushes it to a new `POST /strips` endpoint on the Pi, which validates
+the range and writes `strip_map.json` atomically. Three quiet failure modes are handled
+on purpose: a blank channel box clears the channel rather than saving `0` (channel 0 is
+a real output), unwired strips are left out of the push rather than sent as nulls, and
+a 404 from the controller is explained as "the Pi is running older code" with the fix.
+`LedStrip.channel` is nullable so "named but not plugged in yet" is representable.
+
+**Verified:** 635 tests OK (+18 from 617), including a new
+`inventory/tests/test_login.py`; five new mutations (58 total) aimed at the decisions
+that make the login real rather than cosmetic — `LOGIN_URL` reverting to the admin's,
+the template falling back to the admin's, a signed-in visitor being shown the form
+again, logout landing on the admin login, and `/login/` being exempted from the
+onboarding redirect. The whole flow was also walked by hand against a live `runserver`
+on a throwaway database: CSRF token issued, a wrong password re-renders with an error
+and no session, the right password 302s to `/`, the navigation carries a logout form,
+`GET /logout/` is 405, `POST /logout/` 302s to `/login/`, and `/` afterwards 302s to
+`/login/?next=/`. Migration `0023` (LED) was exercised against a real database with
+1,379 stock rows in it: forward from `0013`, back to `0022`, forward again, row counts
+unchanged.
 
 ### Backlog / discussed, not built
 
