@@ -154,6 +154,11 @@ python manage.py archive_documents
 # Tell yourself when there's a newer version. Exits 1 when there is,
 # so it composes with whatever you already use to get notified.
 python manage.py check_updates --quiet
+
+# Refresh the community map's pins from your connected workshops, and
+# expire anything nobody has refreshed in six months. Worth a cron entry
+# if you use the map — nothing else fetches pins for you.
+python manage.py sync_community_pins
 ```
 
 ---

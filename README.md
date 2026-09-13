@@ -212,6 +212,13 @@ key, separate from whatever key you push with.
   logic (safe to run any time); the actual web research needs a live agent
   pass (there's a JSON worklist export for that), then the results get
   imported back through the same page.
+- **Community map** (`/community/map/`) — opt in, and your instance appears as an
+  anonymous pin at postcode-district level: no name, no address, no inventory. Pins are
+  signed, so a workshop can pass on a pin it did not publish without being able to alter
+  it, and they travel between connected instances rather than through any central
+  service. Turning discoverability off publishes a signed removal that every holder acts
+  on by deleting the location. The page itself contacts nobody; a button (or
+  `manage.py sync_community_pins`) does the asking.
 - **Projects / BOM / Build** — versioned bills of materials per project, with
   live stock-coverage math and a "Build" action that FIFO-consumes real stock
   and records what was actually available vs. requested.

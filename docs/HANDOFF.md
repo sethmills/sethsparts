@@ -674,6 +674,72 @@ reported all caught, and the failing assertion contradicts what the source plain
 
 **Not done on purpose:** pushing and deploying. Production is still `12172b4`.
 
+### 27. Community pins and the map — ✅ built (2026-09-13)
+
+The last piece of the community feature, and the one it started from: workshops that opt in
+appear as anonymous pins, pins travel between connected instances, and opting out deletes
+them.
+
+**The pin format went to v2 to make removal possible.** A pin now carries `gone`, and a
+removal is a *newer signed entry* rather than the absence of one. The subtlety that drove
+the design: **a removal signs no coordinates at all.** The first version of this signed the
+coordinates exactly as a pin does — which meant a node could only pass a removal on while
+still holding the location it had just deleted, so every holder would have had to keep the
+data it agreed to destroy in order for the deletion to spread. A test caught it (a re-served
+removal failed its own signature), and the rule that came out of it is the right one: a
+removal is a statement about a key, not about a place. `PIN_VERSION` is 2 because the
+payload shape changed and the version is inside the signed bytes; the old format is refused
+rather than guessed at.
+
+**The opt-out deletes, and what remains holds nothing.** Deleting the row outright would
+have been the obvious implementation and it is wrong: the next stale copy of the old pin,
+relayed by someone who had not heard about the removal, would resurrect a workshop that had
+asked to be forgotten. So the location is cleared to NULL and what remains is the key, its
+newest signed timestamp, the signature and a boolean. The load-bearing test in
+`test_community_pins.py` relays a week-old copy of a removed pin and asserts the map still
+shows nothing.
+
+**Opting out is pushed, not waited for.** Turning discoverability off publishes the removal
+to every pin-exchanging connection immediately, best effort — a peer being offline must not
+stop the owner switching their own pin off, and every change re-sends the whole statement
+anyway. It is sent only when the answer actually changed, because re-pushing an unchanged
+pin on every Save would be noise (and a settings page that quietly talks to peers each time
+is a surprise).
+
+**Gossip is bounded and the origin is never named.** Entries carry a hop count that each
+receiver increments, so a relay cannot under-report it to defeat the limit; entries at the
+limit are not forwarded; entries nobody refreshes expire after 180 days. Which neighbour a
+pin came from is *not stored at all* — the plan forbids disclosing it, and not holding it is
+the strongest version of that.
+
+**The map page makes no requests.** Pins arrive from a button or from
+`manage.py sync_community_pins` (cron-able). A page render that quietly contacts several
+strangers' servers would be a surprise, would fail offline, and would announce this
+instance's interest to everyone it knows — the same reasoning as the update check. MapLibre
+GL is **vendored** into `inventory/static/inventory/vendor/` rather than loaded from a CDN,
+and the tile style is a setting (`COMMUNITY_MAP_STYLE`) defaulting to OpenFreeMap's dark
+style: no API key, no account, no cookies, and self-hostable.
+
+**A peer's name is shown only if you already know them.** The pin an owner publishes stays
+anonymous even when they set a display name, because a pin is gossiped network-wide and that
+name only ever went to the people they told. The map labels a pin by matching its key
+against the connections list, and escapes the name, because it arrived over the network from
+someone else's server.
+
+**Verified:** 757 tests OK (was 687). The peer endpoint is authenticated with the
+per-connection key using `secrets.compare_digest`; it refuses a revoked connection and
+refuses a connection that does not exchange pins, and there are tests for all three. Nine
+new mutations (74 total, all caught) break the things that would otherwise fail quietly:
+skipping signature verification, dropping newest-wins, storing a removal as a live pin,
+ignoring the hop limit, letting a non-pin connection read the map, honouring a revoked key,
+publishing the owner's name to the network, publishing the pin instead of the removal when
+opting out, and never telling anyone about the change at all. Migration `0025` was exercised
+against the real database (1,379 stock rows): forward, back, forward.
+
+**Not built, deliberately:** connect requests between strangers (plan §8.4) need the
+noticeboard relay, and the noticeboard is optional by design — the gossip network covers
+people who are already connected, which is the case that matters for Seth and his dad.
+
 ### Backlog / discussed, not built
 
 - **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."
