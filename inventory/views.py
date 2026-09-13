@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import re
 import secrets
 from urllib.parse import quote
@@ -730,9 +731,56 @@ def add_intake_note(request, number):
 
 
 @login_required
+def bulk_intake(request):
+    """Add a batch of quick notes at once -- one per line -- optionally assigning them
+    all to a container now, or leaving them unassigned to sort out later from the
+    queue. This is the entry point the intake queue itself was missing: previously the
+    only way to add a note was from an already-chosen container's own page."""
+    if request.method == "POST":
+        container_id = request.POST.get("container") or None
+        container = get_object_or_404(Container, pk=container_id) if container_id else None
+        source = request.POST.get("source") or IntakeNote.TYPED
+        if source not in dict(IntakeNote.SOURCE_CHOICES):
+            source = IntakeNote.TYPED
+
+        lines = [line.strip() for line in (request.POST.get("text") or "").splitlines()]
+        lines = [line for line in lines if line]
+
+        if not lines:
+            messages.error(request, "No items received — one per line.")
+        else:
+            IntakeNote.objects.bulk_create(
+                [IntakeNote(container=container, text=line, source=source) for line in lines]
+            )
+            messages.success(request, f"Queued {len(lines)} item{'s' if len(lines) != 1 else ''} for review.")
+            return redirect("inventory:intake_queue")
+
+    return render(
+        request,
+        "inventory/bulk_intake.html",
+        {"containers": Container.objects.order_by("number")},
+    )
+
+
+@login_required
 def intake_queue(request):
     notes = IntakeNote.objects.filter(reviewed=False).select_related("container")
-    return render(request, "inventory/intake_queue.html", {"notes": notes})
+    return render(
+        request,
+        "inventory/intake_queue.html",
+        {"notes": notes, "containers": Container.objects.order_by("number")},
+    )
+
+
+@login_required
+def assign_intake_note_container(request, pk):
+    note = get_object_or_404(IntakeNote, pk=pk)
+    if request.method == "POST":
+        container_id = request.POST.get("container") or None
+        note.container = get_object_or_404(Container, pk=container_id) if container_id else None
+        note.save(update_fields=["container"])
+        messages.success(request, f"Assigned to {note.container}." if note.container else "Cleared assignment.")
+    return redirect("inventory:intake_queue")
 
 
 @login_required
@@ -1180,6 +1228,99 @@ def reorder(request):
         "inventory/reorder.html",
         {"needs_reorder": needs_reorder, "categories": Category.objects.all(), "selected_category": category_id},
     )
+
+
+# --- Enrichment queue ---------------------------------------------------------
+# The actual research (finding a product page, pinout, datasheet, price) needs a live
+# agent making real web requests -- nothing the deployed app can run unattended for
+# free on a schedule. What *is* buildable and safe to trigger from here: reclassifying
+# candidates (pure DB logic), exporting a worklist for that research pass, and
+# importing the finished results -- so the only manual step is asking Claude to
+# process the exported file, not SSHing in to run management commands by hand.
+
+@login_required
+def enrichment_queue(request):
+    from django.db.models import Count as _Count  # local alias, avoids shadowing concerns
+
+    raw_counts = dict(Part.objects.values_list("enrichment_status").annotate(n=_Count("id")))
+    status_counts = [(label, raw_counts.get(value, 0)) for value, label in Part.ENRICHMENT_CHOICES]
+    pending = Part.objects.filter(enrichment_status=Part.ENRICHMENT_PENDING).select_related("category")
+    needs_review = Part.objects.filter(enrichment_status=Part.ENRICHMENT_NEEDS_REVIEW).select_related("category")
+    needs_clarification = Part.objects.filter(enrichment_status=Part.ENRICHMENT_NEEDS_CLARIFICATION).select_related("category")
+
+    return render(
+        request,
+        "inventory/enrichment_queue.html",
+        {
+            "status_counts": status_counts,
+            "pending": pending,
+            "needs_review": needs_review,
+            "needs_clarification": needs_clarification,
+        },
+    )
+
+
+@login_required
+def run_enrichment_classification(request):
+    if request.method == "POST":
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("classify_enrichment_queue", stdout=out)
+        messages.success(request, out.getvalue().replace("\n", " · ").strip(" ·"))
+    return redirect("inventory:enrichment_queue")
+
+
+@login_required
+def export_enrichment_worklist(request):
+    """A JSON list of pending parts for a research pass to work from -- id + whatever's
+    already known, so the research doesn't start from nothing. Not the same shape
+    ingest_enrichment expects back (that's the *output* of research); this is the input."""
+    parts = Part.objects.filter(enrichment_status=Part.ENRICHMENT_PENDING).select_related("category")
+    worklist = [
+        {
+            "id": part.id,
+            "name": part.name,
+            "category": part.category.name if part.category else None,
+            "manufacturer": part.manufacturer,
+            "description": part.description,
+        }
+        for part in parts
+    ]
+    response = JsonResponse(worklist, safe=False, json_dumps_params={"indent": 2})
+    response["Content-Disposition"] = "attachment; filename=enrichment_worklist.json"
+    return response
+
+
+@login_required
+def import_enrichment_results(request):
+    if request.method == "POST":
+        upload = request.FILES.get("results_file")
+        if not upload:
+            messages.error(request, "No file received.")
+            return redirect("inventory:enrichment_queue")
+
+        import tempfile
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp:
+            for chunk in upload.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        out = StringIO()
+        try:
+            call_command("ingest_enrichment", tmp_path, stdout=out)
+            messages.success(request, out.getvalue().replace("\n", " · ").strip(" ·"))
+        except Exception as exc:
+            messages.error(request, f"Import failed: {exc}")
+        finally:
+            os.unlink(tmp_path)
+    return redirect("inventory:enrichment_queue")
 
 
 # --- Phase 6: Export ----------------------------------------------------------
