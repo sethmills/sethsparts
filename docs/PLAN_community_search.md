@@ -90,7 +90,8 @@ this from scratch.
 
 `GET /api/peer-search/?q=<query>` (machine-to-machine, not a session-login
 route — same pattern as the existing `/api/locate/` voice-search endpoint in
-`inventory/views.py`, which is a good template to copy from directly).
+`inventory/views/searching.py` (the `api_locate_part` view), which is a good
+template to copy from directly).
 
 - Auth: `X-Peer-Key` header, matched against `Peer.inbound_api_key`. No match
   → 403. This is a shared-secret model exactly like `LED_CONTROLLER_KEY` /

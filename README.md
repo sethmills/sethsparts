@@ -51,6 +51,7 @@ product. A second instance for someone else's workshop is a real goal (see
 ```
 config/                  Django project settings/urls/wsgi
 inventory/               The one Django app -- models, views, templates, admin
+  views/                 View layer, one module per topic -- see "View layout"
   management/commands/   One-off/maintenance scripts (import, enrichment, etc.)
   migrations/
   templates/inventory/
@@ -71,6 +72,19 @@ docker-compose.yml
 requirements.txt
 .env.example              Every environment variable this app reads, documented
 ```
+
+## View layout
+
+`inventory/views/` is a package, one module per topic, rather than one big `views.py`:
+`browse`, `parts`, `bins`, `labels`, `intake`, `searching` (part search + the voice
+API), `tagging`, `projects`, `enrichment`, `lights` (everything that talks to the LED
+controller), `auth` (kiosk auto-login), and `_shared` (helpers several of them need).
+
+`views/__init__.py` re-exports every view, so `inventory/urls.py`'s
+`from . import views` + `views.browse`, and the test suite's
+`from inventory.views import _locate_drawer`, both keep working. **That facade exists
+only to keep those import paths stable** — put a new view in the topic module it belongs
+to, not in `__init__.py`.
 
 ## Local development
 

@@ -1,0 +1,185 @@
+"""Incoming package for the inventory views, split out of the single 1465-line
+views.py that used to live here.
+
+Every name is re-exported here, so both of the existing call patterns keep
+working unchanged:
+
+  * `from . import views` + `views.browse`   (inventory/urls.py)
+  * `from inventory.views import _locate_drawer`   (the test suite)
+
+This file exists ONLY to keep those import paths stable. Add new views to the
+topic module they belong to, not here.
+"""
+from ._shared import (
+    _current_stock,
+    _reorder_link,
+    _consume_stock,
+    _slugify_drawer_code,
+    _location_choices,
+    _drawer_number,
+)
+from .auth import (
+    kiosk_autologin,
+)
+from .browse import (
+    browse,
+    scan,
+    go,
+    jump_to_container,
+    container_detail,
+    delete_container,
+    drawer_detail,
+    register_container_barcode,
+    register_drawer_barcode,
+)
+from .parts import (
+    part_intake,
+    part_detail,
+    add_part_photo,
+    update_stock_quantity,
+    update_stock_bin,
+    delete_stock_item,
+    add_stock_item,
+)
+from .searching import (
+    parts_search,
+    api_locate_part,
+)
+from .tagging import (
+    tagging_list,
+    tagging_update,
+    _tagging_location_choices,
+)
+from .bins import (
+    BIN_ELIGIBLE_CONTAINERS,
+    BINS_PER_DRAWER,
+    _bin_eligible_drawers,
+    _ensure_bins_seeded,
+    _ensure_bins_for_drawer,
+    bin_setup,
+    bin_scan,
+    api_scan_bin,
+    bin_detail,
+    register_bin_barcode,
+    add_sub_bin,
+    register_sub_bin_barcode,
+    delete_sub_bin,
+)
+from .labels import (
+    labels,
+    generate_and_print_labels,
+    print_labels,
+    barcode_svg,
+    custom_label,
+)
+from .intake import (
+    quick_add_container,
+    add_container_photo,
+    add_intake_note,
+    bulk_intake,
+    intake_queue,
+    assign_intake_note_container,
+    mark_intake_note_reviewed,
+)
+from .projects import (
+    project_list,
+    project_detail,
+    build_project,
+    reorder,
+)
+from .enrichment import (
+    enrichment_queue,
+    run_enrichment_classification,
+    export_enrichment_worklist,
+    import_enrichment_results,
+    export_inventory,
+    reference_list,
+    resistor_calculator,
+)
+from .lights import (
+    _led_post,
+    _locate_drawer,
+    locate_drawer_led,
+    locate_stock_item,
+    locate_bin,
+    light_controls,
+    led_set_defaults,
+    led_room_light,
+    led_demo,
+)
+
+__all__ = [
+    "_current_stock",
+    "_reorder_link",
+    "_consume_stock",
+    "_slugify_drawer_code",
+    "_location_choices",
+    "_drawer_number",
+    "kiosk_autologin",
+    "browse",
+    "scan",
+    "go",
+    "jump_to_container",
+    "container_detail",
+    "delete_container",
+    "drawer_detail",
+    "register_container_barcode",
+    "register_drawer_barcode",
+    "part_intake",
+    "part_detail",
+    "add_part_photo",
+    "update_stock_quantity",
+    "update_stock_bin",
+    "delete_stock_item",
+    "add_stock_item",
+    "parts_search",
+    "api_locate_part",
+    "tagging_list",
+    "tagging_update",
+    "_tagging_location_choices",
+    "BIN_ELIGIBLE_CONTAINERS",
+    "BINS_PER_DRAWER",
+    "_bin_eligible_drawers",
+    "_ensure_bins_seeded",
+    "_ensure_bins_for_drawer",
+    "bin_setup",
+    "bin_scan",
+    "api_scan_bin",
+    "bin_detail",
+    "register_bin_barcode",
+    "add_sub_bin",
+    "register_sub_bin_barcode",
+    "delete_sub_bin",
+    "labels",
+    "generate_and_print_labels",
+    "print_labels",
+    "barcode_svg",
+    "custom_label",
+    "quick_add_container",
+    "add_container_photo",
+    "add_intake_note",
+    "bulk_intake",
+    "intake_queue",
+    "assign_intake_note_container",
+    "mark_intake_note_reviewed",
+    "project_list",
+    "project_detail",
+    "build_project",
+    "reorder",
+    "enrichment_queue",
+    "run_enrichment_classification",
+    "export_enrichment_worklist",
+    "import_enrichment_results",
+    "export_inventory",
+    "reference_list",
+    "resistor_calculator",
+    "_led_post",
+    "_locate_drawer",
+    "locate_drawer_led",
+    "locate_stock_item",
+    "locate_bin",
+    "light_controls",
+    "led_set_defaults",
+    "led_room_light",
+    "led_demo",
+]
