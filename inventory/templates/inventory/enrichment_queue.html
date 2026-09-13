@@ -1,0 +1,72 @@
+{% extends "inventory/base.html" %}
+{% block title %}Enrichment queue — Seth's Parts{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Enrichment queue</h1>
+  <p class="muted">Finds product pages, pinouts, datasheets, and pricing for parts worth the lookup. The actual research still needs a live pass (ask Claude to work through the exported worklist) — this page is for triggering and tracking that, not a background job, to keep it opt-in and cost-controlled.</p>
+  <p>
+    {% for label, count in status_counts %}
+      <span class="pill">{{ label }}: {{ count }}</span>
+    {% endfor %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Classify candidates</h2>
+  <p class="muted">Scans every part still marked "not needed" and flags ones worth researching (specific named boards/modules) vs. ones that need you to clarify what they actually are first vs. generic hardware left alone. Safe to run any time — pure local logic, no web calls.</p>
+  <form method="post" action="{% url 'inventory:run_enrichment_classification' %}">
+    {% csrf_token %}
+    <button class="btn" type="submit">🔍 Classify now</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>2. Export worklist ({{ pending|length }} pending)</h2>
+  <p class="muted">Downloads the parts flagged "pending" as JSON. Hand this to Claude and ask it to research each one (product page, images, pinout, datasheet, price) — it'll produce a results file in the format step 3 expects.</p>
+  <p><a href="{% url 'inventory:export_enrichment_worklist' %}" class="btn secondary">⬇ Export worklist.json</a></p>
+  {% if pending %}
+  <table>
+    <tr><th>Part</th><th>Category</th></tr>
+    {% for part in pending %}
+    <tr><td><a href="{% url 'inventory:part_detail' part.pk %}">{{ part.name }}</a></td><td class="muted">{{ part.category|default:"—" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>3. Import results</h2>
+  <p class="muted">Once Claude hands back a completed results file, upload it here to update parts and download images/pinouts/datasheets automatically.</p>
+  <form method="post" action="{% url 'inventory:import_enrichment_results' %}" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    {% csrf_token %}
+    <input type="file" name="results_file" accept="application/json" required>
+    <button class="btn" type="submit">Import</button>
+  </form>
+</div>
+
+{% if needs_clarification %}
+<div class="card">
+  <h2>Needs your clarification ({{ needs_clarification|length }})</h2>
+  <p class="muted">Ambiguous labels a web search can't resolve on its own — say more about what these actually are before they can be researched.</p>
+  <table>
+    <tr><th>Part</th><th>Category</th></tr>
+    {% for part in needs_clarification %}
+    <tr><td><a href="{% url 'inventory:part_detail' part.pk %}">{{ part.name }}</a></td><td class="muted">{{ part.category|default:"—" }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if needs_review %}
+<div class="card">
+  <h2>Needs a second look ({{ needs_review|length }})</h2>
+  <p class="muted">Matched something during a previous research pass, but at low confidence — worth a manual check in <a href="/admin/inventory/part/?enrichment_status__exact=needs_review">/admin/</a>.</p>
+  <table>
+    <tr><th>Part</th><th>Category</th></tr>
+    {% for part in needs_review %}
+    <tr><td><a href="{% url 'inventory:part_detail' part.pk %}">{{ part.name }}</a></td><td class="muted">{{ part.category|default:"—" }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

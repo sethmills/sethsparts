@@ -4,14 +4,30 @@
 <div class="card">
   <h1>Intake review queue</h1>
   <p class="muted">Quick notes (typed or dictated) about container contents, waiting to be turned into real parts/stock entries.</p>
+  <p><a href="{% url 'inventory:bulk_intake' %}" class="btn">+ Add items</a></p>
 </div>
 
 {% if notes %}
 {% for note in notes %}
 <div class="card">
-  <p><a href="{% url 'inventory:container_detail' note.container.number %}">#{{ note.container.number }} ({{ note.container.container_type }})</a> <span class="pill">{{ note.get_source_display }}</span> <span class="muted">{{ note.created_at|date:"Y-m-d H:i" }}</span></p>
+  <p>
+    {% if note.container %}
+      <a href="{% url 'inventory:container_detail' note.container.number %}">#{{ note.container.number }} ({{ note.container.container_type }})</a>
+    {% else %}
+      <span class="pill">unassigned</span>
+    {% endif %}
+    <span class="pill">{{ note.get_source_display }}</span> <span class="muted">{{ note.created_at|date:"Y-m-d H:i" }}</span>
+  </p>
   <p>{{ note.text }}</p>
-  <form method="post" action="{% url 'inventory:mark_intake_note_reviewed' note.pk %}">
+  <form method="post" action="{% url 'inventory:assign_intake_note_container' note.pk %}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    {% csrf_token %}
+    <select name="container">
+      <option value="">— unassigned —</option>
+      {% for c in containers %}<option value="{{ c.pk }}" {% if note.container_id == c.pk %}selected{% endif %}>#{{ c.number }} ({{ c.container_type }})</option>{% endfor %}
+    </select>
+    <button class="btn secondary btn-sm" type="submit">{% if note.container %}Reassign{% else %}Assign{% endif %}</button>
+  </form>
+  <form method="post" action="{% url 'inventory:mark_intake_note_reviewed' note.pk %}" style="margin-top:8px;">
     {% csrf_token %}
     <button class="btn secondary btn-sm" type="submit">Mark reviewed</button>
   </form>

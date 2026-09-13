@@ -316,13 +316,19 @@ class ContainerPhoto(models.Model):
 class IntakeNote(models.Model):
     """A quick, unstructured note about a container's contents — typed or voice-dictated —
     queued for Seth to review later and turn into real Part/StockItem entries. Deliberately
-    not auto-parsed into structured data; this is just fast capture during a move."""
+    not auto-parsed into structured data; this is just fast capture during a move.
+
+    container is nullable so bulk intake can capture a list of items before deciding where
+    they'll live — "add now, assign a space later" — not just one-at-a-time on an
+    already-chosen container's own page."""
 
     VOICE = "voice"
     TYPED = "typed"
     SOURCE_CHOICES = [(VOICE, "Voice"), (TYPED, "Typed")]
 
-    container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="intake_notes")
+    container = models.ForeignKey(
+        Container, null=True, blank=True, on_delete=models.CASCADE, related_name="intake_notes"
+    )
     text = models.TextField()
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=TYPED)
     reviewed = models.BooleanField(default=False)
@@ -332,7 +338,8 @@ class IntakeNote(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.container}: {self.text[:50]}"
+        where = self.container if self.container else "(unassigned)"
+        return f"{where}: {self.text[:50]}"
 
 
 class StockItem(models.Model):
