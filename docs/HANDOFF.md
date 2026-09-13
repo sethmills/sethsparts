@@ -16,6 +16,7 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
 - **Parts-review workbook:** `docs/parts_review.xlsx`, regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>` — merges in whatever Seth already typed into the "fill in" columns by Part ID, so re-running never clobbers his progress. He's still actively working through it, alongside `docs/clarification_workstream.md`.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 211 tests, ~7s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py`, which proves the suite fails when the logic it protects is broken. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -261,6 +262,74 @@ Every step verified via a local Python simulation (stubbing `board`/`usb_cdc`/`a
 **Bulk intake.** Seth noticed the intake queue had no way to actually add a note — only from a container's own page, one at a time. `IntakeNote.container` is now nullable; new `/intake/add/` (`bulk_intake`) takes a whole batch (one item per line — typed or dictated, with voice results split onto their own line at each recognized phrase boundary) and either assigns them all to a container now or leaves them unassigned. `/intake/queue/` gained an inline assign/reassign dropdown per note (`assign_intake_note_container`) for the "sort out later" path.
 
 **Enrichment queue.** `classify_enrichment_queue` and `ingest_enrichment` (from the original Phase 3 enrichment work) already existed but were CLI-only — no in-app way to trigger them. New `/enrichment/` dashboard: status counts, a "🔍 Classify now" button (runs the classifier live — pure DB logic, no web calls, safe any time), a worklist JSON export of `pending` parts for a research pass to work from, and a results-upload that runs `ingest_enrichment` via `call_command` on the uploaded file. Verified end-to-end with the test client (classify, export, and a real import against a live Part, reverted after). **Important framing, told to Seth directly**: the actual web research (finding product pages/pinouts/datasheets/pricing) needs a live agent making real requests — nothing the deployed container can run unattended on a schedule for free. This page makes the *trigger-and-apply* halves a normal in-app action; the research step is still "ask Claude to process the exported worklist," which matches what Seth said he was fine with ("maybe just a manual trigger").
+
+### 21. Test suite + mutation check — ✅ done (2026-09-13)
+
+**Why this came first, ahead of any feature work.** The repo had `inventory/tests.py` as the
+untouched Django stub — a single `# Create your tests here.` and nothing else. Every bit of
+verification described in this log (all that "verified via the test client", "verified end-to-end",
+"verified with a simulated Enter keypress") was real when it happened, but none of it was
+committed, so it only ever existed in the session that did it. That's survivable with one assistant
+holding continuous context across the whole project; it is the main thing that makes
+handing the repo between assistants risky, because any change is then verified only by whoever
+made it. So this landed before features: a committed suite, so the verification stops being
+ephemeral and either assistant can change something safely.
+
+**What's there now.** `inventory/tests/` is a package (the stub `tests.py` is deleted), one module
+per area, 211 tests, running offline in ~7s with no hardware and no network:
+
+| Module | Covers |
+|---|---|
+| `test_models.py` | `normalized_name` on save, BOM version numbering per-project, bin row/column for all 16 positions, `BuildConsumption.short`, `__str__` formats used in templates and LED error messages |
+| `test_search.py` | Synonym expansion, whole-word-only matching, the four searchable fields, the 150-result cap, empty-query behaviour at both the helper and view level |
+| `test_scan_resolution.py` | `go()` resolving container → drawer → bin → sub-bin, cross-model code collision order, not-found path, login wall |
+| `test_stock_and_builds.py` | FIFO consumption ordering and spill-over, free-text quantities never decremented, short-stock honesty, build-against-latest-revision, reorder threshold boundary |
+| `test_bins.py` | Eligibility (38/39/40 only), seeding idempotency, numeric drawer sorting, scan/409-conflict/400 paths, sub-bin 4-cap |
+| `test_led.py` | The row-goes-left / column-goes-right split, drawer-level locate sending neither, per-strip failure isolation, all three "not configured" paths, colour/brightness normalisation |
+| `test_labels.py` | All 3 physical sizes at 203dpi, bold/italic combinations, barcode compositing, shrink-to-fit, hand-checked ZPL bit-packing, unconfigured-printer path |
+| `test_intake.py` | Bulk line splitting, blank/whitespace rejection, unassigned notes, source validation, quick-add numbering staying monotonic across gaps |
+| `test_voice_api.py` | Every 403/400 path on the shared-secret endpoint, payload shape, 5-result cap, `quantity_raw` preferred over `quantity` |
+| `test_kiosk_auth.py` | Correct token mints a real session, wrong/missing token logs nobody in, unset token rejects everything, exact-match including case |
+
+**`scripts/mutation_check.py` — the part that actually matters.** A passing suite proves nothing on
+its own; what matters is whether it fails when the code it protects is broken. The script applies
+10 real mutations (reverse the FIFO consumption order, swap the LED row/column split, cut
+`BINS_PER_DRAWER` to 8, drop the bin-scan conflict check, disable synonym expansion, off-by-one the
+ZPL row stride, make an empty kiosk token match anything, and so on), runs the relevant tests, and
+reports anything that stayed green. **Result: 10/10 caught.** Adding tests for a new area without
+running this leaves you guessing whether they'd catch a regression.
+
+**Two findings worth a human's eye — both pinned as-is, neither silently "fixed":**
+
+1. **`build_search_query("")` returns an empty `Q()`, and `filter(Q())` matches every row.** The
+   helper is a footgun: an empty query is *permissive*, not empty. Both current callers guard
+   before calling (`parts_search` checks `if query:`; `api_locate_part` returns 400 on a blank `q`),
+   so the shipped behaviour is correct — `/search/` with no params shows nothing, which is tested.
+   But a future caller that forgets the guard leaks the whole inventory into a search result.
+   Pinned both ways: the permissive helper behaviour with a FOOTGUN docstring, and the view-level
+   guard that actually protects the user.
+2. **Blank quantity is rejected, but blank bin number clears.** `update_stock_quantity` does
+   `int(raw)`, so submitting an empty field raises `ValueError` and shows "'…' isn't a whole
+   number" while leaving the old value intact; `update_stock_bin` explicitly clears to `None` on
+   blank. Since `StockItem.quantity=None` is a meaningful state (the spreadsheet's "10 aprox"), not
+   being able to return a quantity to unknown is arguably a gap — but it's the shipped behaviour and
+   changing it alters production data handling, so it's flagged rather than altered. Seth's call.
+
+**Also fixed along the way:** the README's local-dev steps said `cd tor-inventory` (the directory was
+renamed) and `python3 -m venv venv`, which fails on any machine whose default `python3` is below
+3.12 — Django 6.1 requires 3.12+. Both corrected, with a note explaining why the version matters.
+Added a "Tests" section covering the conventions (behaviour contracts over snapshots; pin surprising
+intentional behaviour with an explanatory docstring so a later "fix" trips the test) and a fifth step
+in "Picking this up with a different AI assistant".
+
+**Not done, deliberately:** `inventory/views.py` is still a single 1,465-line file with 71 view
+functions. Splitting it by domain (bins, intake, labels, lights, enrichment, search) is the obvious
+next structural job — and is now a low-risk mechanical refactor *because* the suite exists. Doing it
+before this would have meant moving 71 functions with nothing to catch a mistake.
+
+**Verified:** `manage.py test inventory` → 211 tests, OK. `scripts/mutation_check.py` → baseline
+PASS, 10/10 mutations caught. `manage.py check` → no issues. Nothing deployed — this is branch
+`hardening/test-suite`, no production behaviour changed.
 
 ### Backlog / discussed, not built
 
