@@ -603,6 +603,77 @@ and no session, the right password 302s to `/`, the navigation carries a logout 
 1,379 stock rows in it: forward from `0013`, back to `0022`, forward again, row counts
 unchanged.
 
+### 26. A printer driver layer, and the first release tag — ✅ done (2026-09-13)
+
+**The driver layer.** `SiteSettings.label_driver` had four choices and one implementation:
+only ZPL existed, only ZPL had been near hardware, and the resolution was hardcoded to the
+GK420T's 203dpi. The settings page offered Brother QL, Dymo and CUPS anyway, which is the
+kind of claim that turns into a stranger's bug report.
+
+New `inventory/label_drivers.py` holds one class per printer language, each with its own
+bytes, its own default resolution, its own print-head width, and — the part that matters
+most — a `tested` flag:
+
+| Driver | Bytes | Default | Tested on real hardware? |
+|---|---|---|---|
+| Zebra / ZPL | `^GFA` graphic field | 203 | **Yes** — a GK420T, which is every label this app has printed |
+| Brother QL | QL raster commands (`ESC i a`, `g` lines) | 300 | No |
+| Dymo LabelWriter | `SYN` raster lines | 203 | No |
+| CUPS | PNG handed to `lp` | 300 | No |
+
+The two untested encoders are written from the manufacturers' own command references, cited
+in the module and in `label-printer/README.md`, and **the UI now says so**: the settings page
+and the custom-label page name the driver and state plainly whether anything has ever tried
+it. That honesty is the feature — a driver that silently produces plausible-looking bytes
+for a printer nobody here owns is worse than no driver at all.
+
+`label_printing.py` keeps the rendering (shared by every printer) and gained a configurable
+resolution: `SiteSettings.label_dpi`, blank meaning "the resolution that goes with the
+printer type". That exists because printer families span resolutions — a GK420T is 203dpi and
+the 300dpi model is otherwise the same machine — and rendering at the wrong one gives a label
+of the right shape and the wrong size.
+
+**Print heads are fixed widths**, so a 4" label is 812 dots at 203dpi and cannot go on a Dymo
+(448) or a Brother QL (696) at all. Rather than sending it and letting the printer clip it
+silently, `print_label` refuses with a message naming both numbers, and the settings page
+shows a fits/doesn't-fit verdict for each label size.
+
+**The bridge** (`label-printer/pi/server.py`) now looks at the content type: printer bytes go
+straight to the raw USB device node as before, a PNG goes to CUPS via `lp`, and anything else
+is refused with a **415** rather than written to a printer as binary noise. `/health` reports
+whether the device and CUPS are actually available, so "printer unplugged" and "CUPS isn't
+installed" stop looking identical.
+
+**Verified:** 687 tests OK (was 635). The new `inventory/tests/test_label_drivers.py` pins
+the byte layouts the manuals specify — line widths, bit order, the media declaration, the
+print-area offset — which is the most a machine that isn't holding the printer can do, and it
+gives whoever first tries a Brother or a Dymo a single place to compare against. Seven new
+mutations (65 total, all caught) cover the silent failures: ignoring the saved resolution,
+sending an over-wide label, crashing instead of falling back to ZPL, mirroring the raster
+bits, shortening a raster line, writing a PNG to the raw device, and storing a nonsense
+resolution. Migration `0024` was exercised against the real database (1,379 stock rows):
+forward, back, forward.
+
+**The first release tag.** `v0.1.0` tags this commit. Until now `inventory/version.py` said
+`0.1.0` and nothing in git was tagged, so the update check compared against nothing at all —
+anyone pressing the button would have been told "no releases or tags published yet". The tag
+is **local only**; neither it nor tonight's commits have been pushed.
+
+**A bug found in the mutation tool itself, worth knowing about.** `scripts/mutation_check.py`
+restored each file it mutated — but restoring the *content* is not enough. Python decides
+whether cached bytecode is current by comparing the source file's mtime at one-second
+resolution, so a restore landing in the same second as the mutation leaves the *mutated*
+`.pyc` on disk; the next test run loads it and fails against a tree that is perfectly clean.
+That is exactly what happened here and it cost a confusing detour through a green-to-red
+suite. The script now deletes the module's cached bytecode after each restore.
+
+The symptom, if you ever see it again: the suite fails immediately after a mutation run that
+reported all caught, and the failing assertion contradicts what the source plainly says.
+`find . -name "*.pyc" -not -path "./venv/*" -exec rm -f {} +` clears it. (macOS `find` has no
+`-newermt`, so filtering by age silently matches nothing — delete them all.)
+
+**Not done on purpose:** pushing and deploying. Production is still `12172b4`.
+
 ### Backlog / discussed, not built
 
 - **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."

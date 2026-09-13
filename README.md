@@ -57,7 +57,8 @@ inventory/               The one Django app -- models, views, templates, admin
   templates/inventory/
   static/inventory/
   tests/                 The test suite -- one module per area, see "Tests" below
-  label_printing.py       Renders custom labels (Pillow -> ZPL), see below
+  label_printing.py       Renders custom labels; encodes via label_drivers.py
+  label_drivers.py        One class per printer language (ZPL/Brother/Dymo/CUPS)
 docs/
   HANDOFF.md              Start here after this file -- running log + backlog
   clarification_workstream.md   Parts too ambiguous for automated enrichment
@@ -197,8 +198,10 @@ key, separate from whatever key you push with.
 - **Custom label designer** (`/labels/custom/`) — type text, optionally add a
   barcode, pick one of the physical label sizes on hand, adjust font
   size/bold/italic, live preview, print — renders as a bitmap (real font
-  control) packed into a ZPL graphic field, sent to the Zebra printer via
-  `label-printer/`.
+  control) and encodes it for whichever printer type is configured: ZPL,
+  Brother QL raster, Dymo raster, or a PNG handed to CUPS. Sent to the printer
+  via `label-printer/`. Only the ZPL path has been tested on real hardware;
+  the others are written from the manufacturers' manuals and say so in the UI.
 - **Moving-day intake** — `/intake/new-box/` quick-creates a new container
   with an auto-assigned number and an immediate printable barcode.
   `/intake/add/` captures a batch of typed/dictated notes about contents (one

@@ -123,8 +123,20 @@ is written by that push.
 
 **Label printer.** A Pi with the print bridge in `label-printer/`, next to the printer.
 The app renders the label and sends the finished bytes; nothing needs a driver on the
-machine running the app. Zebra/ZPL is what this was built and tested against — the
-settings page also offers Brother QL, Dymo and a generic CUPS route.
+machine running the app. Pick your printer's language in Settings:
+
+- **Zebra / ZPL** — built and tested against a GK420T. Every label this app has printed
+  goes this way.
+- **Brother QL**, **Dymo LabelWriter** — implemented from those manufacturers' own
+  command references. **Never tried on the real printers.** They may work first time;
+  nobody has proved it.
+- **Any printer via CUPS** — the label goes to the Pi as an image and `lp` prints it,
+  so the queue's own driver does the work. Untested here too, but it has the least to
+  get wrong.
+
+If your printer is the 300dpi version of a 203dpi design (most of them are sold both
+ways), set the dots-per-inch box to match; leaving it blank uses the usual resolution
+for the type you picked.
 
 ---
 
@@ -157,6 +169,9 @@ python manage.py check_updates --quiet
 - **Labels print but the text is tiny** — the label sizes in
   `inventory/label_printing.py` don't match your stock. See Help → Lights and the label
   printer.
+- **Labels come out clipped, or the wrong size** — the printer type and dots-per-inch in
+  Settings → Labels decide how big the bitmap is. A 4" label is wider than a Brother QL
+  or a Dymo can print at all, and the settings page shows which of your sizes fit.
 - **A datasheet didn't archive** — expected sometimes. The manage page says why: a
   login wall, a 404, too big. A link behind a login stays a link.
 
