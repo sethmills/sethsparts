@@ -115,9 +115,16 @@ class PathTests(SimpleTestCase):
 
 class AllowlistTests(SimpleTestCase):
     def test_every_allowed_finding_says_why(self):
+        """Both entry forms. A list entry explains each needle it excuses, not just the file."""
         for path, reason in audit.KNOWN_BENIGN.items():
             with self.subTest(path=path):
-                self.assertTrue(reason.strip(), f"{path} has no explanation")
+                if isinstance(reason, str):
+                    self.assertTrue(reason.strip(), f"{path} has no explanation")
+                else:
+                    self.assertTrue(reason, f"{path} has an empty needle list")
+                    for needle, needle_reason in reason:
+                        self.assertTrue(needle.strip(), f"{path} has a blank needle")
+                        self.assertTrue(needle_reason.strip(), f"{path} needle {needle!r} has no explanation")
 
     def test_the_allowlist_only_names_files_that_exist(self):
         """A stale entry would silently excuse a path that has been renamed."""
@@ -125,3 +132,28 @@ class AllowlistTests(SimpleTestCase):
         for path in audit.KNOWN_BENIGN:
             with self.subTest(path=path):
                 self.assertTrue((root / path).exists(), f"{path} is in the allowlist but not in the repo")
+
+    def test_a_needle_scoped_entry_excuses_only_that_needle(self):
+        """The reason the two forms exist.
+
+        `scripts/audit_public_repo.py` is allowed to name the test fixtures in its
+        explanations — but a *different* secret committed to that same file must still fail
+        the run. A whole-file exemption here would be a blind spot in a security tool, which
+        is the one place it would never be noticed.
+        """
+        excused = audit.benign_reason("scripts/audit_public_repo.py", 'TOKEN = "kiosk-shared-secret"')
+        self.assertTrue(excused)
+        self.assertIsNone(audit.benign_reason("scripts/audit_public_repo.py", 'aws = "AKIA3XJ7QZ2LMNBV4C6D"'))
+
+    def test_a_whole_file_entry_excuses_anything_in_that_file(self):
+        """The other form, for files that are deliberately nothing but fixtures."""
+        self.assertTrue(audit.benign_reason("inventory/tests/test_login.py", "anything at all"))
+
+    def test_an_unlisted_file_is_never_excused(self):
+        self.assertIsNone(audit.benign_reason("inventory/views/setup.py", 'TOKEN = "kiosk-shared-secret"'))
+
+    def test_the_scanner_is_not_exempt_from_scanning_itself(self):
+        """It must stay sensitive in its own source: only the three known fixture names are
+        excused there, so the file is still read rather than skipped."""
+        needles = [needle for needle, _reason in audit.KNOWN_BENIGN["scripts/audit_public_repo.py"]]
+        self.assertEqual(sorted(needles), sorted(["Sh0pFull-0f-P4rts", "correct-horse-battery-", "kiosk-shared-secret"]))

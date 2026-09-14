@@ -85,7 +85,35 @@ KNOWN_BENIGN = {
         "holds sample credentials on purpose — it is the test for this scanner, so a "
         "sample AWS key and a sample token are the fixtures"
     ),
+    # A list of (needle, reason) pairs excuses only those strings, not the whole file. Used
+    # here because this scanner's own explanations name the fixtures above — including in the
+    # earlier version of this file that is still in history. Scoping to the needles keeps the
+    # important property: a *new*, unseen secret committed to any file in this list still
+    # fails the run. A whole-file exemption would quietly swallow it.
+    "scripts/audit_public_repo.py": [
+        ("kiosk-shared-secret", "names the kiosk test fixture while explaining this audit"),
+        ("correct-horse-battery-", "names the throwaway test password while explaining this audit"),
+        ("Sh0pFull-0f-P4rts", "names the strength-check fixture while explaining this audit"),
+    ],
 }
+
+
+def benign_reason(where: str, snippet: str) -> str | None:
+    """Why this finding is known-benign, or None if it wants a look.
+
+    A path maps either to a single reason (the whole file is deliberately full of fixtures,
+    like this scanner's own test) or to a list of (needle, reason) pairs, which excuses only
+    findings containing one of those needles.
+    """
+    entry = KNOWN_BENIGN.get(where)
+    if entry is None:
+        return None
+    if isinstance(entry, str):
+        return entry
+    for needle, reason in entry:
+        if needle in snippet:
+            return reason
+    return None
 
 
 def git(*args: str) -> str:
@@ -150,14 +178,20 @@ def main() -> int:
 
     print(f"blobs checked for content: {checked}   skipped (binary/vendored/huge): {skipped}")
 
-    ignored = [f for f in findings if f[1] in KNOWN_BENIGN]
-    surprises = [f for f in findings if f[1] not in KNOWN_BENIGN]
+    ignored = []
+    surprises = []
+    for label, where, snippet, commit in findings:
+        reason = benign_reason(where, snippet)
+        if reason is None:
+            surprises.append((label, where, snippet, commit))
+        else:
+            ignored.append((label, where, snippet, commit, reason))
 
     if ignored:
         print(f"\nignored as known-benign, listed so a new one is obvious: {len(ignored)}")
-        for label, where, snippet, _commit in ignored:
+        for label, where, snippet, _commit, reason in ignored:
             print(f"    [{label}] {where}: {snippet!r}")
-            print(f"        reason: {KNOWN_BENIGN[where]}")
+            print(f"        reason: {reason}")
 
     print(f"\nfindings needing a look: {len(surprises)}")
     for label, where, snippet, commit in surprises:
