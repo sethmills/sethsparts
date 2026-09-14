@@ -682,6 +682,30 @@ MUTATIONS = [
         "                if False:",
         "inventory.tests.test_duplicate_detection",
     ),
+    # --- CSV import ------------------------------------------------------------
+    (
+        "Import stops matching existing parts (re-import creates duplicates)",
+        ROOT / "inventory" / "csv_io.py",
+        "            part = Part.objects.filter(normalized_name=normalized).first()",
+        "            part = None",
+        "inventory.tests.test_csv_io",
+    ),
+    # --- voice intake ----------------------------------------------------------
+    (
+        "Voice intake accepts a missing key (anyone can queue notes)",
+        ROOT / "inventory" / "views" / "searching.py",
+        '    provided_key = request.headers.get("X-Api-Key") or request.GET.get("key") or request.POST.get("key") or ""',
+        '    provided_key = request.headers.get("X-Api-Key") or request.GET.get("key") or request.POST.get("key") or settings.VOICE_SEARCH_API_KEY or ""',
+        "inventory.tests.test_voice_intake",
+    ),
+    # --- DeepSeek enrichment ---------------------------------------------------
+    (
+        "Enrichment button shows without a configured key (opt-in broken)",
+        ROOT / "inventory" / "enrichment_ai.py",
+        "def is_configured():\n    return bool(settings.DEEPSEEK_API_KEY)",
+        "def is_configured():\n    return True",
+        "inventory.tests.test_enrichment_ai",
+    ),
 ]
 
 

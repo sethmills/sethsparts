@@ -1,0 +1,42 @@
+{% extends "inventory/base.html" %}
+{% block title %}Preview import — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Preview import</h1>
+  <p class="muted">{{ total_rows }} data row{{ total_rows|pluralize }} found.</p>
+
+  <div class="msg-success">
+    <p><strong>This will create:</strong></p>
+    <ul>
+      <li>{{ counts.stock_items }} stock entries</li>
+      <li>{{ counts.parts_new }} new parts</li>
+      <li>{{ counts.containers_new }} new containers</li>
+      <li>{{ counts.drawers_new }} new drawers</li>
+      <li>{{ counts.locations_new }} new locations</li>
+      <li>{{ counts.categories_new }} new categories</li>
+    </ul>
+  </div>
+
+  {% if errors %}
+  <div class="msg-warn">
+    <p><strong>{{ errors|length }} row{{ errors|length|pluralize }} will be skipped</strong> (problems below). Fix them in the file and re-upload, or import anyway and skip them.</p>
+    <ul>
+      {% for rownum, err in errors %}
+        <li>Row {{ rownum }}: {{ err }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if counts.stock_items %}
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn" type="submit" name="confirm" value="1">Confirm and import {{ counts.stock_items }} row{{ counts.stock_items|pluralize }}</button>
+    <a class="btn secondary" href="{% url 'inventory:import_csv' %}">Cancel</a>
+  </form>
+  {% else %}
+  <p class="msg-error">Nothing importable — every row had a problem.</p>
+  <p><a class="btn secondary" href="{% url 'inventory:import_csv' %}">Back</a></p>
+  {% endif %}
+</div>
+{% endblock %}

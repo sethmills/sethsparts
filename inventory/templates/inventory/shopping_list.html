@@ -1,0 +1,40 @@
+{% extends "inventory/base.html" %}
+{% block title %}Shopping list — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Shopping list</h1>
+  <p class="muted">Parts to buy on your next supply run. Check things off as you get them.</p>
+  <p>
+    <a href="{% url 'inventory:shopping_list_export' %}" class="btn secondary">Export as text</a>
+    {% if items %}
+    <form method="post" action="{% url 'inventory:shopping_list_clear' %}" style="display:inline">
+      {% csrf_token %}
+      <button class="btn secondary" type="submit">Clear bought</button>
+    </form>
+    {% endif %}
+  </p>
+</div>
+
+{% if items %}
+<div class="card">
+  <table>
+    <tr><th></th><th>Part</th><th>Qty</th><th></th></tr>
+    {% for item in items %}
+    <tr{% if item.bought %} class="muted"{% endif %}>
+      <td>
+        <form method="post" action="{% url 'inventory:shopping_list_toggle' item.pk %}">
+          {% csrf_token %}
+          <button class="btn secondary btn-sm" type="submit" title="{% if item.bought %}Mark as still needed{% else %}Mark as bought{% endif %}">{% if item.bought %}↩{% else %}✓{% endif %}</button>
+        </form>
+      </td>
+      <td>{% if item.bought %}<s>{% endif %}<a href="{% url 'inventory:part_detail' item.part.pk %}">{{ item.part.name }}</a>{% if item.bought %}</s>{% endif %}</td>
+      <td>{{ item.quantity }}</td>
+      <td>{% if item.part.reorder_url %}<a href="{{ item.part.reorder_url }}">order →</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="muted">Nothing on the list. Add parts from the <a href="{% url 'inventory:reorder' %}">reorder page</a>.</p></div>
+{% endif %}
+{% endblock %}

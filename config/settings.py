@@ -172,6 +172,11 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 # it directly, so it can't use session login). Empty means the endpoint always rejects.
 VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
 
+# LLM-assisted enrichment (DeepSeek). Empty means the suggest button stays hidden
+# until the owner supplies their own key — the same opt-in shape as SMTP/Gmail.
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+
 # LED "find the part" indicator controller (Phase 8 backlog item — the Pi host doesn't exist
 # yet). Empty URL means the locate button just reports "not configured" instead of erroring.
 LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")

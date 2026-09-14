@@ -46,6 +46,7 @@ from .parts import (
 from .searching import (
     parts_search,
     api_locate_part,
+    api_add_intake_note,
 )
 from .tagging import (
     tagging_list,
@@ -96,6 +97,17 @@ from .enrichment import (
     import_enrichment_results,
     export_inventory,
     resistor_calculator,
+)
+from .import_export import (
+    export_csv,
+    import_csv,
+)
+from .shopping import (
+    shopping_list,
+    shopping_list_add,
+    shopping_list_clear,
+    shopping_list_export,
+    shopping_list_toggle,
 )
 from .community import (
     api_community_claim,
@@ -187,6 +199,7 @@ __all__ = [
     "add_stock_item",
     "parts_search",
     "api_locate_part",
+    "api_add_intake_note",
     "tagging_list",
     "tagging_update",
     "_tagging_location_choices",
@@ -224,6 +237,13 @@ __all__ = [
     "export_enrichment_worklist",
     "import_enrichment_results",
     "export_inventory",
+    "export_csv",
+    "import_csv",
+    "shopping_list",
+    "shopping_list_add",
+    "shopping_list_toggle",
+    "shopping_list_clear",
+    "shopping_list_export",
     "setup_hub",
     "setup_account",
     "setup_site",

@@ -277,7 +277,7 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
   color: var(--muted);
 }
 
-.msg-success, .msg-error, .msg-warn {
+.msg-success, .msg-error, .msg-warn, .msg-info, .msg-warning {
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin: 0 0 12px;
@@ -287,6 +287,8 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
 .msg-success { color: var(--ok); background: rgba(111, 191, 115, 0.1); border: 1px solid rgba(111, 191, 115, 0.3); }
 .msg-error { color: var(--danger); background: rgba(227, 93, 93, 0.1); border: 1px solid rgba(227, 93, 93, 0.3); }
 .msg-warn { color: var(--warn); background: rgba(224, 163, 61, 0.1); border: 1px solid rgba(224, 163, 61, 0.3); }
+.msg-info { color: var(--accent2); background: rgba(111, 198, 232, 0.1); border: 1px solid rgba(111, 198, 232, 0.3); }
+.msg-warning { color: var(--warn); background: rgba(224, 163, 61, 0.1); border: 1px solid rgba(224, 163, 61, 0.3); }
 
 .dup-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
 .dup-row a { color: var(--text); text-decoration: none; }
@@ -359,4 +361,55 @@ html.pi-kiosk .pi-only { display: inline-flex; }
   header.topbar, .no-print { display: none !important; }
   body { background: #fff; color: #000; }
   .label-tile { break-inside: avoid; }
+}
+
+/* Wide screens (desktop and the Pi's 1920x1200 touchscreen): a fixed left sidebar
+   instead of the horizontal top bar. Phones and tablets below 1024px keep the top
+   bar with its "More" collapse. Padding and font-size are deliberately left alone
+   here, so the pointer:coarse and .pi-kiosk touch-sizing rules still apply. */
+@media (min-width: 1024px) {
+  body { padding-left: 236px; }
+  header.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 236px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 16px 12px;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  header.topbar .brand { padding: 4px 10px 12px; }
+  header.topbar nav { flex-direction: column; align-items: stretch; gap: 2px; }
+  header.topbar nav a {
+    border-radius: var(--radius-sm);
+    background: none;
+    border: none;
+    width: 100%;
+  }
+  header.topbar nav a:hover { background: var(--panel-raised); border: none; }
+
+  /* Flatten the "More" dropdown into the sidebar: drop the toggle and force the
+     menu open. A closed <details> hides its non-summary content, so the menu is
+     shown explicitly whether or not the details is open. */
+  .nav-more { position: static; display: block; }
+  .nav-more > summary { display: none; }
+  .nav-more .nav-more-menu,
+  .nav-more:not([open]) .nav-more-menu {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .nav-more .nav-more-menu a { color: var(--muted); }
 }

@@ -36,6 +36,7 @@
         <div class="nav-more-menu">
           <a href="{% url 'inventory:project_list' %}">Projects</a>
           <a href="{% url 'inventory:reorder' %}">Reorder</a>
+          <a href="{% url 'inventory:shopping_list' %}">Shopping list{% if shopping_list_count %} ({{ shopping_list_count }}){% endif %}</a>
           <a href="{% url 'inventory:enrichment_queue' %}">Enrichment queue</a>
           <a href="{% url 'inventory:labels' %}">Labels</a>
           <a href="{% url 'inventory:bin_setup' %}">Bin barcodes</a>
@@ -47,7 +48,9 @@
           <a href="{% url 'inventory:community_messages' %}">Messages{% if unread_messages %} ({{ unread_messages }}){% endif %}</a>
           <a href="{% url 'inventory:help_index' %}">Help</a>
           <a href="{% url 'inventory:setup_hub' %}">Settings</a>
-          <a href="{% url 'inventory:export_inventory' %}">Export</a>
+          <a href="{% url 'inventory:import_csv' %}">Import CSV</a>
+          <a href="{% url 'inventory:export_csv' %}">Export CSV</a>
+          <a href="{% url 'inventory:export_inventory' %}">Backup (zip)</a>
           <a href="/admin/">Admin</a>
           {% comment %}
             A POST form, not a link: Django's LogoutView is POST-only so that no stray

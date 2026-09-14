@@ -1,0 +1,26 @@
+{% extends "inventory/base.html" %}
+{% block title %}Import inventory — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Import inventory</h1>
+  <p class="muted">Bring parts in from a CSV (an InvenTree export, a spreadsheet you tidied up, or a previous export of this app).</p>
+  <p><a href="{% url 'inventory:export_csv' %}" class="btn secondary">Export current inventory (CSV)</a></p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p><label>CSV file<br><input type="file" name="csv_file" accept=".csv,text/csv" required></label></p>
+    <p><button class="btn" type="submit">Preview import</button></p>
+  </form>
+
+  <div class="msg-warn">
+    <p><strong>How it works</strong></p>
+    <ul>
+      <li>Required columns: <code>Part name</code> and <code>Container number</code>. Every other column is optional.</li>
+      <li>Parts are matched by name (case-insensitive), containers by number, drawers by (container + label), locations and categories by name.</li>
+      <li>Existing parts are left untouched — importing adds stock to them, it never overwrites.</li>
+      <li>You get a preview of exactly what will be created before anything is written.</li>
+      <li>Files are read as UTF-8 (with Excel's BOM handled), so accents, commas, quotes and line breaks inside a field all survive.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

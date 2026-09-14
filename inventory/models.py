@@ -488,6 +488,24 @@ class IntakeNote(models.Model):
         return f"{where}: {self.text[:50]}"
 
 
+class ShoppingListItem(models.Model):
+    """A part to buy on the next supply run, seeded from the reorder dashboard
+    (parts below their min quantity). One entry per part — adding it again bumps
+    the quantity rather than duplicating the row."""
+
+    part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="shopping_list_items")
+    quantity = models.PositiveIntegerField(default=1)
+    bought = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["bought", "part__name"]
+        unique_together = [("part",)]
+
+    def __str__(self):
+        return f"{self.part.name} x{self.quantity}"
+
+
 class StockItem(models.Model):
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="stock_items")
     container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="stock_items")

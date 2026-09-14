@@ -91,7 +91,13 @@ def reorder(request):
     for part in parts:
         have = _current_stock(part)
         if have < part.min_quantity:
-            needs_reorder.append({"part": part, "have": have, "min_quantity": part.min_quantity, "reorder_link": _reorder_link(part)})
+            needs_reorder.append({
+                "part": part,
+                "have": have,
+                "min_quantity": part.min_quantity,
+                "shortfall": max(1, part.min_quantity - have),
+                "reorder_link": _reorder_link(part),
+            })
 
     return render(
         request,

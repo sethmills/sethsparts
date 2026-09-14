@@ -13,6 +13,38 @@
   {% if part.min_quantity %}<p class="muted">Reorder threshold: {{ part.min_quantity }}</p>{% endif %}
 </div>
 
+{% if enrichment_configured %}
+<div class="card">
+  <h2>Enrichment</h2>
+  {% if enrichment_suggestion %}
+  <div class="msg-info">
+    <p><strong>Suggested enrichment</strong> — review, then apply or discard:</p>
+    <p>
+      <strong>Category:</strong> {{ enrichment_suggestion.category|default:"—" }}<br>
+      <strong>Description:</strong> {{ enrichment_suggestion.description|default:"—" }}<br>
+      <strong>Manufacturer:</strong> {{ enrichment_suggestion.manufacturer|default:"—" }}
+    </p>
+    <p>
+      <form method="post" style="display:inline">
+        {% csrf_token %}
+        <button class="btn" type="submit" name="action" value="apply_enrichment">Apply</button>
+      </form>
+      <form method="post" style="display:inline">
+        {% csrf_token %}
+        <button class="btn secondary" type="submit" name="action" value="discard_enrichment">Discard</button>
+      </form>
+    </p>
+  </div>
+  {% else %}
+  <p class="muted">Ask DeepSeek to suggest a category, description and manufacturer for this part.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn secondary" type="submit" name="action" value="suggest_enrichment">Suggest enrichment</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="card">
   <h2>Add a photo</h2>
   {% url 'inventory:add_part_photo' part.pk as add_photo_url %}

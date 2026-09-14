@@ -246,7 +246,7 @@ resolution, stock/builds, bins, LED, labels and the label drivers, intake, the H
 Assistant endpoint, kiosk auth, community crypto/pairing/pins, reference, help, site
 settings, templates). It uses Django's own test database, so it never touches
 `db.sqlite3`. External HTTP — the Pi's LED controller, the label print-bridge and other
-workshops — is mocked, so the whole suite runs offline: **914 tests in about 50 seconds,
+workshops — is mocked, so the whole suite runs offline: **948 tests in about 50 seconds,
 no hardware needed.**
 
 Two deliberate conventions worth knowing before you add tests:
@@ -261,7 +261,7 @@ Two deliberate conventions worth knowing before you add tests:
   docstring saying so. That is on purpose: if someone later "fixes" it, the test
   should fail and make them read the reasoning first.
 
-`scripts/mutation_check.py` is the safety net for the safety net — 90 deliberate
+`scripts/mutation_check.py` is the safety net for the safety net — 93 deliberate
 breakages (reverses the FIFO consumption order, swaps the LED row/column split,
 disables the bin-scan conflict check, puts the login wall back on the Django admin page,
 drops the "newest pin wins" rule, turns a signed removal back into a location...), each

@@ -15,6 +15,7 @@ from ..models import (
 from ._shared import _location_choices
 
 from ..duplicate_detection import find_duplicate_parts
+from ..enrichment_ai import is_configured, suggest_enrichment
 
 
 @login_required
@@ -116,8 +117,38 @@ def part_intake(request):
 @login_required
 def part_detail(request, pk):
     part = get_object_or_404(Part, pk=pk)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "suggest_enrichment":
+            suggestion, error = suggest_enrichment(
+                part.name,
+                part.category.name if part.category else None,
+                part.description,
+                part.manufacturer,
+            )
+            if error:
+                messages.error(request, error)
+            else:
+                request.session["enrichment_suggestion"] = suggestion
+                request.session["enrichment_suggestion_part"] = part.pk
+                messages.info(request, "Suggestion ready — review it below, then apply or discard.")
+            return redirect("inventory:part_detail", pk=part.pk)
+
+        if action in ("apply_enrichment", "discard_enrichment"):
+            if action == "apply_enrichment" and request.session.get("enrichment_suggestion_part") == part.pk:
+                _apply_enrichment_suggestion(part, request.session.get("enrichment_suggestion"))
+                messages.success(request, "Enrichment applied.")
+            request.session.pop("enrichment_suggestion", None)
+            request.session.pop("enrichment_suggestion_part", None)
+            return redirect("inventory:part_detail", pk=part.pk)
+
     stock_items = part.stock_items.select_related("container", "drawer")
     attachments = part.attachments.all()
+    suggestion = None
+    if request.session.get("enrichment_suggestion_part") == part.pk:
+        suggestion = request.session.get("enrichment_suggestion")
+
     return render(
         request,
         "inventory/part_detail.html",
@@ -126,8 +157,31 @@ def part_detail(request, pk):
             "stock_items": stock_items,
             "attachments": attachments,
             "location_choices": _location_choices(),
+            "enrichment_configured": is_configured(),
+            "enrichment_suggestion": suggestion,
         },
     )
+
+
+def _apply_enrichment_suggestion(part, suggestion):
+    if not suggestion:
+        return
+    if suggestion.get("category"):
+        category, _ = Category.objects.get_or_create(name=suggestion["category"])
+        part.category = category
+        if category.name.lower() == "electronics":
+            part.is_electronic = True
+    if suggestion.get("description"):
+        part.description = suggestion["description"]
+    if suggestion.get("manufacturer"):
+        part.manufacturer = suggestion["manufacturer"]
+    if part.enrichment_status in (
+        Part.ENRICHMENT_NOT_NEEDED,
+        Part.ENRICHMENT_PENDING,
+        Part.ENRICHMENT_NEEDS_CLARIFICATION,
+    ):
+        part.enrichment_status = Part.ENRICHMENT_DONE
+    part.save(update_fields=["category", "description", "manufacturer", "is_electronic", "enrichment_status"])
 
 
 @login_required

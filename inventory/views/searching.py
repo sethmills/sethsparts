@@ -10,6 +10,8 @@ from ..search import build_search_query, expand_terms
 
 from ..models import (
     Category,
+    Container,
+    IntakeNote,
     Part,
 )
 
@@ -87,3 +89,36 @@ def api_locate_part(request):
         )
 
     return JsonResponse({"query": query, "count": len(matches), "matches": matches})
+
+
+def api_add_intake_note(request):
+    """Machine-to-machine voice intake — same shared-secret auth as api_locate_part.
+
+    A dictated line ("M3 bolts, two bags") becomes an IntakeNote for the owner to
+    review in the intake queue, rather than being parsed into structured data on
+    the spot. Accepts the same X-Api-Key header or a `key` param, on GET or POST."""
+    provided_key = request.headers.get("X-Api-Key") or request.GET.get("key") or request.POST.get("key") or ""
+    if not settings.VOICE_SEARCH_API_KEY or provided_key != settings.VOICE_SEARCH_API_KEY:
+        return JsonResponse({"error": "unauthorized"}, status=403)
+
+    text = (request.GET.get("text") or request.POST.get("text") or "").strip()
+    if not text:
+        return JsonResponse({"error": "missing text"}, status=400)
+
+    raw_container = (request.GET.get("container") or request.POST.get("container") or "").strip()
+    container = None
+    if raw_container:
+        try:
+            container = Container.objects.filter(number=int(raw_container)).first()
+        except ValueError:
+            return JsonResponse({"error": f"container '{raw_container}' isn't a number"}, status=400)
+        if container is None:
+            return JsonResponse({"error": f"container {raw_container} not found"}, status=404)
+
+    note = IntakeNote.objects.create(container=container, text=text, source=IntakeNote.VOICE)
+    return JsonResponse({
+        "ok": True,
+        "id": note.pk,
+        "text": note.text,
+        "container": container.number if container else None,
+    })

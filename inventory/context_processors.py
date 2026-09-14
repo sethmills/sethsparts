@@ -14,15 +14,18 @@ def site_context(request):
 
     obj = get_site_settings()
     unread = 0
+    shopping = 0
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated:
         try:
-            from .models import Message
+            from .models import Message, ShoppingListItem
 
             unread = Message.objects.filter(direction=Message.INBOUND, read=False).count()
+            shopping = ShoppingListItem.objects.filter(bought=False).count()
         except Exception:
             # Before migrations have created the table there is nothing to count.
             unread = 0
+            shopping = 0
     return {
         "site_name": site_name(),
         "site_country": country(),
@@ -30,6 +33,7 @@ def site_context(request):
         "setup_complete": bool(obj and obj.setup_completed_at),
         "theme": obj.theme if obj and obj.theme else "precision",
         "unread_messages": unread,
+        "shopping_list_count": shopping,
         "email_configured": bool(obj and obj.email_enabled and obj.smtp_host and obj.smtp_user and obj.smtp_password),
         # "Configured", not "reachable" — the URL may be set while the Pi is off, and
         # templates should still offer the button so the failure message can explain

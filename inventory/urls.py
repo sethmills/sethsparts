@@ -18,6 +18,7 @@ urlpatterns = [
     path("tagging/", views.tagging_list, name="tagging_list"),
     path("tagging/<int:pk>/update/", views.tagging_update, name="tagging_update"),
     path("api/locate/", views.api_locate_part, name="api_locate_part"),
+    path("api/add/", views.api_add_intake_note, name="api_add_intake_note"),
     path("containers/<int:number>/", views.container_detail, name="container_detail"),
     path(
         "containers/<int:number>/register-barcode/",
@@ -50,6 +51,13 @@ urlpatterns = [
     path("enrichment/worklist.json", views.export_enrichment_worklist, name="export_enrichment_worklist"),
     path("enrichment/import/", views.import_enrichment_results, name="import_enrichment_results"),
     path("export/", views.export_inventory, name="export_inventory"),
+    path("export/csv/", views.export_csv, name="export_csv"),
+    path("import/csv/", views.import_csv, name="import_csv"),
+    path("shopping-list/", views.shopping_list, name="shopping_list"),
+    path("shopping-list/add/<int:pk>/", views.shopping_list_add, name="shopping_list_add"),
+    path("shopping-list/<int:pk>/toggle/", views.shopping_list_toggle, name="shopping_list_toggle"),
+    path("shopping-list/clear/", views.shopping_list_clear, name="shopping_list_clear"),
+    path("shopping-list/export.txt", views.shopping_list_export, name="shopping_list_export"),
     # Community: the connections page, and the single endpoint peers call.
     path("community/", views.community_connections, name="community_connections"),
     path("community/map/", views.community_map, name="community_map"),
