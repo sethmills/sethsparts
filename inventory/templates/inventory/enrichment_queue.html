@@ -16,7 +16,7 @@
   <p class="muted">Scans every part still marked "not needed" and flags ones worth researching (specific named boards/modules) vs. ones that need you to clarify what they actually are first vs. generic hardware left alone. Safe to run any time — pure local logic, no web calls.</p>
   <form method="post" action="{% url 'inventory:run_enrichment_classification' %}">
     {% csrf_token %}
-    <button class="btn" type="submit">🔍 Classify now</button>
+    <button class="btn" type="submit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> Classify now</button>
   </form>
 </div>
 
@@ -37,7 +37,7 @@
 <div class="card">
   <h2>3. Import results</h2>
   <p class="muted">Once Claude hands back a completed results file, upload it here to update parts and download images/pinouts/datasheets automatically.</p>
-  <form method="post" action="{% url 'inventory:import_enrichment_results' %}" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+  <form method="post" action="{% url 'inventory:import_enrichment_results' %}" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
     {% csrf_token %}
     <input type="file" name="results_file" accept="application/json" required>
     <button class="btn" type="submit">Import</button>

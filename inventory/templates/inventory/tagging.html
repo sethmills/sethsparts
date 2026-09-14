@@ -4,19 +4,19 @@
 <div class="card">
   <h1>Tagging</h1>
   <p class="muted">Work through parts that need clarification or review — filter to one drawer/container or search across all, fill in an answer, save.</p>
-  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;">
-    <select name="status" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap">
+    <select name="status" >
       <option value="">Needs review or clarification</option>
       <option value="needs_review" {% if selected_status == "needs_review" %}selected{% endif %}>Needs review only</option>
       <option value="needs_clarification" {% if selected_status == "needs_clarification" %}selected{% endif %}>Needs clarification only</option>
     </select>
-    <select name="location" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+    <select name="location" >
       <option value="">All locations</option>
       {% for value, label, count in location_options %}
         <option value="{{ value }}" {% if selected_location == value %}selected{% endif %}>{{ label }} ({{ count }})</option>
       {% endfor %}
     </select>
-    <input type="search" name="q" placeholder="Filter by name/description…" value="{{ query }}" style="flex:1;min-width:180px;">
+    <input type="search" name="q" placeholder="Filter by name/description…" value="{{ query }}" style="flex:1;min-width:180px">
     <button class="btn" type="submit">Filter</button>
   </form>
 </div>
@@ -33,10 +33,10 @@
       <span class="pill">{{ part.get_enrichment_status_display }}</span>
       <br><span class="muted">{{ part.location_summary }}</span>
     </p>
-    <p style="display:flex;gap:10px;flex-wrap:wrap;">
-      <label style="flex:1;min-width:160px;">Manufacturer<br><input type="text" name="manufacturer" value="{{ part.manufacturer }}"></label>
-      <label style="flex:1;min-width:160px;">Category<br>
-        <select name="category" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+    <p style="display:flex;gap:10px;flex-wrap:wrap">
+      <label style="flex:1;min-width:160px">Manufacturer<br><input type="text" name="manufacturer" value="{{ part.manufacturer }}"></label>
+      <label style="flex:1;min-width:160px">Category<br>
+        <select name="category" style="width:100%">
           <option value="">—</option>
           {% for c in categories %}
             <option value="{{ c.pk }}" {% if part.category_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
@@ -44,10 +44,10 @@
         </select>
       </label>
     </p>
-    <p><label>What it is / description<br><textarea name="description" rows="2" style="width:100%;background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">{{ part.description }}</textarea></label></p>
+    <p><label>What it is / description<br><textarea name="description" rows="2" style="width:100%">{{ part.description }}</textarea></label></p>
     <p><label>Correct URL (product page / reorder)<br><input type="url" name="reorder_url" value="{{ part.reorder_url }}"></label></p>
-    <p style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <select name="enrichment_status" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+    <p style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <select name="enrichment_status" >
         {% for value, label in status_choices %}
           <option value="{{ value }}" {% if part.enrichment_status == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}

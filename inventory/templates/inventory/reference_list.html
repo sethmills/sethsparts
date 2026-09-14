@@ -10,7 +10,7 @@
   </p>
   {% if categories %}
   <form method="get">
-    <select name="category" onchange="this.form.submit()" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+    <select name="category" onchange="this.form.submit()" >
       <option value="">All categories</option>
       {% for cat in categories %}
         <option value="{{ cat.key }}" {% if selected_category == cat.key %}selected{% endif %}>{{ cat.name }}</option>

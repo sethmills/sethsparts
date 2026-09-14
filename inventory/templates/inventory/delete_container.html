@@ -10,7 +10,7 @@
     {% csrf_token %}
     <input type="text" name="confirm_number" inputmode="numeric" autofocus autocomplete="off">
     <p>
-      <button class="btn" type="submit" style="background:var(--danger);">Delete container #{{ container.number }}</button>
+      <button class="btn" type="submit" style="background:var(--danger)">Delete container #{{ container.number }}</button>
       <a class="btn secondary" href="{% url 'inventory:container_detail' container.number %}">Cancel</a>
     </p>
   </form>

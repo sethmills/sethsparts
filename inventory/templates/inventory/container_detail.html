@@ -23,7 +23,7 @@
 <div class="card">
   <h2>Photos ({{ photos|length }})</h2>
   {% for photo in photos %}
-    <p><img src="{{ photo.image.url }}" alt="Container photo" style="max-width:100%;max-height:300px;border-radius:8px;"></p>
+    <p><img src="{{ photo.image.url }}" alt="Container photo" style="max-width:100%;max-height:300px;border-radius:8px"></p>
   {% endfor %}
   {% url 'inventory:add_container_photo' container.number as add_photo_url %}
   {% include "inventory/_photo_capture.html" with upload_url=add_photo_url %}

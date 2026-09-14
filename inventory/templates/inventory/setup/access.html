@@ -38,12 +38,12 @@
 
 <div class="card">
   <h2>Your address</h2>
-  <form method="post" style="max-width:560px;">
+  <form method="post" style="max-width:560px">
     {% csrf_token %}
     <p>
       <label for="public_url"><strong>Where you reach this app</strong></label><br>
       <input id="public_url" name="public_url" value="{{ site.public_url }}" placeholder="https://parts.example.com"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+             style="width:100%">
       <br><span class="muted">Paste the address from your tunnel or reverse proxy. Only used to check that it works — nothing else depends on it.</span>
     </p>
     <p>
@@ -51,7 +51,7 @@
       <button class="btn secondary" type="submit" name="action" value="check">Save and check it's reachable</button>
     </p>
   </form>
-  <p class="muted" style="margin-top:10px;">
+  <p class="muted" style="margin-top:10px">
     The check fetches that address from this machine, so it sees what anyone else
     would. A redirect to the login page means it's working.
   </p>

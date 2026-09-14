@@ -2,8 +2,8 @@
 {% block title %}Connections — {{ site_name }}{% endblock %}
 {% block content %}
 {% if not email_configured %}
-<div class="card" style="border-color:#2c303a;">
-  <p class="muted">💡 Want to know when someone connects or messages you, without checking the app? <a href="{% url 'inventory:setup_email' %}">Set up email notifications →</a></p>
+<div class="card" style="border-color:var(--border)">
+  <p class="muted"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.9 1 2 1 3.5h6c0-1.5.3-2.6 1-3.5A6 6 0 0 0 12 3z"/></svg> Want to know when someone connects or messages you, without checking the app? <a href="{% url 'inventory:setup_email' %}">Set up email notifications →</a></p>
 </div>
 {% endif %}
 <div class="card">
@@ -12,28 +12,28 @@
   <p class="muted">
     Your address for others to reach you: <code>{{ my_url }}</code>
     {% if not has_location %}
-      <br><span style="color:#ffd166;">⚠ You haven't set a district yet, so you won't appear on anyone's map. <a href="{% url 'inventory:setup_community' %}">Sort that out →</a></span>
+      <br><span style="color:var(--warn)">⚠ You haven't set a district yet, so you won't appear on anyone's map. <a href="{% url 'inventory:setup_community' %}">Sort that out →</a></span>
     {% endif %}
   </p>
-  <p><a class="btn" href="{% url 'inventory:community_map' %}">🗺 Open the community map</a></p>
+  <p><a class="btn" href="{% url 'inventory:community_map' %}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg> Open the community map</a></p>
 </div>
 
 <div class="card">
   <h2>Connect to someone</h2>
   <p class="muted">Ask them to press <em>Show a code</em> below and read it out. Then enter their address and the code here.</p>
-  <form method="post" action="{% url 'inventory:community_join' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+  <form method="post" action="{% url 'inventory:community_join' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
     {% csrf_token %}
     <label>Their address<br>
       <input name="host_url" placeholder="https://parts.example.com" required
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;min-width:260px;">
+             style="min-width:260px">
     </label>
     <label>Their code<br>
       <input name="code" placeholder="K7F2-9QX3" required
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;width:150px;text-transform:uppercase;">
+             style="width:150px;text-transform:uppercase">
     </label>
     <button class="btn" type="submit">Connect</button>
   </form>
-  <p class="muted" style="margin-top:10px;">Codes work once and expire after 24 hours. They can be typed in any case, with or without the dash.</p>
+  <p class="muted" style="margin-top:10px">Codes work once and expire after 24 hours. They can be typed in any case, with or without the dash.</p>
 </div>
 
 <div class="card">
@@ -41,42 +41,42 @@
   <form method="post" action="{% url 'inventory:community_issue_code' %}">{% csrf_token %}
     <button class="btn" type="submit">Show a code</button>
   </form>
-  <p class="muted" style="margin-top:10px;">Issuing a fresh code cancels any code you showed before, so there's only ever one live at a time.</p>
+  <p class="muted" style="margin-top:10px">Issuing a fresh code cancels any code you showed before, so there's only ever one live at a time.</p>
 </div>
 
 <div class="card">
   <h2>Connected workshops</h2>
   {% for peer in peers %}
-    <div style="border-top:1px solid #2c303a;padding:12px 0;">
-      <form method="post" action="{% url 'inventory:community_update_peer' peer.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <div style="border-top:1px solid var(--border);padding:12px 0">
+      <form method="post" action="{% url 'inventory:community_update_peer' peer.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         {% csrf_token %}
-        <input name="name" value="{{ peer.name }}" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;min-width:180px;">
+        <input name="name" value="{{ peer.name }}" style="min-width:180px">
         <span class="muted">{{ peer.get_status_display }}</span>
         <label><input type="checkbox" name="exchanges_pins" value="1" {% if peer.exchanges_pins %}checked{% endif %}> map pins</label>
         <label><input type="checkbox" name="shares_parts" value="1" {% if peer.shares_parts %}checked{% endif %}> may search my parts</label>
         <button class="btn secondary" type="submit">Save</button>
       </form>
-      <p class="muted" style="margin:6px 0 0;">
+      <p class="muted" style="margin:6px 0 0">
         {{ peer.base_url }}
         {% if not peer.exchanges_pins %} · not on the map together{% endif %}
         {% if not peer.shares_parts %} · cannot see any of your parts{% endif %}
         {% if peer.last_seen_at %} · last heard from {{ peer.last_seen_at|date:"j M Y" }}{% endif %}
       </p>
-      <form method="post" action="{% url 'inventory:community_revoke' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+      <form method="post" action="{% url 'inventory:community_revoke' peer.pk %}" style="margin-top:6px;display:inline">{% csrf_token %}
         <button class="btn danger" type="submit" onclick="return confirm('Disconnect from {{ peer.name }}?')">Disconnect</button>
       </form>
       {% if not peer.blocked %}
-        <form method="post" action="{% url 'inventory:community_block' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+        <form method="post" action="{% url 'inventory:community_block' peer.pk %}" style="margin-top:6px;display:inline">{% csrf_token %}
           <button class="btn danger" type="submit" onclick="return confirm('Block {{ peer.name }}? They cannot reach you or reconnect until you unblock them.')">Block</button>
         </form>
       {% else %}
-        <form method="post" action="{% url 'inventory:community_unblock' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+        <form method="post" action="{% url 'inventory:community_unblock' peer.pk %}" style="margin-top:6px;display:inline">{% csrf_token %}
           <button class="btn secondary" type="submit">Unblock</button>
         </form>
       {% endif %}
-      <a class="btn secondary" href="{% url 'inventory:community_message_thread' peer.pk %}">💬 Message</a>
+      <a class="btn secondary" href="{% url 'inventory:community_message_thread' peer.pk %}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
       {% if peer.status == 'revoked' %}
-        <form method="post" action="{% url 'inventory:community_forget' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+        <form method="post" action="{% url 'inventory:community_forget' peer.pk %}" style="margin-top:6px;display:inline">{% csrf_token %}
           <button class="btn secondary" type="submit" onclick="return confirm('Remove {{ peer.name }} and everything recorded about them?')">Forget entirely</button>
         </form>
       {% endif %}
@@ -90,17 +90,17 @@
 <div class="card">
   <h2>What other workshops have searched</h2>
   {% if recent_searches %}
-    <table style="width:100%;border-collapse:collapse;">
+    <table style="width:100%;border-collapse:collapse">
       {% for entry in recent_searches %}
-        <tr style="border-top:1px solid #2c303a;">
-          <td style="padding:6px 0;">{{ entry.peer.name }}</td>
+        <tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 0">{{ entry.peer.name }}</td>
           <td>{{ entry.query }}</td>
           <td class="muted">{{ entry.result_count }} result{{ entry.result_count|pluralize }}</td>
           <td class="muted">{{ entry.searched_at|date:"j M Y H:i" }}</td>
         </tr>
       {% endfor %}
     </table>
-    <p class="muted" style="margin-top:10px;">So “they can only search what I shared” is something you can check rather than take on trust.</p>
+    <p class="muted" style="margin-top:10px">So “they can only search what I shared” is something you can check rather than take on trust.</p>
   {% else %}
     <p class="muted">Nothing searched yet.</p>
   {% endif %}

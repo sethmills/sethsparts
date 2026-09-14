@@ -31,7 +31,7 @@
     <form method="post">{% csrf_token %}
       <button class="btn" type="submit" name="action" value="archive">Archive the next 5</button>
     </form>
-    <p class="muted" style="margin-top:10px;">
+    <p class="muted" style="margin-top:10px">
       Press it repeatedly, or run <code>python manage.py archive_documents</code> to do
       the lot with a polite pause between requests. Failures are recorded against each
       document — a link behind a login wall stays as a link, and says so.

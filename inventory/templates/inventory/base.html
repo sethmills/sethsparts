@@ -22,15 +22,15 @@
       {{ site_name }}
     </a>
     <button type="button" class="btn secondary pi-only" onclick="history.back()" title="Go back">← Back</button>
-    <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse">🏠 Home</a>
-    <button type="button" class="btn secondary pi-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop">⏻ Desktop</button>
+    <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg> Home</a>
+    <button type="button" class="btn secondary pi-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg> Desktop</button>
     <nav>
       <a href="{% url 'inventory:browse' %}">Browse</a>
       <a href="{% url 'inventory:scan' %}">Scan</a>
       <a href="{% url 'inventory:parts_search' %}">Search</a>
       <a href="{% url 'inventory:tagging_list' %}">Tagging</a>
-      <a href="{% url 'inventory:light_controls' %}">💡 Lights</a>
-      <a href="{% url 'inventory:custom_label' %}">🏷 Custom label</a>
+      <a href="{% url 'inventory:light_controls' %}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.9 1 2 1 3.5h6c0-1.5.3-2.6 1-3.5A6 6 0 0 0 12 3z"/></svg> Lights</a>
+      <a href="{% url 'inventory:custom_label' %}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 12 22 3.4 13.4a5 5 0 0 1 7.1-7.1l1.5 1.5 1.5-1.5a5 5 0 0 1 7.1 7.1z"/><circle cx="12" cy="12" r="1.5"/></svg> Custom label</a>
       <details class="nav-more">
         <summary>More ▾</summary>
         <div class="nav-more-menu">
@@ -39,7 +39,7 @@
           <a href="{% url 'inventory:enrichment_queue' %}">Enrichment queue</a>
           <a href="{% url 'inventory:labels' %}">Labels</a>
           <a href="{% url 'inventory:bin_setup' %}">Bin barcodes</a>
-          <a href="{% url 'inventory:quick_add_container' %}">📦 New moving box</a>
+          <a href="{% url 'inventory:quick_add_container' %}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/></svg> New moving box</a>
           <a href="{% url 'inventory:intake_queue' %}">Intake queue</a>
           <a href="{% url 'inventory:reference_list' %}">Reference</a>
           <a href="{% url 'inventory:community_connections' %}">Connections</a>

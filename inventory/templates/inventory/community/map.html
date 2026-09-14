@@ -15,7 +15,7 @@
       border: 1px dashed var(--border); border-radius: var(--radius-sm);
       padding: 24px; text-align: center; color: var(--muted);
     }
-    .pin { width: 16px; height: 16px; border-radius: 50%; background: var(--accent2); border: 2px solid #10131a; box-sizing: border-box; }
+    .pin { width: 16px; height: 16px; border-radius: 50%; background: var(--accent2); border: 2px solid var(--field-bg); box-sizing: border-box; }
     .pin.friend { background: var(--accent); }
     .pin.you { width: 20px; height: 20px; background: var(--ok); box-shadow: 0 0 0 4px rgba(111, 191, 115, 0.3); }
     .map-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 0.9rem; color: var(--muted); }
@@ -37,10 +37,10 @@
     Anonymous pins from workshops connected to yours, plus your own if you're
     discoverable. Zoom and pan anywhere.
   </p>
-  <form method="post" action="{% url 'inventory:community_sync_pins' %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+  <form method="post" action="{% url 'inventory:community_sync_pins' %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
     {% csrf_token %}
     <button class="btn secondary" type="submit">🔄 Ask connections for pins</button>
-    <span class="muted" style="font-size:0.9rem;">
+    <span class="muted" style="font-size:0.9rem">
       {% if has_pin_neighbours %}
         This is the only thing on this page that contacts anyone — opening the map never does.
       {% else %}
@@ -57,7 +57,7 @@
     <span><i style="background:var(--accent)"></i> connected workshop</span>
     <span><i style="background:var(--accent2)"></i> elsewhere in the network</span>
   </div>
-  <p class="muted" style="margin-top:12px;">
+  <p class="muted" style="margin-top:12px">
     Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
     contributors, tiles from <a href="https://openfreemap.org/">OpenFreeMap</a>.
   </p>

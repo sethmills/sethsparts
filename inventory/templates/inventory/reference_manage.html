@@ -16,12 +16,12 @@
 
 <div class="card">
   <h2>New category</h2>
-  <form method="post" action="{% url 'inventory:reference_category_add' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <form method="post" action="{% url 'inventory:reference_category_add' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     {% csrf_token %}
     <input name="name" placeholder="e.g. Woodworking" required
-           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;min-width:220px;">
+           style="min-width:220px">
     <input name="order" placeholder="order" inputmode="numeric"
-           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100px;">
+           style="width:100px">
     <button class="btn" type="submit">Add category</button>
   </form>
   <p class="muted">Lower order numbers sort first. Categories start empty and documents can be moved onto them afterwards.</p>
@@ -30,12 +30,12 @@
 {% for category in categories %}
 <div class="card">
   <h2>{{ category.name }}</h2>
-  <form method="post" action="{% url 'inventory:reference_category_edit' category.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+  <form method="post" action="{% url 'inventory:reference_category_edit' category.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
     {% csrf_token %}
     <input name="name" value="{{ category.name }}" aria-label="Category name"
-           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;min-width:200px;">
+           style="min-width:200px">
     <input name="order" value="{{ category.order }}" aria-label="Sort order" inputmode="numeric"
-           style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:8px;border-radius:6px;width:80px;">
+           style="width:80px">
     <button class="btn secondary" type="submit">Save</button>
     <span class="muted">key: {{ category.key }}</span>
     {% if category.docs.count %}
@@ -50,8 +50,8 @@
   </form>
 
   {% for doc in category.docs.all %}
-  <div style="border-top:1px solid #2c303a;padding:10px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-    <div style="flex:1;min-width:260px;">
+  <div style="border-top:1px solid var(--border);padding:10px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px">
       <strong>{{ doc.title }}</strong>
       {% if doc.description %}<br><span class="muted">{{ doc.description }}</span>{% endif %}
       <br>
@@ -61,14 +61,14 @@
           · archived {{ doc.archived_at|date:"j M Y" }}{% if doc.archive_content_type %} ({{ doc.archive_content_type }}){% endif %}
           · <a href="{{ doc.file.url }}">open the copy</a>
         {% elif doc.archive_error %}
-          · <span style="color:#ffb4a2;">⚠ archive failed: {{ doc.archive_error }}</span>
+          · <span style="color:var(--danger)">⚠ archive failed: {{ doc.archive_error }}</span>
         {% elif doc.external_url %}
-          · <span style="color:#ffd166;">⚠ not archived yet — link only</span>
+          · <span style="color:var(--warn)">⚠ not archived yet — link only</span>
         {% endif %}
         {% if doc.external_url %} · <a href="{{ doc.external_url }}">source</a>{% endif %}
       </span>
     </div>
-    <div style="display:flex;gap:6px;align-items:center;">
+    <div style="display:flex;gap:6px;align-items:center">
       {% if doc.external_url %}
       <form method="post" action="{% url 'inventory:reference_archive' doc.pk %}">{% csrf_token %}
         <button class="btn secondary" type="submit"

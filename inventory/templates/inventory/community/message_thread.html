@@ -9,12 +9,12 @@
 
 <div class="card">
   {% for m in messages %}
-    <p style="border-top:1px solid #2c303a;padding:10px 0;">
+    <p style="border-top:1px solid var(--border);padding:10px 0">
       <strong class="muted">{% if m.direction == 'outbound' %}You{% else %}Them{% endif %}</strong>
       <span class="muted">· {{ m.sent_at|date:"j M Y H:i" }}</span>
       {% if m.direction == 'outbound' and not m.delivered %}
-        <span class="pill" style="background:#6b2f2f;color:#fff;">not delivered</span>
-        <form method="post" action="{% url 'inventory:community_retry_message' m.pk %}" style="display:inline;">{% csrf_token %}<button class="btn secondary" type="submit">Retry</button></form>
+        <span class="pill" style="background:var(--danger);color:#fff">not delivered</span>
+        <form method="post" action="{% url 'inventory:community_retry_message' m.pk %}" style="display:inline">{% csrf_token %}<button class="btn secondary" type="submit">Retry</button></form>
       {% endif %}
       <br>{{ m.body|linebreaksbr }}
     </p>
@@ -28,7 +28,7 @@
   <form method="post" action="{% url 'inventory:community_send_message' %}">
     {% csrf_token %}
     <input type="hidden" name="peer_id" value="{{ peer.pk }}">
-    <textarea name="body" rows="4" style="width:100%;background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;" placeholder="Write a message…"></textarea>
+    <textarea name="body" rows="4" style="width:100%" placeholder="Write a message…"></textarea>
     <button class="btn" type="submit">Send</button>
   </form>
 </div>

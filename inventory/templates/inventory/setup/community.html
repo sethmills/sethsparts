@@ -31,15 +31,15 @@
     </p>
   {% endif %}
 
-  <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;max-width:560px;">
+  <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;max-width:560px">
     {% csrf_token %}
     <label>Country<br>
       <input name="country" maxlength="2" value="{{ site.country }}" placeholder="GB"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;width:90px;text-transform:uppercase;">
+             style="width:90px;text-transform:uppercase">
     </label>
     <label>Postcode or ZIP<br>
       <input name="where" placeholder="SW1A 1AA or 90210"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;min-width:220px;">
+             style="min-width:220px">
     </label>
     <button class="btn secondary" type="submit" name="action" value="lookup">Find my district</button>
   </form>
@@ -47,7 +47,7 @@
 
 <div class="card">
   <h2>Appear on the map?</h2>
-  <form method="post" style="max-width:560px;">
+  <form method="post" style="max-width:560px">
     {% csrf_token %}
     <p>
       <label>
@@ -60,7 +60,7 @@
       <label for="display_name"><strong>Name to show</strong> <span class="muted">(optional)</span></label><br>
       <input id="display_name" name="display_name" maxlength="100" value="{{ profile.display_name }}"
              placeholder="leave blank to stay anonymous"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+             style="width:100%">
       <br><span class="muted">If you leave this blank, other people see a pin and nothing else until you've connected.</span>
     </p>
     <p><button class="btn" type="submit" name="action" value="save">Save and continue →</button></p>

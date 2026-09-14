@@ -14,7 +14,7 @@
     result for you afterwards — which is the part that usually gets guessed at.
   </p>
   {% if not controller_url %}
-    <p style="border-left:3px solid var(--muted);padding-left:10px;">
+    <p style="border-left:3px solid var(--muted);padding-left:10px">
       <span class="muted">
         No LED controller set up yet, so there is nothing to check at the end. Do the
         <strong>Lights</strong> step first (or after this one — flashing works either way).
@@ -56,7 +56,7 @@
     Over SSH, on the Pi the board is plugged into. This is the same script whether you're
     flashing a brand-new board or updating one that already works:
   </p>
-  <pre style="background:#10131a;border:1px solid #2c303a;padding:12px;border-radius:6px;overflow-x:auto;"><code>scp led-controller/pi/flash-scorpio.py pi:~/led-controller/pi/
+  <pre style="background:var(--field-bg);border:1px solid var(--border);padding:12px;border-radius:6px;overflow-x:auto"><code>scp led-controller/pi/flash-scorpio.py pi:~/led-controller/pi/
 ssh pi
 python3 ~/led-controller/pi/flash-scorpio.py</code></pre>
   <p class="muted">
@@ -79,7 +79,7 @@ python3 ~/led-controller/pi/flash-scorpio.py</code></pre>
   <p class="muted">
     Only want to look, without changing anything? <code>python3 ~/led-controller/pi/flash-scorpio.py --check</code>.
   </p>
-  <p style="border-left:3px solid var(--danger);padding-left:10px;">
+  <p style="border-left:3px solid var(--danger);padding-left:10px">
     <span class="muted">
       <strong>The one that costs an evening:</strong> <code>boot.py</code> asks for a second
       serial channel, and that only takes effect after a <strong>true hardware reset</strong> —

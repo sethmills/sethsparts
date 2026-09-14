@@ -7,7 +7,7 @@
     <div class="label-tile">
       <div class="title">{{ l.title }}</div>
       {% if l.subtitle %}<div>{{ l.subtitle }}</div>{% endif %}
-      <img src="{% url 'inventory:barcode_svg' l.code %}" alt="{{ l.code }}" style="width:100%;">
+      <img src="{% url 'inventory:barcode_svg' l.code %}" alt="{{ l.code }}" style="width:100%">
       <div class="code">{{ l.code }}</div>
     </div>
   {% empty %}

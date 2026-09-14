@@ -12,13 +12,13 @@
     <p>
       <label for="title"><strong>Title</strong></label><br>
       <input id="title" name="title" required value="{{ doc.title|default:'' }}" placeholder="e.g. Resistor colour code chart"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">
+             style="width:100%;max-width:520px">
     </p>
 
     <p>
       <label for="category"><strong>Category</strong></label><br>
       {% if categories %}
-        <select id="category" name="category" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;min-width:260px;">
+        <select id="category" name="category" style="min-width:260px">
           {% for cat in categories %}
             <option value="{{ cat.pk }}" {% if cat.pk|stringformat:"s" == preselected_category|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
           {% endfor %}
@@ -31,13 +31,13 @@
     <p>
       <label for="description"><strong>Description</strong> <span class="muted">(optional)</span></label><br>
       <textarea id="description" name="description" rows="3"
-                style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">{{ doc.description|default:'' }}</textarea>
+                style="width:100%;max-width:520px">{{ doc.description|default:'' }}</textarea>
     </p>
 
     <p>
       <label for="external_url"><strong>Link out</strong> <span class="muted">(optional)</span></label><br>
       <input id="external_url" name="external_url" type="url" value="{{ doc.external_url|default:'' }}" placeholder="https://…"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;max-width:520px;">
+             style="width:100%;max-width:520px">
       <br><span class="muted">Where the reference came from. Shown alongside any cached copy, not instead of it.</span>
     </p>
 
@@ -55,7 +55,7 @@
     <p>
       <label for="order"><strong>Order</strong></label><br>
       <input id="order" name="order" inputmode="numeric" value="{{ doc.order|default:100 }}"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:110px;">
+             style="width:110px">
       <br><span class="muted">Lower sorts first within the category. The arrows on the manage page are usually quicker.</span>
     </p>
   </div>

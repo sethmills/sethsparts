@@ -2,10 +2,10 @@
 {% block title %}Custom label — {{ site_name }}{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>🏷 Custom label</h1>
+  <h1><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 12 22 3.4 13.4a5 5 0 0 1 7.1-7.1l1.5 1.5 1.5-1.5a5 5 0 0 1 7.1 7.1z"/><circle cx="12" cy="12" r="1.5"/></svg> Custom label</h1>
   <p class="muted">Design and print an impromptu label on {{ driver.name }} — not tied to any container or drawer. Nothing here is saved; it's just for printing something quick.</p>
   {% if not driver.tested %}
-    <p class="muted" style="border-left:3px solid var(--muted);padding-left:10px;"><strong>Not tested:</strong> {{ driver.note }}</p>
+    <p class="muted" style="border-left:3px solid var(--muted);padding-left:10px"><strong>Not tested:</strong> {{ driver.note }}</p>
   {% endif %}
 </div>
 
@@ -18,9 +18,9 @@
     <label class="muted">Barcode value (optional — leave blank for no barcode)</label>
     <p><input type="text" name="barcode_value" value="{{ values.barcode_value }}" autocomplete="off" onchange="this.form.requestSubmit()"></p>
 
-    <p style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">
+    <p style="display:flex;gap:16px;flex-wrap:wrap;align-items:end">
       <span>
-        <label class="muted" style="display:block;">Label size</label>
+        <label class="muted" style="display:block">Label size</label>
         <select name="size" onchange="this.form.requestSubmit()">
           {% for key, size in label_sizes.items %}
             <option value="{{ key }}" {% if values.size == key %}selected{% endif %}>{{ size.display }}</option>
@@ -28,8 +28,8 @@
         </select>
       </span>
       <span>
-        <label class="muted" style="display:block;">Font size (pt)</label>
-        <input type="number" name="font_pt" value="{{ font_pt }}" min="6" max="120" style="width:80px;" onchange="this.form.requestSubmit()">
+        <label class="muted" style="display:block">Font size (pt)</label>
+        <input type="number" name="font_pt" value="{{ font_pt }}" min="6" max="120" style="width:80px" onchange="this.form.requestSubmit()">
       </span>
       <span>
         <label><input type="checkbox" name="bold" value="1" {% if values.bold %}checked{% endif %} onchange="this.form.requestSubmit()"> Bold</label>
@@ -41,7 +41,7 @@
 
     <p>
       <button class="btn secondary" type="submit" name="action" value="preview">🔄 Update preview</button>
-      <button class="btn" type="submit" name="action" value="print">🖨 Print</button>
+      <button class="btn" type="submit" name="action" value="print"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18h12a2 2 0 0 0 2-2v-5H4v5a2 2 0 0 0 2 2z"/><path d="M17 21H7"/></svg> Print</button>
     </p>
   </form>
 </div>
@@ -49,8 +49,8 @@
 <div class="card">
   <h2>Preview</h2>
   {% if preview_data_uri %}
-    <p style="background:#fff;display:inline-block;padding:12px;border-radius:8px;">
-      <img src="{{ preview_data_uri }}" alt="Label preview" style="display:block;max-width:100%;image-rendering:pixelated;">
+    <p style="background:#fff;display:inline-block;padding:12px;border-radius:8px">
+      <img src="{{ preview_data_uri }}" alt="Label preview" style="display:block;max-width:100%;image-rendering:pixelated">
     </p>
   {% else %}
     <p class="muted">Type some text or a barcode value above to see a preview.</p>

@@ -13,30 +13,30 @@
 
 <div class="card">
   <h2>The print bridge</h2>
-  <form method="post" style="max-width:560px;">
+  <form method="post" style="max-width:560px">
     {% csrf_token %}
     <p>
       <label for="label_printer_url"><strong>Address of the print bridge</strong></label><br>
       <input id="label_printer_url" name="label_printer_url" value="{{ site.label_printer_url }}"
              placeholder="http://192.168.1.50:9100"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+             style="width:100%">
       <br><span class="muted">The bridge's address, not the printer's — the bridge relays to the printer over USB.</span>
     </p>
     <p>
       <label for="label_printer_key"><strong>Shared secret</strong> <span class="muted">(if it needs one)</span></label><br>
       <input id="label_printer_key" name="label_printer_key" value="{{ site.label_printer_key }}"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+             style="width:100%">
     </p>
     <p>
       <label for="label_driver"><strong>What kind of printer is it?</strong></label><br>
-      <select id="label_driver" name="label_driver" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+      <select id="label_driver" name="label_driver" style="width:100%">
         {% for d in drivers %}
           <option value="{{ d.key }}" {% if driver.key == d.key %}selected{% endif %}>{{ d.name }}{% if not d.tested %} — untested{% endif %}</option>
         {% endfor %}
       </select>
       <br><span class="muted">This decides what language the label renderer produces.</span>
     </p>
-    <p style="border-left:3px solid {% if driver.tested %}var(--ok){% else %}var(--muted){% endif %};padding-left:10px;">
+    <p style="border-left:3px solid {% if driver.tested %}var(--ok){% else %}var(--muted){% endif %};padding-left:10px">
       <span class="muted">
         {% if driver.tested %}
           <strong>Tested.</strong> {{ driver.note }}
@@ -49,7 +49,7 @@
       <label for="label_dpi"><strong>Dots per inch</strong> <span class="muted">(optional)</span></label><br>
       <input id="label_dpi" name="label_dpi" inputmode="numeric" value="{{ site.label_dpi }}"
              placeholder="{{ driver.default_dpi }}"
-             style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100px;">
+             style="width:100px">
       <br><span class="muted">
         Blank uses <strong>{{ driver.default_dpi }}dpi</strong>, which is the usual resolution for that printer.
         Worth setting only if yours is the other one — the same printer is often sold in both 203dpi and 300dpi.
@@ -82,7 +82,7 @@
           {% if row.fits %}
             <span class="muted">fits</span>
           {% else %}
-            <span style="color:var(--danger);">too wide for {{ driver.name }}</span>
+            <span style="color:var(--danger)">too wide for {{ driver.name }}</span>
           {% endif %}
         </td>
       </tr>

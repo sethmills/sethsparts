@@ -9,7 +9,7 @@
   {% if drawer.led_segments.all %}
   <form method="post" action="{% url 'inventory:locate_drawer_led' drawer.pk %}" class="no-print">
     {% csrf_token %}
-    <button class="btn secondary" type="submit">💡 Locate (light up this drawer)</button>
+    <button class="btn secondary" type="submit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.9 1 2 1 3.5h6c0-1.5.3-2.6 1-3.5A6 6 0 0 0 12 3z"/></svg> Locate (light up this drawer)</button>
   </form>
   {% endif %}
 
@@ -28,9 +28,9 @@
 {% if bins %}
 <div class="card">
   <h2>Bins ({{ bins|length }})</h2>
-  <p style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+  <p style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
     {% for b in bins %}
-      <a class="pill" href="{% url 'inventory:bin_detail' b.pk %}" style="text-align:center;padding:10px 6px;">
+      <a class="pill" href="{% url 'inventory:bin_detail' b.pk %}" style="text-align:center;padding:10px 6px">
         {{ b.bin_number }}{% if b.barcode_id %} ✓{% endif %}{% if b.sub_bin_count %} <span class="muted">({{ b.sub_bin_count }})</span>{% endif %}
       </a>
     {% endfor %}

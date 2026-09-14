@@ -5,12 +5,12 @@
   <h1>Scan bin barcodes</h1>
   <p class="muted">Scan the barcode on the current bin — it fills in and moves to the next one automatically. No taps needed between scans.</p>
   <p id="bin-progress" class="muted"></p>
-  <h2 id="bin-label" style="text-transform:none;color:var(--text);"></h2>
+  <h2 id="bin-label" style="text-transform:none;color:var(--text)"></h2>
   <p id="bin-existing" class="muted"></p>
   <p><input type="text" id="scan-input" autofocus autocomplete="off" placeholder="Scan or type a barcode, then Enter"></p>
-  <p id="bin-error" class="msg-error" style="display:none;"></p>
+  <p id="bin-error" class="msg-error" style="display:none"></p>
   <p><a href="#" id="skip-link">Skip this bin →</a></p>
-  <p id="bin-done" class="msg-success" style="display:none;">All bins in this run are linked. <a href="{% url 'inventory:bin_setup' %}">Back to bin barcodes →</a></p>
+  <p id="bin-done" class="msg-success" style="display:none">All bins in this run are linked. <a href="{% url 'inventory:bin_setup' %}">Back to bin barcodes →</a></p>
 </div>
 
 {{ positions_json|json_script:"positions-data" }}

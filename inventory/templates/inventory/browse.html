@@ -5,7 +5,7 @@
   <form method="get">
     <input type="search" name="q" value="{{ q }}" placeholder="Filter by container number, name, or type…">
     <p>
-      <select name="type" onchange="this.form.submit()" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+      <select name="type" onchange="this.form.submit()" >
         <option value="">All container types</option>
         {% for t in all_types %}
           <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>{{ t }}</option>
@@ -29,7 +29,7 @@
   </table>
 </div>
 
-<h2 style="margin:24px 4px 10px;color:var(--muted);font-size:1.05rem;text-transform:uppercase;letter-spacing:0.03em;">All locations</h2>
+<h2 style="margin:24px 4px 10px;color:var(--muted);font-size:1.05rem;text-transform:uppercase;letter-spacing:0.03em">All locations</h2>
 
 {% for c in containers %}
 <div class="card">
@@ -40,7 +40,7 @@
   {% if c.drawers.all %}
     <p>
       {% for d in c.drawers.all %}
-        <a class="pill" href="{% url 'inventory:drawer_detail' d.pk %}" style="margin-right:6px;">{{ d.label }}</a>
+        <a class="pill" href="{% url 'inventory:drawer_detail' d.pk %}" style="margin-right:6px">{{ d.label }}</a>
       {% endfor %}
     </p>
   {% endif %}

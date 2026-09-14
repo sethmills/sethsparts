@@ -7,7 +7,7 @@
 
   <form method="post" action="{% url 'inventory:locate_bin' bin.pk %}" class="no-print">
     {% csrf_token %}
-    <button class="btn secondary" type="submit">💡 Locate this bin</button>
+    <button class="btn secondary" type="submit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.9 1 2 1 3.5h6c0-1.5.3-2.6 1-3.5A6 6 0 0 0 12 3z"/></svg> Locate this bin</button>
   </form>
 
   {% if bin.barcode_id %}
@@ -45,7 +45,7 @@
     <div class="location-card">
       <div class="location-card-header">
         <span>Sub-bin {{ sb.position }} <span class="pill">{{ sb.get_size_display }}</span></span>
-        <form method="post" action="{% url 'inventory:delete_sub_bin' sb.pk %}" onsubmit="return confirm('Remove this sub-bin?');">
+        <form method="post" action="{% url 'inventory:delete_sub_bin' sb.pk %}" onsubmit="return confirm('Remove this sub-bin?')">
           {% csrf_token %}
           <button class="btn secondary btn-sm" type="submit">Remove</button>
         </form>
@@ -53,7 +53,7 @@
       {% if sb.barcode_id %}
         <p>Barcode: <span class="pill">{{ sb.barcode_id }}</span></p>
       {% else %}
-        <form method="post" action="{% url 'inventory:register_sub_bin_barcode' sb.pk %}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <form method="post" action="{% url 'inventory:register_sub_bin_barcode' sb.pk %}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           {% csrf_token %}
           <input type="text" name="code" autocomplete="off" placeholder="Scan or type barcode">
           <button class="btn secondary btn-sm" type="submit">Register</button>
@@ -65,7 +65,7 @@
   {% endfor %}
 
   {% if can_add_sub_bin %}
-    <form method="post" action="{% url 'inventory:add_sub_bin' bin.pk %}" style="display:flex;gap:10px;align-items:center;margin-top:10px;">
+    <form method="post" action="{% url 'inventory:add_sub_bin' bin.pk %}" style="display:flex;gap:10px;align-items:center;margin-top:10px">
       {% csrf_token %}
       <select name="size">
         {% for value, label in size_choices %}

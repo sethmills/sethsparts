@@ -3,8 +3,8 @@
 {% block content %}
 <div class="card">
   <details>
-    <summary style="cursor:pointer;font-weight:600;color:var(--text);">Scan a barcode instead</summary>
-    <div style="margin-top:12px;">
+    <summary style="cursor:pointer;font-weight:600;color:var(--text)">Scan a barcode instead</summary>
+    <div style="margin-top:12px">
       {% include "inventory/_scan_widget.html" with autostart=False %}
     </div>
   </details>
@@ -15,20 +15,20 @@
   <p class="muted">Search by name, or by what it does — try "display", "motor driver", "relay", "wifi", "bluetooth", "sensor", "case", etc.</p>
   <form method="get">
     <input type="search" name="q" value="{{ query }}" placeholder="Part name or function…" autofocus>
-    <p style="display:flex;gap:10px;flex-wrap:wrap;">
-      <select name="category" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+    <p style="display:flex;gap:10px;flex-wrap:wrap">
+      <select name="category" >
         <option value="">All categories</option>
         {% for c in categories %}
           <option value="{{ c.pk }}" {% if selected_category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select>
-      <select name="manufacturer" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+      <select name="manufacturer" >
         <option value="">All manufacturers</option>
         {% for m in manufacturers %}
           <option value="{{ m }}" {% if selected_manufacturer == m %}selected{% endif %}>{{ m }}</option>
         {% endfor %}
       </select>
-      <select name="has_docs" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;">
+      <select name="has_docs" >
         <option value="">Docs: any</option>
         <option value="yes" {% if selected_has_docs == "yes" %}selected{% endif %}>Has documentation</option>
         <option value="no" {% if selected_has_docs == "no" %}selected{% endif %}>No documentation yet</option>

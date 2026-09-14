@@ -1,7 +1,7 @@
 <div id="reader" style="width:100%;{% if not autostart %}min-height:80px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;{% endif %}"></div>
 <p class="muted" id="scan-status" style="{% if not autostart %}cursor:pointer;{% endif %}">{% if autostart %}Starting camera…{% else %}Camera off — tap here to start it.{% endif %}</p>
 
-<form method="get" action="{% url 'inventory:go' %}" style="margin-top:10px;">
+<form method="get" action="{% url 'inventory:go' %}" style="margin-top:10px">
   <input type="text" name="code" id="code-input" autocomplete="off" placeholder="Or type / scan with a USB scanner">
 </form>
 

@@ -9,10 +9,10 @@
 <div class="card">
   <form method="get">
     <label class="muted" for="q">What are you looking for?</label><br>
-    <input type="search" id="q" name="q" value="{{ query }}" placeholder="Part name or function…" autofocus style="min-width:60%;">
+    <input type="search" id="q" name="q" value="{{ query }}" placeholder="Part name or function…" autofocus style="min-width:60%">
     <button class="btn" type="submit">Search friends</button>
   </form>
-  <p class="muted" style="margin-top:10px;">Only workshops you've connected to — and only the ones you've ticked "may search my parts" on — are asked. Your own inventory is never searched here, and they only ever see the categories you've marked shareable.</p>
+  <p class="muted" style="margin-top:10px">Only workshops you've connected to — and only the ones you've ticked "may search my parts" on — are asked. Your own inventory is never searched here, and they only ever see the categories you've marked shareable.</p>
 </div>
 
 {% if query %}
@@ -26,10 +26,10 @@
     <div class="card">
       <h2>{{ result.name }}</h2>
       {% if result.contact_note %}
-        <p><a class="btn secondary" href="mailto:{{ result.contact_note|urlencode }}">✉ Contact {{ result.name }}</a></p>
+        <p><a class="btn secondary" href="mailto:{{ result.contact_note|urlencode }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> Contact {{ result.name }}</a></p>
       {% endif %}
       {% for m in result.matches %}
-        <p style="border-top:1px solid #2c303a;padding:8px 0;">
+        <p style="border-top:1px solid var(--border);padding:8px 0">
           <strong>{{ m.name }}</strong>
           {% if m.manufacturer %}<span class="pill">{{ m.manufacturer }}</span>{% endif %}
           {% if m.category %}<span class="pill">{{ m.category }}</span>{% endif %}

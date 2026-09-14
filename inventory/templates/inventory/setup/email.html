@@ -9,7 +9,7 @@
 <div class="card">
   <h2>Get a Gmail app password <span class="muted">(once, about two minutes)</span></h2>
   <p class="muted">The app sends email through your own Gmail account — you authorise it yourself, no third party involved. You do that by creating an <strong>app password</strong>: a separate 16-character code used only by this app. You can revoke it any time without touching your main password.</p>
-  <ol style="line-height:1.7;">
+  <ol style="line-height:1.7">
     <li>Open <a href="https://myaccount.google.com/security" target="_blank" rel="noopener">myaccount.google.com/security</a> and sign in.</li>
     <li>Turn on <strong>2-Step Verification</strong> if you haven't (Security → 2-Step Verification → Get started). App passwords only exist once 2-Step Verification is on.</li>
     <li>Back on the Security page, type <strong>"App passwords"</strong> into the search box at the top and open it.</li>
@@ -31,11 +31,11 @@
     </p>
     <p>
       <label class="muted">SMTP host<br><input name="smtp_host" value="{{ site.smtp_host }}" placeholder="smtp.gmail.com"></label>
-      <label class="muted">Port<br><input name="smtp_port" value="{{ site.smtp_port }}" style="width:90px;"></label>
+      <label class="muted">Port<br><input name="smtp_port" value="{{ site.smtp_port }}" style="width:90px"></label>
     </p>
     <p><label class="muted">SMTP username — your full Gmail address<br><input name="smtp_user" value="{{ site.smtp_user }}" placeholder="you@gmail.com"></label></p>
     <p>
-      <label class="muted">SMTP password — the app password from above<br><input type="password" name="smtp_password" value="{{ site.smtp_password }}" autocomplete="new-password" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;"></label>
+      <label class="muted">SMTP password — the app password from above<br><input type="password" name="smtp_password" value="{{ site.smtp_password }}" autocomplete="new-password" ></label>
       <br><span class="muted">Stored only on your own server — this app is self-hosted.</span>
     </p>
     <p>
@@ -53,7 +53,7 @@
     <p><label><input type="checkbox" name="notify_on_connection" value="1" {% if site.notify_on_connection %}checked{% endif %}> Someone connects to my workshop</label></p>
     <p><label><input type="checkbox" name="notify_on_search" value="1" {% if site.notify_on_search %}checked{% endif %}> A connected workshop searches my parts</label></p>
 
-    <p style="margin-top:14px;">
+    <p style="margin-top:14px">
       <button class="btn" type="submit" name="action" value="save">Save and continue →</button>
       <button class="btn secondary" type="submit" name="action" value="test">Save &amp; send a test email</button>
     </p>
