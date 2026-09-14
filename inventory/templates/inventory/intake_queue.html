@@ -19,6 +19,7 @@
     <span class="pill">{{ note.get_source_display }}</span> <span class="muted">{{ note.created_at|date:"Y-m-d H:i" }}</span>
   </p>
   <p>{{ note.text }}</p>
+  <p><a class="btn btn-sm" href="{% url 'inventory:part_intake' %}{% if note.container %}?name={{ note.text|urlencode }}&container={{ note.container.number }}{% else %}?name={{ note.text|urlencode }}{% endif %}">Turn into a part</a></p>
   <form method="post" action="{% url 'inventory:assign_intake_note_container' note.pk %}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
     {% csrf_token %}
     <select name="container">

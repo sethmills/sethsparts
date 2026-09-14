@@ -277,7 +277,7 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
   color: var(--muted);
 }
 
-.msg-success, .msg-error {
+.msg-success, .msg-error, .msg-warn {
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin: 0 0 12px;
@@ -286,6 +286,11 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
 }
 .msg-success { color: var(--ok); background: rgba(111, 191, 115, 0.1); border: 1px solid rgba(111, 191, 115, 0.3); }
 .msg-error { color: var(--danger); background: rgba(227, 93, 93, 0.1); border: 1px solid rgba(227, 93, 93, 0.3); }
+.msg-warn { color: var(--warn); background: rgba(224, 163, 61, 0.1); border: 1px solid rgba(224, 163, 61, 0.3); }
+
+.dup-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+.dup-row a { color: var(--text); text-decoration: none; }
+.dup-row a:hover { text-decoration: underline; }
 
 .label-sheet { display: flex; flex-wrap: wrap; gap: 12px; }
 .label-tile {

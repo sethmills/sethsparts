@@ -16,11 +16,23 @@
     {% if drawer %}<input type="hidden" name="drawer" value="{{ drawer.pk }}">
     {% elif container %}<input type="hidden" name="container" value="{{ container.number }}">{% endif %}
 
-    <p><label>Name *<br><input type="text" name="name" value="{{ request.POST.name|default:'' }}" autofocus required style="width:100%;max-width:420px"></label></p>
+    <p><label>Name *<br><input type="text" name="name" value="{{ name_hint }}" autofocus required style="width:100%;max-width:420px"></label></p>
+
+    {% if candidates %}
+    <div class="msg-warn">
+      <p><strong>You may already have this part.</strong> Add stock to an existing one instead, or confirm you want a new part.</p>
+      {% for pid, pname in candidates %}
+      <p class="dup-row">
+        <a href="{% url 'inventory:part_detail' pid %}">{{ pname }}</a>
+        <button class="btn secondary btn-sm" type="submit" name="existing_part" value="{{ pid }}">Use this part</button>
+      </p>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     <p style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <label>Category<br>
-        <select name="category" >
+        <select name="category">
           <option value="">—</option>
           {% for c in categories %}
             <option value="{{ c.pk }}" {% if request.POST.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
@@ -41,7 +53,11 @@
     <p><label>Reorder / buy link<br><input type="url" name="reorder_url" value="{{ request.POST.reorder_url|default:'' }}" style="width:100%;max-width:520px"></label></p>
     <p><label>Datasheet link<br><input type="url" name="datasheet_url" value="{{ request.POST.datasheet_url|default:'' }}" style="width:100%;max-width:520px"></label></p>
 
-    <p><button class="btn" type="submit" {% if not container %}disabled{% endif %}>Add part</button></p>
+    {% if candidates %}
+      <p><button class="btn" type="submit" name="create_confirmed" value="1">Create a new part anyway</button></p>
+    {% else %}
+      <p><button class="btn" type="submit" {% if not container %}disabled{% endif %}>Add part</button></p>
+    {% endif %}
   </form>
 </div>
 {% endblock %}

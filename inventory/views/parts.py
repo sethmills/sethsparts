@@ -14,6 +14,7 @@ from ..models import (
 
 from ._shared import _location_choices
 
+from ..duplicate_detection import find_duplicate_parts
 
 
 @login_required
@@ -26,8 +27,35 @@ def part_intake(request):
         get_object_or_404(Container, number=container_number) if container_number else None
     )
 
+    # The name can arrive pre-filled from the intake queue ("turn this note into a part").
+    name_hint = (request.POST.get("name") or request.GET.get("name") or "").strip()
+    context = {"container": container, "drawer": drawer, "categories": Category.objects.all(), "name_hint": name_hint}
+
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
+
+        # "Use this existing part instead" — add stock to it, don't create a new part.
+        existing_part_pk = request.POST.get("existing_part")
+        if existing_part_pk:
+            part = get_object_or_404(Part, pk=existing_part_pk)
+            if not container:
+                messages.error(request, "No location selected — go back to a container or drawer page and use \"Add a part here\".")
+            else:
+                raw_qty = (request.POST.get("quantity") or "").strip()
+                quantity = None
+                if raw_qty:
+                    try:
+                        quantity = max(0, int(raw_qty))
+                    except ValueError:
+                        quantity = None
+                StockItem.objects.create(
+                    part=part, container=container, drawer=drawer, quantity=quantity, quantity_raw=raw_qty
+                )
+                messages.success(request, f"Added to existing part {part.name} at {drawer or container}.")
+                if drawer:
+                    return redirect("inventory:drawer_detail", pk=drawer.pk)
+                return redirect("inventory:container_detail", number=container.number)
+
         if not name:
             messages.error(request, "Part name is required.")
         elif not container:
@@ -44,6 +72,12 @@ def part_intake(request):
                     messages.error(request, f"'{raw_min_qty}' isn't a whole number for reorder threshold.")
 
             if not min_qty_error:
+                # Surface duplicates first; skip the check once the owner has confirmed.
+                if not request.POST.get("create_confirmed"):
+                    context["candidates"] = find_duplicate_parts(name)
+                    if context["candidates"]:
+                        return render(request, "inventory/part_intake.html", context)
+
                 category_id = request.POST.get("category") or None
                 part = Part.objects.create(
                     name=name,
@@ -72,11 +106,11 @@ def part_intake(request):
                     return redirect("inventory:drawer_detail", pk=drawer.pk)
                 return redirect("inventory:container_detail", number=container.number)
 
-    return render(
-        request,
-        "inventory/part_intake.html",
-        {"container": container, "drawer": drawer, "categories": Category.objects.all()},
-    )
+    # On a plain GET, surface duplicates immediately when a name was pre-filled.
+    if name_hint and "candidates" not in context:
+        context["candidates"] = find_duplicate_parts(name_hint)
+
+    return render(request, "inventory/part_intake.html", context)
 
 
 @login_required

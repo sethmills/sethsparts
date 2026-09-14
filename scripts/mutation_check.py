@@ -674,6 +674,14 @@ MUTATIONS = [
         "    if False:",
         "inventory.tests.test_notifications",
     ),
+    # --- duplicate detection on intake ----------------------------------------
+    (
+        "Duplicate check skipped (a second entry created silently)",
+        ROOT / "inventory" / "views" / "parts.py",
+        '                if not request.POST.get("create_confirmed"):',
+        "                if False:",
+        "inventory.tests.test_duplicate_detection",
+    ),
 ]
 
 
