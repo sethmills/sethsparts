@@ -175,7 +175,7 @@ VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
 # LLM-assisted enrichment (DeepSeek). Empty means the suggest button stays hidden
 # until the owner supplies their own key — the same opt-in shape as SMTP/Gmail.
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat"
 
 # LED "find the part" indicator controller (Phase 8 backlog item — the Pi host doesn't exist
 # yet). Empty URL means the locate button just reports "not configured" instead of erroring.
