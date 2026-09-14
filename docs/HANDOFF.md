@@ -7,8 +7,8 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Live site:** https://sethsparts.com (Django + SQLite, Docker, Cloudflare Tunnel — no nginx/Caddy).
 - **Server:** a Hetzner VPS, app at `/opt/sethsparts`. The address and hostname are kept out of this repo deliberately (it is public, and they describe infrastructure rather than the app) — they aren't needed to deploy, see `docs/RUNNING.md`.
 - **Deploy flow:** `git push` → on the server: **back up `data/db.sqlite3` first**, then `cd /opt/sethsparts && git pull --ff-only && docker compose --profile tunnel up -d --build`. Back up first because the container runs `migrate` before gunicorn on every start, so a deploy is also a migration run against the live database. **The `--profile tunnel` is not optional on this server** — the Cloudflare tunnel is an opt-in compose profile (item 29), so a plain `up -d` brings the app up without it. The server has its own **read-only** deploy key (`.deploy_key`, gitignored) — separate from whatever key pushes to GitHub.
-- **GitHub:** private repo `sethmills/sethsparts`, `main` branch — private for now, but written for release: treat every diff as if it were already public.
-- **Version / releases:** `inventory/version.py` is `0.2.0`, tagged `v0.2.0` and pushed. The update check asks GitHub (`releases/latest`, then `tags`), so a tag that only exists locally does nothing at all — and **while the repo is private it can see nothing at all**, because GitHub answers 404 to an anonymous request for a private repo (item 29). Flipping the repo public is what makes the update check work.
+- **GitHub:** **public** repo `sethmills/sethsparts`, `main` branch, MIT. It was private while the app was being finished; the inventory files that had been committed were purged from history first (item 31), so the published history is clean and everything in it was written to be read.
+- **Version / releases:** `inventory/version.py` is `0.3.0`, tagged `v0.3.0` and pushed, with GitHub Releases for `v0.1.0`, `v0.2.0` and `v0.3.0` cut from the tag annotations — **that is the changelog**, there is deliberately no CHANGELOG file. The update check asks `releases/latest` (falling back to `tags`), which only works once the repository is public: it answered **HTTP 404 for as long as the repo was private** (item 29). Verified working on prod immediately after the flip — it reports "You're up to date (0.3.0)". Note GitHub picks "latest" by *release creation time*, not version: the older releases were created after v0.3.0 and GitHub labelled v0.2.0 as Latest, which would have made every install compare against the wrong version. Fixed with `gh release edit v0.3.0 --latest`.
 - **Secrets:** live only in `/opt/sethsparts/.env` on the server (gitignored, never committed) — see `.env.example` in the repo root for the full list with explanations: `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS` (both required), `TUNNEL_TOKEN` (required *on this server*, because it runs the tunnel profile), plus optional `VOICE_SEARCH_API_KEY`, `LED_CONTROLLER_URL`/`KEY`, `LABEL_PRINTER_URL`/`KEY`, `KIOSK_AUTOLOGIN_TOKEN`/`USERNAME`.
 - **Cloudflare:** one account, multiple tunnels — `sethsparts.com` (the main site, Hetzner-hosted) and `sethsparts-led-controller` (runs on the workshop Pi itself, currently carrying **two** public hostnames on its "Published application routes" tab: `led.sethsparts.com` → `localhost:9000` and `label.sethsparts.com` → `localhost:9020`). **Gotcha worth remembering:** this tunnel's dashboard "Hostname routes" tab is empty/unused — routes actually live under the differently-named "Published application routes" tab. Don't assume a tunnel's routes aren't configured just because one tab looks empty; check both.
 - **Logins:** the app has its own login page at `/login/` (item 25), with **Log out** in the More menu. The Django admin keeps its own separate login at `/admin/login/`. Username `seth` for both; passwords were set by Seth directly (not recorded here).
@@ -974,6 +974,48 @@ claims success when the board never answered"*. If a later change lets that thro
 page becomes a comfortable lie.
 
 86 tests in `test_setup_wizard.py` (14 new), 29 in `test_flash_scorpio.py`.
+
+### 31. Going public: purge, flip, releases, deploy — ✅ done (2026-09-14)
+
+Seth's call: "when finished purge, flip, push, deploy."
+
+**The purge came first, and the order was the whole point.** Publishing publishes history, so
+the inventory files committed early on — `docs/parts_review.xlsx` (3 commits),
+`docs/parts_review.md` (2) and `docs/clarification_workstream.md` (2) — were removed from
+every commit with `git filter-repo --invert-paths` *before* the visibility switch. Done in
+that order it is fully effective: those files were never reachable in the public repository at
+any point, rather than relying on GitHub forgetting them later. Filter-repo rewrote all 79
+commits (dropping two that became empty, because they contained nothing else), moved every
+SHA, rewrote the tags, and removed the `origin` remote by design — re-added by hand.
+Safety copy first: `~/work/sethsparts-backup-pre-purge/` holds a `git bundle --all` of the
+original history plus the two local files. The working tree was untouched, and the untracked
+local copies (`docs/parts_review.xlsx`, `docs/clarification_workstream.md`) are still on disk.
+
+**The audit earned its keep on the rewritten history**, finding three hits in
+`scripts/audit_public_repo.py` itself: its explanations name the test fixtures it excuses, and
+the earlier version of that file is still in history. Fixed by letting `KNOWN_BENIGN` accept
+either a whole-file reason *or* a list of `(needle, reason)` pairs, and using the list form
+there — a whole-file exemption for the scanner's own source would be a blind spot in the one
+tool where nobody would think to look for one. Four tests pin the distinction, including that
+a needle-scoped entry still rejects a *different* secret in the same file.
+
+**Flip, then releases.** `gh repo edit --visibility public`. The update check answered HTTP
+404 for the whole time the repo was private (item 29); verified working on prod immediately
+after: **"You're up to date (0.3.0)"**. Releases cut from the tag annotations for `v0.1.0`,
+`v0.2.0` and `v0.3.0` — the annotated tag remains the changelog.
+
+**One trap worth remembering:** GitHub decides which release is "latest" by **creation time**,
+not by version. Creating `v0.1.0` and `v0.2.0` *after* `v0.3.0` made GitHub label **v0.2.0**
+as Latest — and `releases/latest` is exactly what the update check reads, so every install
+would have compared against the wrong version. Fixed with `gh release edit v0.3.0 --latest`
+and confirmed. (The first two API reads still showed v0.2.0 afterwards — stale CDN cache.
+Worth knowing before concluding it failed.)
+
+**Deploy.** Prod needed a **re-point, not the usual `git pull --ff-only`**, because the history
+it was on no longer exists: `git fetch --tags --force` (the `--force` matters, or the rewritten
+tags refuse to update) then `git reset --hard origin/main`. Safe there because prod had no
+tracked-file edits and `.env`/`data/` are gitignored — and the database was backed up first as
+always. v0.3.0 adds **no migrations**, so the row counts should be, and were, unchanged.
 
 ### Backlog / discussed, not built
 

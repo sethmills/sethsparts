@@ -122,9 +122,11 @@ to, not in `__init__.py`.
 Two copy-paste routes. `docs/RUNNING.md` is the long version of both, with the optional
 pieces (hardware, community, public access) explained one at a time.
 
-> The repository is private while the release is being finished, so `git clone` needs
-> access today — see "Cloning this for someone else". The commands below are what they
-> will be once it's public.
+> `git clone https://github.com/sethmills/sethsparts.git` works — the repository is public.
+> The files that are *this workshop's* contents rather than the app (the parts-review
+> workbook, the database, `media/`, `.env`) have never been committed, and the copies that
+> were committed once were purged from history before it went public. See
+> "Cloning this for someone else".
 
 ### Docker — any machine, including a Pi
 
