@@ -571,6 +571,13 @@ MUTATIONS = [
         "          {# a note that never closes on this line",
         "inventory.tests.test_templates",
     ),
+    (
+        "A failed update check is reported as up to date (silently never checks again)",
+        ROOT / "inventory" / "updates.py",
+        '                ok=False,\n                error=(\n                    f"GitHub won\'t show {repo()} to an unsigned-in request (HTTP 404). "',
+        '                ok=True,\n                error=(\n                    f"GitHub won\'t show {repo()} to an unsigned-in request (HTTP 404). "',
+        "inventory.tests.test_updates",
+    ),
 ]
 
 

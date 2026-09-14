@@ -109,10 +109,28 @@ def _fetch() -> UpdateInfo:
         except requests.RequestException as exc:
             return UpdateInfo(ok=False, error=f"Couldn't reach GitHub: {exc}")
 
-        if response.status_code == 404 and path == "releases/latest":
-            # A repository with no releases yet is normal, not an error — fall through
-            # to tags rather than reporting a failure.
-            continue
+        if response.status_code == 404:
+            if path == "releases/latest":
+                # A repository with no releases yet is normal, not an error — fall through
+                # to tags rather than reporting a failure.
+                continue
+            # GitHub answers 404 (not 403) for a repository an anonymous caller cannot see,
+            # deliberately, so that a private repository is indistinguishable from a
+            # missing one. This check sends no token, so a private repo lands exactly
+            # here — and "GitHub returned HTTP 404" on its own reads like a typo in the
+            # repository name, which sends the owner looking in the wrong place.
+            #
+            # ok stays False on purpose: a check that could not run must never be
+            # presented as "you are up to date".
+            return UpdateInfo(
+                ok=False,
+                error=(
+                    f"GitHub won't show {repo()} to an unsigned-in request (HTTP 404). "
+                    "Either the repository is private — in which case nothing here can "
+                    "check for updates until it is made public — or UPDATE_REPO names it "
+                    "wrong."
+                ),
+            )
         if response.status_code == 403:
             return UpdateInfo(ok=False, error="GitHub is rate-limiting this install. Try again later.")
         if response.status_code >= 400:

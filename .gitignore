@@ -6,4 +6,14 @@ media/
 .DS_Store
 staticfiles/
 .env
+# The production checkout's read-only deploy key. It lives on the server, not in the repo,
+# but an ignore rule is cheaper than trusting that it never gets `git add -A`'d there.
+.deploy_key
+*.pem
+id_rsa*
 data/
+# This workshop's own contents, as opposed to the app: the review workbook and the
+# clarification worklist. Generated/edited locally by the owner, never published -- a
+# clone should get the code, not somebody else's inventory.
+docs/parts_review.xlsx
+docs/clarification_workstream.md

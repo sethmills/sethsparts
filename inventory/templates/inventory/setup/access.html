@@ -30,7 +30,7 @@
     <li>Copy the tunnel token it gives you.</li>
     <li>Under the tunnel's <strong>Public Hostname</strong> tab, add your domain, and point it at <code>http://sethsparts:3200</code> — that's the app container's name and port inside Docker. (If you renamed the service in <code>docker-compose.yml</code>, use that name.)</li>
     <li>Put the token in your <code>.env</code> file as <code>TUNNEL_TOKEN=…</code>, next to the other secrets.</li>
-    <li>Run <code>docker compose up -d</code> — that starts a <code>cloudflared</code> container alongside the app, which is already configured in <code>docker-compose.yml</code>.</li>
+    <li>Run <code>docker compose --profile tunnel up -d</code> — the tunnel is an optional profile in <code>docker-compose.yml</code>, so it only starts when you ask for it. Without the <code>--profile tunnel</code> part you get just the app, on localhost.</li>
     <li>Set <code>DJANGO_ALLOWED_HOSTS</code> in <code>.env</code> to your domain, e.g. <code>parts.example.com</code>. Django refuses requests claiming a host it doesn't recognise, and this is that setting.</li>
   </ol>
   <p class="muted">Then paste the address below and check it.</p>

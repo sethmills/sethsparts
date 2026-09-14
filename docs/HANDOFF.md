@@ -5,17 +5,17 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 ## Current live state (last refreshed 2026-09-13)
 
 - **Live site:** https://sethsparts.com (Django + SQLite, Docker, Cloudflare Tunnel — no nginx/Caddy).
-- **Server:** `root@95.217.21.132` (Hetzner, hostname `content-hub`), app at `/opt/sethsparts`.
-- **Deploy flow:** `git push` → on the server: **back up `data/db.sqlite3` first**, then `cd /opt/sethsparts && git pull --ff-only && docker compose up -d --build`. Back up first because the container runs `migrate` before gunicorn on every start, so a deploy is also a migration run against the live database. The server has its own **read-only** deploy key (`.deploy_key`, gitignored) — separate from whatever key pushes to GitHub.
+- **Server:** a Hetzner VPS, app at `/opt/sethsparts`. The address and hostname are kept out of this repo deliberately (it is public, and they describe infrastructure rather than the app) — they aren't needed to deploy, see `docs/RUNNING.md`.
+- **Deploy flow:** `git push` → on the server: **back up `data/db.sqlite3` first**, then `cd /opt/sethsparts && git pull --ff-only && docker compose --profile tunnel up -d --build`. Back up first because the container runs `migrate` before gunicorn on every start, so a deploy is also a migration run against the live database. **The `--profile tunnel` is not optional on this server** — the Cloudflare tunnel is an opt-in compose profile (item 29), so a plain `up -d` brings the app up without it. The server has its own **read-only** deploy key (`.deploy_key`, gitignored) — separate from whatever key pushes to GitHub.
 - **GitHub:** private repo `sethmills/sethsparts`, `main` branch — private for now, but written for release: treat every diff as if it were already public.
-- **Version / releases:** `inventory/version.py` is `0.1.0`, and `v0.1.0` is tagged and pushed. The update check asks GitHub (`releases/latest`, then `tags`), so a tag that only exists locally does nothing at all — publishing a release means pushing the tag (item 26).
-- **Secrets:** live only in `/opt/sethsparts/.env` on the server (gitignored, never committed) — see `.env.example` in the repo root for the full list with explanations: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `TUNNEL_TOKEN` (required), plus optional `VOICE_SEARCH_API_KEY`, `LED_CONTROLLER_URL`/`KEY`, `LABEL_PRINTER_URL`/`KEY`, `KIOSK_AUTOLOGIN_TOKEN`/`USERNAME`.
+- **Version / releases:** `inventory/version.py` is `0.2.0`, tagged `v0.2.0` and pushed. The update check asks GitHub (`releases/latest`, then `tags`), so a tag that only exists locally does nothing at all — and **while the repo is private it can see nothing at all**, because GitHub answers 404 to an anonymous request for a private repo (item 29). Flipping the repo public is what makes the update check work.
+- **Secrets:** live only in `/opt/sethsparts/.env` on the server (gitignored, never committed) — see `.env.example` in the repo root for the full list with explanations: `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS` (both required), `TUNNEL_TOKEN` (required *on this server*, because it runs the tunnel profile), plus optional `VOICE_SEARCH_API_KEY`, `LED_CONTROLLER_URL`/`KEY`, `LABEL_PRINTER_URL`/`KEY`, `KIOSK_AUTOLOGIN_TOKEN`/`USERNAME`.
 - **Cloudflare:** one account, multiple tunnels — `sethsparts.com` (the main site, Hetzner-hosted) and `sethsparts-led-controller` (runs on the workshop Pi itself, currently carrying **two** public hostnames on its "Published application routes" tab: `led.sethsparts.com` → `localhost:9000` and `label.sethsparts.com` → `localhost:9020`). **Gotcha worth remembering:** this tunnel's dashboard "Hostname routes" tab is empty/unused — routes actually live under the differently-named "Published application routes" tab. Don't assume a tunnel's routes aren't configured just because one tab looks empty; check both.
 - **Logins:** the app has its own login page at `/login/` (item 25), with **Log out** in the More menu. The Django admin keeps its own separate login at `/admin/login/`. Username `seth` for both; passwords were set by Seth directly (not recorded here).
 - **Workshop Pi:** `seth@192.168.1.92`, hostname `pi5` (a Raspberry Pi 5; the original Pi 4 was fully migrated off and is no longer part of anything live). Hosts: the kiosk display, `led-controller` (systemd system service) driving a Feather RP2040 Scorpio over USB serial, `label-printer` (systemd system service) driving a Zebra GK420T over USB, and `kiosk-helper`/`screen-idle` (systemd **user** services, `loginctl enable-linger seth`).
 - **Drawer numbering:** the 3 original parts-cabinet containers (#38/#39/#40) have drawers labeled "Drawer 1"–"Drawer 27" (a=1-9, b=10-18, c=19-27). Two more cabinets exist: #119 "Cabinet 4" (9 drawers, 28-36, one LED strip, no bins — oversized/different items) and #120 "Cabinet 5" (5 drawers, 37-41, no LED mapping yet). Only drawers 1-27 have the 16-bin subdivision (`Bin`/`SubBin` models).
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
-- **Parts-review workbook:** `docs/parts_review.xlsx`, regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>` — merges in whatever Seth already typed into the "fill in" columns by Part ID, so re-running never clobbers his progress. He's still actively working through it, alongside `docs/clarification_workstream.md`.
+- **Parts-review workbook:** kept locally as `docs/parts_review.xlsx` and **not committed** (gitignored — this repo is public and that file is this workshop's inventory). Regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>`, which merges in whatever has already been typed into the "fill in" columns by Part ID, so re-running never clobbers progress. The clarification worklist beside it (`docs/clarification_workstream.md`) is local for the same reason.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
 - **Test suite:** `./venv/bin/python manage.py test inventory` — 759 tests, ~41s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 75 deliberate breakages, currently 75/75 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
 
@@ -777,6 +777,124 @@ Worth noting for whoever picks this up: the docs are the only part of this repo 
 test behind them, so they are the part that rots. Three of tonight's entries exist because
 somebody read something instead of running something.
 
+### 29. The install path was broken, and the update check couldn't say why — ✅ done (2026-09-14)
+
+Both found by Seth asking ordinary shipping questions — "put copy-paste install instructions
+for a Pi and Docker in the README" and "shouldn't the Cloudflare token be handled through
+first launch?" — and both turned up something real.
+
+**`docker compose up -d` could not work on a fresh clone.** The `cloudflared` service
+required `TUNNEL_TOKEN` (`${TUNNEL_TOKEN:?...}`), and compose interpolates the *whole file*
+before doing anything, so a self-hoster with no Cloudflare tunnel got `required variable
+TUNNEL_TOKEN is missing a value` and no app at all. Verified on the production server rather
+than reasoned about: in a throwaway copy, plain `up -d`, `up -d sethsparts` and even
+`config` all fail without the token. The tunnel is now an **opt-in compose profile** with a
+blank-tolerant token:
+
+```
+docker compose up -d                      # just the app, on 127.0.0.1:3200
+docker compose --profile tunnel up -d     # app + Cloudflare tunnel (needs the token)
+```
+
+Profiles alone were not enough — a *required* variable inside a profiled service still breaks
+the plain command (tested both ways, in /tmp on prod; the production project was never
+touched). It needs the profile **and** `${TUNNEL_TOKEN:-}`.
+
+Two consequences, both now documented: production deploys with `--profile tunnel` (README,
+the flow above, and the deploy skill), and `docker compose down` removes the tunnel too, so
+it needs the same flag coming back up.
+
+**The port binding is localhost-only.** Right for production, wrong for a Pi — the app is
+then invisible to every other machine in the workshop. README.md and `docs/RUNNING.md` now
+say to change `"127.0.0.1:3200:3200"` to `"3200:3200"` and add the host to
+`DJANGO_ALLOWED_HOSTS`, and to do that *before* any tunnel work: a tunnel to an app nobody
+else can reach just moves the problem.
+
+**README.md now has the install instructions** — Docker, Raspberry Pi, and without Docker,
+copy-pasteable — with honest caveats rather than confident ones: the image is multi-arch and
+every dependency publishes aarch64 wheels, but it has only ever been built on x86-64; Pi OS
+Bookworm ships Python 3.11 while the non-Docker route needs 3.12+, so Bookworm wants the
+container (the workshop Pi is Debian 13 with Python 3.13 and no Docker installed, so it could
+go either way).
+
+**The update check's failure message was useless.** Production said "GitHub returned HTTP
+404", which reads like a typo in the repository name. GitHub answers 404 — not 403 — for a
+repo an anonymous caller cannot see, deliberately, so private and missing are
+indistinguishable from outside; this check sends no token, so a private repo lands exactly
+there. It now names the repo and both causes. Verified against the real private repo, with no
+mocking: `manage.py check_updates` prints the new message. The test asserts it stays
+`ok=False`, because a check that could not run must never be presented as "you're current".
+
+Which is the plain version of the thing worth knowing: **the update check cannot work while
+the repository is private.** That is the real reason to flip it public — more than anyone's
+ability to clone it.
+
+**Not built, deliberately:** configuring the tunnel token *through the setup wizard*, which
+is what the "first launch" question was actually about. The wizard writes to the app's
+database; the token configures `cloudflared`, a separate container. The app owning that
+lifecycle means giving a public-facing container the Docker socket, or spawning processes —
+which this repo's own portability test forbids outright. The honest split is that the app
+owns its configuration and the deployment owns the transport; the Access step already
+documents the tunnel, checks the address is reachable, and now points at the right command.
+
+760 tests, 76/76 mutations caught.
+
+### 30. Preparing to go public: credit where it's due, and what shouldn't be in a public repo — ✅ done (2026-09-14)
+
+The last step before flipping this repository public, prompted by Seth: credit InvenTree,
+then a security review of everything a stranger would get, and keep this workshop's own
+contents out of it.
+
+**The security review came back clean.** Every blob ever committed (767 of them) was
+scanned — not just the current tree, because history is published too — for private keys,
+GitHub/Cloudflare/AWS/Google/Slack token shapes, `SECRET_NAME=value` assignments, long
+high-entropy strings and bearer headers. Findings were only test fixtures (`TOKEN =
+"kiosk-shared-secret…"` and a throwaway `PASSWORD = "correct-horse-battery-…"` in the test
+suite) and empty `.env.example` assignments; the only
+sensitive path ever committed is `.env.example` itself. `db.sqlite3`, `media/`, `data/`,
+`.env` and `.deploy_key` have never been committed at any point. The kiosk launcher reads
+its token from the environment rather than embedding it. There is no address, postcode or
+phone number anywhere in the repo, and the geocoder stores only a postcode *district* by
+design.
+
+Two things worth knowing about the app's own defaults, neither of which affects this
+deployment (the container refuses to start without `DJANGO_SECRET_KEY`, and compose sets
+`DJANGO_DEBUG=false`), but both of which a reader might copy: `config/settings.py` falls
+back to a hardcoded `django-insecure-…` `SECRET_KEY` and `DEBUG=true` when the environment
+says nothing. Django prints its security warning for the first and the README's install
+route sets neither. Making a non-DEBUG start *refuse* the insecure default would be a
+one-line hardening; not done, since it changes startup behaviour for every existing
+install and nobody asked for it.
+
+**InvenTree is credited** in a "Credits and prior art" section of the README: it was the
+reference point for the data model (parts, stock items, categories, locations, BOMs) and
+for the decision to self-host rather than keep feeding a spreadsheet, and the README now
+tells readers plainly that if they want a mature multi-user platform with purchasing and
+suppliers they should use InvenTree instead. It is MIT-licensed, as this is.
+
+**The owner's inventory is out of the repository.** Two files were tracked that are this
+workshop's *contents* rather than the app: `docs/parts_review.xlsx` (part names,
+quantities, drawer locations) and `docs/clarification_workstream.md` (242 line-items by
+drawer). Both are now untracked and gitignored, and they stay on disk so the workflow is
+unchanged; `scripts/export_parts_review.py` documents why its output is not committed.
+README.md says the same in one place — "a clone gets the code, not somebody else's
+inventory" — and the repo layout now points at the docs that *do* belong in a clone.
+
+**They are still in git history**, which is the part that matters and is deliberately left
+for Seth to decide: `parts_review.xlsx` appears in 2 commits and
+`clarification_workstream.md` in 1, so a `git filter-repo --invert-paths` purge would be
+quick — but it rewrites every SHA in the repository, which would stale the commit
+references throughout this file and require the production checkout (and any other clone)
+to be re-pointed. Untracking without a rewrite is the safe half; the rewrite is one command
+with a cost attached, so it waits for an explicit decision rather than being done quietly
+the night before the repository goes public.
+
+Also hardened: `.gitignore` now covers `.deploy_key`, `*.pem` and `id_rsa*` — the
+production checkout's deploy key lives on the server and has never been committed, but an
+ignore rule is cheaper than trusting that it never gets `git add -A`'d there.
+
+760 tests, 76/76 mutations caught.
+
 ### Backlog / discussed, not built
 
 - **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."
@@ -785,4 +903,4 @@ somebody read something instead of running something.
 ## Files Seth has shared, still relevant
 
 - `/Users/seth/Downloads/amazon_order_history.xlsx` — for backlog item 6, later.
-- `docs/parts_review.xlsx` (in this repo) — living document, regenerate via the merge flow whenever Seth sends back an updated copy.
+- `docs/parts_review.xlsx` (**local only, gitignored — not in this repo**) — living document, regenerate via the merge flow whenever an updated copy comes back.

@@ -30,18 +30,30 @@ services:
       - KIOSK_AUTOLOGIN_TOKEN=${KIOSK_AUTOLOGIN_TOKEN:-}
       - KIOSK_AUTOLOGIN_USERNAME=${KIOSK_AUTOLOGIN_USERNAME:-seth}
 
-  # Cloudflare Tunnel -- exposes the app at your domain with no open ports.
-  # 1. In the Cloudflare Zero Trust dashboard: Networks -> Tunnels -> Create a
-  #    tunnel (Docker connector) -> name it e.g. "sethsparts".
-  # 2. Under that tunnel's Public Hostname tab, add your domain -> HTTP ->
-  #    http://sethsparts:3200
-  # 3. Copy the tunnel token into TUNNEL_TOKEN in .env.
+  # Cloudflare Tunnel -- optional, and OFF unless you ask for it.
+  #
+  # It sits behind a profile because most installs never need it: the app works fine on
+  # your own network, and this is only for reaching it from a phone or another workshop.
+  # The profile is also what lets the app start without a tunnel token, which is what
+  # makes the copy-paste install in README.md work.
+  #
+  #   docker compose up -d                     # just the app, on 127.0.0.1:3200
+  #   docker compose --profile tunnel up -d    # app + tunnel (needs TUNNEL_TOKEN in .env)
+  #
+  # Pass the same --profile flag to `down`, or it takes the tunnel with it and a later
+  # plain `up -d` will not bring it back.
+  #
+  # Setup: Zero Trust -> Networks -> Tunnels -> Create a tunnel (Docker connector), point
+  # its public hostname at http://sethsparts:3200, and copy the token into TUNNEL_TOKEN.
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: sethsparts-tunnel
     restart: unless-stopped
+    profiles: ["tunnel"]
     command: tunnel --no-autoupdate run
     environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?TUNNEL_TOKEN must be set in .env -- from the Cloudflare Zero Trust tunnel setup}
+      # Blank rather than required: turning the profile on without a token should fail in
+      # cloudflared's own logs, which say so, rather than stopping the app from booting.
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
     depends_on:
       - sethsparts

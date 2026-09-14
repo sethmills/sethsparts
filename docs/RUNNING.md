@@ -93,7 +93,26 @@ Two things that catch people out, both already handled:
 Optional. Everything works on your home network without it — but a phone or another
 workshop needs an address the internet can get to.
 
-The setup wizard walks through **Cloudflare Tunnel**, which is what this was built
+**One thing to fix first if you want other machines to reach it:** the container publishes
+its port to `127.0.0.1` only, so with the default compose file the app is reachable from
+the machine it runs on and nowhere else. To use it from a laptop or the workshop kiosk, in
+`docker-compose.yml` change
+
+```yaml
+      - "127.0.0.1:3200:3200"
+```
+
+to
+
+```yaml
+      - "3200:3200"
+```
+
+and add the names you'll use to `DJANGO_ALLOWED_HOSTS` (e.g. `parts.local,192.168.1.92`).
+This is worth doing *before* the tunnel work — a tunnel to an app nobody else can reach
+just moves the problem.
+
+The wizard's **Access** step lays out **Cloudflare Tunnel**, which is what this was built
 around: a real domain with a valid certificate and **no open ports on your router**,
 because the tunnel makes outbound connections. The short version:
 
@@ -102,7 +121,9 @@ because the tunnel makes outbound connections. The short version:
 3. Point its public hostname at `http://sethsparts:3200`.
 4. Put the token in `.env` as `TUNNEL_TOKEN=…`.
 5. Set `DJANGO_ALLOWED_HOSTS` to your domain.
-6. `docker compose up -d`.
+6. `docker compose --profile tunnel up -d` — the tunnel is an **opt-in profile**, so it
+   only starts when you ask for it. Plain `docker compose up -d` gives you the app on
+   localhost and nothing else, which is why no tunnel token is needed to install.
 
 Any reverse proxy works just as well — nginx, Caddy, Traefik, a Tailscale funnel. Two
 things matter: forward the `X-Forwarded-Proto` header, which the app already expects,

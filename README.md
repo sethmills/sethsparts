@@ -69,9 +69,10 @@ inventory/               The one Django app -- models, views, templates, admin
   updates.py              The version check (reads a cache; the button does the fetching)
 docs/
   HANDOFF.md              Start here after this file -- running log + backlog
-  clarification_workstream.md   Parts too ambiguous for automated enrichment
+  RUNNING.md              User-facing: install it, run it, add hardware later
+  PLAN_community_*.md     Design notes behind the community features
 scripts/
-  export_parts_review.py  Regenerates docs/parts_review.xlsx (merge-safe)
+  export_parts_review.py  Regenerates the parts-review workbook (kept locally)
   mutation_check.py       Verifies the test suite actually catches broken logic
 led-controller/           LED "find the part" system -- Pi bridge + firmware
 label-printer/            Print-bridge for the label printer (raw USB bytes, or CUPS)
@@ -81,6 +82,11 @@ docker-compose.yml
 requirements.txt
 .env.example              Every environment variable this app reads, documented
 ```
+
+**Not in this repo, deliberately:** anything that is *this workshop's* contents rather than
+the app itself. The parts-review workbook and the clarification worklist (`docs/`,
+gitignored), the database, `media/`, and `.env` all stay on the machine that owns them. A
+clone gets the code, not somebody else's inventory — and nothing here needs them to work.
 
 ## View layout
 
@@ -96,6 +102,99 @@ kiosk auto-login), and `_shared` (helpers several of them need).
 `from inventory.views import _locate_drawer`, both keep working. **That facade exists
 only to keep those import paths stable** — put a new view in the topic module it belongs
 to, not in `__init__.py`.
+
+## Install it
+
+Two copy-paste routes. `docs/RUNNING.md` is the long version of both, with the optional
+pieces (hardware, community, public access) explained one at a time.
+
+> The repository is private while the release is being finished, so `git clone` needs
+> access today — see "Cloning this for someone else". The commands below are what they
+> will be once it's public.
+
+### Docker — any machine, including a Pi
+
+Nothing else is needed: no Python, no database, no Cloudflare, no domain, no tunnel token.
+
+```bash
+git clone https://github.com/sethmills/sethsparts.git
+cd sethsparts
+
+# Two secrets are required. Generate them rather than inventing them.
+cat > .env <<EOF
+DJANGO_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+EOF
+
+docker compose up -d
+```
+
+Open <http://localhost:3200>. The first thing you get is a setup wizard — it creates your
+account, then asks about the optional pieces one at a time, all skippable. Your data is
+`./data/` next to the compose file (`db.sqlite3` plus `media/`), so **backing up is copying
+that folder**.
+
+To use it from another machine on your network, change the port mapping in
+`docker-compose.yml` from `"127.0.0.1:3200:3200"` to `"3200:3200"` and add the names you'll
+use to `DJANGO_ALLOWED_HOSTS`. Public access is a separate, optional step (Cloudflare
+Tunnel) — see `docs/RUNNING.md`.
+
+### Raspberry Pi
+
+The same container route, plus Docker itself and one compose edit:
+
+```bash
+# 1. Docker (not installed on Pi OS by default). 64-bit Pi OS required.
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker "$USER"      # log out and back in for this to take effect
+
+# 2. The app, exactly as above
+git clone https://github.com/sethmills/sethsparts.git
+cd sethsparts
+cat > .env <<EOF
+DJANGO_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
+DJANGO_ALLOWED_HOSTS=parts.local,localhost
+EOF
+
+# 3. In docker-compose.yml, change  "127.0.0.1:3200:3200"  to  "3200:3200"
+#    (otherwise only the Pi itself can reach it), then:
+docker compose up -d
+```
+
+Then open `http://<the Pi's address>:3200` from anything on your network. Add that address
+to `DJANGO_ALLOWED_HOSTS` too — Django refuses hosts it doesn't recognise, which is the
+usual cause of a "400 Bad Request" on first setup.
+
+Worth knowing before you start:
+
+- **The image is multi-arch** (`python:3.12-slim`, and every dependency publishes aarch64
+  wheels), so it builds on a Pi 4/5. It has only been built and run on x86-64 so far — the
+  Pi in this workshop runs the LED and label bridges, not the app — so the first arm64
+  build is plausible but unproven.
+- **The non-Docker route needs Python 3.12+.** Pi OS *Bookworm* ships 3.11, so Django 6.1
+  won't install there; Pi OS *Trixie* (Debian 13, Python 3.13) works. If you're on
+  Bookworm, use the container.
+- **The Pi bridges are separate.** `led-controller/`, `label-printer/` and `pi-kiosk/` are
+  copied onto a Pi and run as their own services, with their own READMEs. None of them are
+  needed to use the app, and running the app *itself* on the same Pi is fine.
+
+### Without Docker (development or a bare-metal install)
+
+```bash
+git clone https://github.com/sethmills/sethsparts.git
+cd sethsparts
+
+python3 -m venv venv                      # must be 3.12 or newer
+source venv/bin/activate                  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+python manage.py migrate
+python manage.py runserver
+```
+
+Open <http://127.0.0.1:8000>. For anything beyond your own machine, run it under a real
+server rather than `runserver` — `gunicorn` (Linux/macOS) or `waitress` (Windows) are both
+already in `requirements.txt`; see `docs/RUNNING.md`.
 
 ## Local development
 
@@ -197,7 +296,8 @@ ssh <server>
 cd /opt/sethsparts
 cp data/db.sqlite3 "data/db.sqlite3.pre-deploy-$(date +%Y%m%d-%H%M%S).bak"   # always
 git pull --ff-only
-docker compose up -d --build
+docker compose --profile tunnel up -d --build   # --profile tunnel: production runs the
+                                                # Cloudflare tunnel, which is opt-in
 ```
 
 Back up first even though nothing in a deploy should touch the data: the container
@@ -349,6 +449,24 @@ anything up.
 - The MIT licence in `LICENSE` disclaims warranty and liability. That is the
   legal form of the paragraph above.
 
+## Credits and prior art
+
+This app did not come from nothing. **InvenTree** ([inventree.org](https://inventree.org),
+[github.com/inventree/inventree](https://github.com/inventree/inventree)) was the reference
+point that made it imaginable: the shape of the data model — parts, stock items, categories,
+locations, bills of materials — and the decision to self-host a proper inventory system
+rather than keep feeding a spreadsheet both started there. The first build leaned on it
+heavily, and was then adapted to this workshop's way of working and grew the parts that are
+specific to it: barcode-first browsing, the 16-bin drawer grid, the LED "find the part"
+indicators, label printing, and the community map.
+
+They deserve the credit, and it is worth saying plainly: **if you want a mature, multi-user
+inventory platform** — purchasing, suppliers, build orders, a full API, an active community
+— use InvenTree. It is a serious project. This is one person's smaller tool, shaped by a
+physical workshop and a barcode scanner.
+
+InvenTree is MIT-licensed, as this is.
+
 ## Licence
 
 MIT — see `LICENSE`. Copyright (c) 2026 Seth Mills.
@@ -368,9 +486,12 @@ control.**
 2. `led-controller/README.md`, `label-printer/README.md`, and
    `pi-kiosk/README.md` each cover their own hardware bridge in detail —
    read the relevant one before touching that part of the system.
-3. `docs/clarification_workstream.md` is a standing worklist of inventory
-   items too ambiguous to enrich automatically — not something to "complete"
-   in one pass, just work through opportunistically.
+3. Per-workshop working files are deliberately **not** in this repo (they're
+   gitignored): `docs/parts_review.xlsx`, the review workbook, and
+   `docs/clarification_workstream.md`, a standing worklist of inventory items too
+   ambiguous to enrich automatically. Both exist only on the owner's machine, and
+   neither is something to "complete" in one pass — the worklist gets worked through
+   opportunistically.
 4. When you finish a unit of work, add a dated entry to `docs/HANDOFF.md`
    (what changed, why, how it was verified) rather than just leaving it in
    git history — that log is what makes picking this up cold actually

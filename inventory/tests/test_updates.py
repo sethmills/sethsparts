@@ -95,6 +95,23 @@ class FetchTests(TestCase):
         self.assertEqual(info.latest, "v0.3.0")
         self.assertEqual(len(calls), 2)
 
+    def test_a_repository_it_cannot_see_is_explained(self):
+        """GitHub answers 404 to an anonymous request for a private repository — on purpose,
+        so that "private" and "does not exist" look identical from outside. This check sends
+        no token, so a private repo lands here, and "HTTP 404" alone sends the owner looking
+        for a typo in the repo name.
+
+        The load-bearing half is that it stays `ok=False`: a check that could not run must
+        never be reported as "you are up to date".
+        """
+        with mock.patch("requests.get", return_value=FakeResponse(status_code=404)):
+            info = updates.check_for_update()
+
+        self.assertFalse(info.ok)
+        self.assertFalse(info.update_available)
+        self.assertIn("private", info.error)
+        self.assertIn(updates.repo(), info.error)
+
     def test_being_rate_limited_says_so(self):
         info = self.fetch(FakeResponse(status_code=403))
         self.assertFalse(info.ok)

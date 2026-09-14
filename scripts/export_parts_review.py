@@ -3,6 +3,10 @@
 Run with: ./venv/bin/python scripts/export_parts_review.py
 Not a management command -- this is a one-time deliverable generator, not an
 app feature.
+
+The workbook it writes (`docs/parts_review.xlsx`) is a working file for the owner of this
+workshop, not part of the app, so it is gitignored -- a clone of this repo gets the code,
+not somebody else's inventory. Same for the clarification worklist beside it.
 """
 import json
 import os
