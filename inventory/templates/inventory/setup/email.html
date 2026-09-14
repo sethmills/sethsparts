@@ -1,0 +1,62 @@
+{% extends "inventory/base.html" %}
+{% block title %}Email notifications — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Email notifications</h1>
+  <p class="muted">Get an email when something happens that you'd want to know about even when you're not logged in — a new message, a new connection, or a workshop searching your parts. Everything here is off until you turn it on.</p>
+</div>
+
+<div class="card">
+  <h2>Get a Gmail app password <span class="muted">(once, about two minutes)</span></h2>
+  <p class="muted">The app sends email through your own Gmail account — you authorise it yourself, no third party involved. You do that by creating an <strong>app password</strong>: a separate 16-character code used only by this app. You can revoke it any time without touching your main password.</p>
+  <ol style="line-height:1.7;">
+    <li>Open <a href="https://myaccount.google.com/security" target="_blank" rel="noopener">myaccount.google.com/security</a> and sign in.</li>
+    <li>Turn on <strong>2-Step Verification</strong> if you haven't (Security → 2-Step Verification → Get started). App passwords only exist once 2-Step Verification is on.</li>
+    <li>Back on the Security page, type <strong>"App passwords"</strong> into the search box at the top and open it.</li>
+    <li>Create one: pick <strong>Mail</strong> as the app, and <strong>Other (custom name)</strong> as the device — call it something like <em>parts app</em>.</li>
+    <li>Click <strong>Generate</strong>. Google shows a 16-character code in four groups, like <code>abcd efgh ijkl mnop</code>.</li>
+    <li>Copy that code and paste it into <strong>SMTP password</strong> below, exactly as shown. The spaces don't matter.</li>
+  </ol>
+  <p class="muted">Your <strong>SMTP username</strong> is your full Gmail address. Host is <code>smtp.gmail.com</code>, port <code>587</code>.</p>
+  <p class="muted">Not on Gmail? Any provider with SMTP works the same way — ask it for the same four things (host, port, username, password) and fill them in below.</p>
+</div>
+
+<div class="card">
+  <h2>Settings</h2>
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <label><input type="checkbox" name="email_enabled" value="1" {% if site.email_enabled %}checked{% endif %}> <strong>Enable email notifications</strong></label>
+      <br><span class="muted">The master switch — nothing is sent until this is on.</span>
+    </p>
+    <p>
+      <label class="muted">SMTP host<br><input name="smtp_host" value="{{ site.smtp_host }}" placeholder="smtp.gmail.com"></label>
+      <label class="muted">Port<br><input name="smtp_port" value="{{ site.smtp_port }}" style="width:90px;"></label>
+    </p>
+    <p><label class="muted">SMTP username — your full Gmail address<br><input name="smtp_user" value="{{ site.smtp_user }}" placeholder="you@gmail.com"></label></p>
+    <p>
+      <label class="muted">SMTP password — the app password from above<br><input type="password" name="smtp_password" value="{{ site.smtp_password }}" autocomplete="new-password" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;"></label>
+      <br><span class="muted">Stored only on your own server — this app is self-hosted.</span>
+    </p>
+    <p>
+      <label class="muted">Send from<br><input name="email_from" value="{{ site.email_from }}" placeholder="you@gmail.com"></label>
+      <br><span class="muted">Usually the same as your username.</span>
+    </p>
+    <p>
+      <label class="muted">Notify me at<br><input name="notify_email" value="{{ site.notify_email }}" placeholder="you@gmail.com"></label>
+      <br><span class="muted">Where the emails go. Leave blank to use the address above.</span>
+    </p>
+    <p><label><input type="checkbox" name="smtp_use_tls" value="1" {% if site.smtp_use_tls %}checked{% endif %}> Use STARTTLS</label> <span class="muted">— leave on; almost every provider requires it.</span></p>
+
+    <h3>Email me about…</h3>
+    <p><label><input type="checkbox" name="notify_on_message" value="1" {% if site.notify_on_message %}checked{% endif %}> A connected workshop sends me a message</label></p>
+    <p><label><input type="checkbox" name="notify_on_connection" value="1" {% if site.notify_on_connection %}checked{% endif %}> Someone connects to my workshop</label></p>
+    <p><label><input type="checkbox" name="notify_on_search" value="1" {% if site.notify_on_search %}checked{% endif %}> A connected workshop searches my parts</label></p>
+
+    <p style="margin-top:14px;">
+      <button class="btn" type="submit" name="action" value="save">Save</button>
+      <button class="btn secondary" type="submit" name="action" value="test">Save &amp; send a test email</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

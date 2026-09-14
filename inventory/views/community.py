@@ -21,8 +21,8 @@ from django.utils.html import escape
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .. import community_api, community_pins
-from ..models import CommunityIdentity, CommunityProfile, PairingCode, Peer, PeerSearchLog
+from .. import community_api, community_messages, community_pins, community_search, notifications
+from ..models import CommunityIdentity, CommunityProfile, Message, PairingCode, Peer, PeerSearchLog
 from ..site_config import country, site_name
 
 # Where the map's tiles and styling come from. OpenFreeMap needs no key, no account and
@@ -128,6 +128,7 @@ def api_community_claim(request):
     if peer is None:
         return JsonResponse({"error": error}, status=400)
 
+    notifications.on_connection(peer)
     identity = CommunityIdentity.load()
     return JsonResponse(
         {
@@ -336,4 +337,153 @@ def community_forget(request, pk):
     name = peer.name
     peer.delete()
     messages.success(request, f"Removed {name} and everything recorded about them.")
+    return redirect("inventory:community_connections")
+
+
+@csrf_exempt
+def api_community_peer_search(request):
+    """The endpoint a connected workshop calls to search this instance's parts.
+
+    Machine-to-machine, like the pins endpoint: authenticated by the per-peer key,
+    gated on `shares_parts`, and every call is logged so the owner can see what a
+    connection has been looking for rather than take it on trust.
+    """
+    peer = community_search.peer_for_search(request)
+    if peer is None:
+        return JsonResponse(
+            {"error": "Not a connected workshop, or you may not search this one's parts."},
+            status=403,
+        )
+    query = (request.GET.get("q") or "").strip()
+    if not query:
+        return JsonResponse({"error": "missing q"}, status=400)
+
+    parts = community_search.shareable_results(query)
+    matches = [community_search.match_payload(p) for p in parts[: community_search.MAX_RESULTS]]
+    PeerSearchLog.objects.create(peer=peer, query=query, result_count=len(matches))
+    notifications.on_peer_search(peer, query)
+    return JsonResponse({"query": query, "matches": matches})
+
+
+@login_required
+def community_network_search(request):
+    """Search connected workshops' parts. Kept apart from local `/search/` on purpose:
+    an owner's own results must never be diluted by other people's, and network
+    results only happen here, on an explicit, separate search."""
+    query = (request.GET.get("q") or "").strip()
+    results = []
+    notes = []
+    if query:
+        results, notes = community_search.search_peers(query)
+    return render(
+        request,
+        "inventory/community/network_search.html",
+        {
+            "query": query,
+            "results": results,
+            "notes": notes,
+            "searchable_peers": Peer.objects.filter(status=Peer.ACTIVE, shares_parts=True).count(),
+        },
+    )
+
+
+@csrf_exempt
+@require_POST
+def api_community_messages(request):
+    """Receive a message from a connected workshop.
+
+    Any active connection may message — connecting is the consent. Idempotent via
+    `remote_id`: a retry of a delivery that already landed is answered "already have
+    it" rather than stored twice.
+    """
+    peer = community_messages.peer_for_messages(request)
+    if peer is None:
+        return JsonResponse({"error": "Not a connected workshop."}, status=403)
+    try:
+        payload = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"error": "That wasn't JSON."}, status=400)
+
+    new = community_messages.receive(peer, payload.get("remote_id", ""), payload.get("body", ""))
+    if new:
+        notifications.on_message_received(peer)
+    return JsonResponse({"ok": True, "new": new})
+
+
+@login_required
+def community_message_inbox(request):
+    """The inbox: every connection that has exchanged a message, newest first, with an
+    unread count. A handful of peers, so the simple loop is clearer than annotations."""
+    threads = []
+    for peer in Peer.objects.filter(messages__isnull=False).distinct():
+        unread = peer.messages.filter(direction=Message.INBOUND, read=False).count()
+        latest = peer.messages.order_by("-sent_at").first()
+        threads.append((peer, unread, latest))
+    threads.sort(key=lambda t: t[2].sent_at, reverse=True)
+    return render(request, "inventory/community/messages.html", {"threads": threads})
+
+
+@login_required
+def community_message_thread(request, peer_id):
+    """The conversation with one connection. Opening it marks their messages read."""
+    peer = get_object_or_404(Peer, pk=peer_id)
+    Message.objects.filter(peer=peer, direction=Message.INBOUND, read=False).update(read=True)
+    return render(
+        request,
+        "inventory/community/message_thread.html",
+        {"peer": peer, "messages": peer.messages.order_by("sent_at")},
+    )
+
+
+@login_required
+@require_POST
+def community_send_message(request):
+    peer = get_object_or_404(Peer, pk=request.POST.get("peer_id"))
+    ok, error = community_messages.send(peer, request.POST.get("body", ""))
+    if ok:
+        messages.success(request, f"Sent to {peer.name}.")
+    else:
+        messages.error(request, error)
+    return redirect("inventory:community_message_thread", peer_id=peer.pk)
+
+
+@login_required
+@require_POST
+def community_retry_message(request, message_id):
+    message = get_object_or_404(Message, pk=message_id, direction=Message.OUTBOUND, delivered=False)
+    ok, error = community_messages.retry(message)
+    if ok:
+        messages.success(request, f"Delivered to {message.peer.name}.")
+    else:
+        messages.error(request, error)
+    return redirect("inventory:community_message_thread", peer_id=message.peer.pk)
+
+
+@login_required
+@require_POST
+def community_block(request, pk):
+    """Block: cut all contact now and stay cut off. Stronger than disconnect, which only
+    ends the current link — a blocked workshop cannot reconnect until it is unblocked."""
+    peer = get_object_or_404(Peer, pk=pk)
+    peer.status = Peer.REVOKED
+    peer.shares_parts = False
+    peer.exchanges_pins = False
+    peer.blocked = True
+    peer.save(update_fields=["status", "shares_parts", "exchanges_pins", "blocked"])
+    messages.success(
+        request,
+        f"Blocked {peer.name}. They can no longer reach you, search your parts, or message you — and they cannot reconnect.",
+    )
+    return redirect("inventory:community_connections")
+
+
+@login_required
+@require_POST
+def community_unblock(request, pk):
+    """Allow a blocked workshop to reconnect. Does not reconnect them — it only removes
+    the block, so a fresh pairing code can re-establish the link."""
+    peer = get_object_or_404(Peer, pk=pk)
+    peer.blocked = False
+    peer.save(update_fields=["blocked"])
+    messages.success(request, f"Unblocked {peer.name}. They can connect again with a fresh code.")
     return redirect("inventory:community_connections")

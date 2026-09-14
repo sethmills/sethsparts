@@ -13,11 +13,23 @@ def site_context(request):
     from .site_config import country, get_site_settings, site_name, unit_system
 
     obj = get_site_settings()
+    unread = 0
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        try:
+            from .models import Message
+
+            unread = Message.objects.filter(direction=Message.INBOUND, read=False).count()
+        except Exception:
+            # Before migrations have created the table there is nothing to count.
+            unread = 0
     return {
         "site_name": site_name(),
         "site_country": country(),
         "unit_system": unit_system(),
         "setup_complete": bool(obj and obj.setup_completed_at),
+        "unread_messages": unread,
+        "email_configured": bool(obj and obj.email_enabled and obj.smtp_host and obj.smtp_user and obj.smtp_password),
         # "Configured", not "reachable" — the URL may be set while the Pi is off, and
         # templates should still offer the button so the failure message can explain
         # itself. These come from hardware_config, which prefers the address saved by

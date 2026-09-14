@@ -1,0 +1,55 @@
+{% extends "inventory/base.html" %}
+{% block title %}Search friends — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Search friends</h1>
+  <p class="muted">Search the parts of workshops you're connected to and have agreed to share with. This is kept separate from your own search on purpose — your own parts never appear here, and nobody else's appear in yours.</p>
+</div>
+
+<div class="card">
+  <form method="get">
+    <label class="muted" for="q">What are you looking for?</label><br>
+    <input type="search" id="q" name="q" value="{{ query }}" placeholder="Part name or function…" autofocus style="min-width:60%;">
+    <button class="btn" type="submit">Search friends</button>
+  </form>
+  <p class="muted" style="margin-top:10px;">Only workshops you've connected to — and only the ones you've ticked "may search my parts" on — are asked. Your own inventory is never searched here, and they only ever see the categories you've marked shareable.</p>
+</div>
+
+{% if query %}
+  {% if not searchable_peers %}
+    <div class="card">
+      <p class="muted">You have no connections you can search yet. Connect to a workshop and tick "may search my parts" for them — that's also what lets them search you. <a href="{% url 'inventory:community_connections' %}">Connections →</a></p>
+    </div>
+  {% endif %}
+
+  {% for result in results %}
+    <div class="card">
+      <h2>{{ result.name }}</h2>
+      {% if result.contact_note %}
+        <p><a class="btn secondary" href="mailto:{{ result.contact_note|urlencode }}">✉ Contact {{ result.name }}</a></p>
+      {% endif %}
+      {% for m in result.matches %}
+        <p style="border-top:1px solid #2c303a;padding:8px 0;">
+          <strong>{{ m.name }}</strong>
+          {% if m.manufacturer %}<span class="pill">{{ m.manufacturer }}</span>{% endif %}
+          {% if m.category %}<span class="pill">{{ m.category }}</span>{% endif %}
+          <span class="muted">· {{ m.quantity_summary }}</span>
+        </p>
+      {% empty %}
+        <p class="muted">No matches from {{ result.name }}.</p>
+      {% endfor %}
+      {% if result.contact_note %}
+        <p class="muted">Not quite it? <a href="mailto:{{ result.contact_note|urlencode }}">Ask {{ result.name }} anyway</a> — a search result is a lead, not a listing.</p>
+      {% endif %}
+    </div>
+  {% empty %}
+    {% if searchable_peers %}
+      <div class="card"><p class="muted">No matches from any connected workshop.</p></div>
+    {% endif %}
+  {% endfor %}
+
+  {% for note in notes %}
+    <p class="msg-error">{{ note }}</p>
+  {% endfor %}
+{% endif %}
+{% endblock %}

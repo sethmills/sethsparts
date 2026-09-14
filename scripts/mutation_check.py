@@ -621,6 +621,52 @@ MUTATIONS = [
         'candidates = [lib / f"{name}.mpy"]',
         "inventory.tests.test_flash_scorpio",
     ),
+    # --- community search, messaging, and email notifications -----------------
+    # The privacy boundaries these three features add: the shareable-only filter, the
+    # fuzzed quantity, the block that stays sticky against reconnection, idempotent
+    # delivery, and per-event email consent.
+    (
+        "Peer search drops the shareable filter (unshared categories exposed)",
+        ROOT / "inventory" / "community_search.py",
+        "Part.objects.filter(category__is_shareable=True)",
+        "Part.objects.filter(category__isnull=False)",
+        "inventory.tests.test_community_search",
+    ),
+    (
+        "Peer search reports an exact count instead of a bucket",
+        ROOT / "inventory" / "community_search.py",
+        '    total = sum(counted)\n    if total <= 0:\n        return "none"\n    if total < 5:\n        return "a few"\n    return "some"',
+        "    total = sum(counted)\n    return str(total)",
+        "inventory.tests.test_community_search",
+    ),
+    (
+        "A blocked workshop can reconnect with a fresh code",
+        ROOT / "inventory" / "community_api.py",
+        "        if peer.blocked:",
+        "        if False:",
+        "inventory.tests.test_community_messages",
+    ),
+    (
+        "A retried message is stored twice (idempotency removed)",
+        ROOT / "inventory" / "community_messages.py",
+        '    if remote_id and Message.objects.filter(\n        peer=peer, direction=Message.INBOUND, remote_id=remote_id\n    ).exists():\n        return False',
+        "    if False:\n        return False",
+        "inventory.tests.test_community_messages",
+    ),
+    (
+        "A revoked (or blocked) workshop can still message",
+        ROOT / "inventory" / "community_messages.py",
+        "    for peer in Peer.objects.filter(status=Peer.ACTIVE):",
+        "    for peer in Peer.objects.filter(status__in=[Peer.ACTIVE, Peer.REVOKED]):",
+        "inventory.tests.test_community_messages",
+    ),
+    (
+        "Email notifications send regardless of the owner's per-event choices",
+        ROOT / "inventory" / "notifications.py",
+        "    if not (s and getattr(s, flag_field, False)):",
+        "    if False:",
+        "inventory.tests.test_notifications",
+    ),
 ]
 
 

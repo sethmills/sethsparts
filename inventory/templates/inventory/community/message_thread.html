@@ -1,0 +1,44 @@
+{% extends "inventory/base.html" %}
+{% block title %}Messages with {{ peer.name }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ peer.name }}</h1>
+  <p class="muted">{{ peer.base_url }}</p>
+  <p><a class="btn secondary" href="{% url 'inventory:community_messages' %}">← All messages</a></p>
+</div>
+
+<div class="card">
+  {% for m in messages %}
+    <p style="border-top:1px solid #2c303a;padding:10px 0;">
+      <strong class="muted">{% if m.direction == 'outbound' %}You{% else %}Them{% endif %}</strong>
+      <span class="muted">· {{ m.sent_at|date:"j M Y H:i" }}</span>
+      {% if m.direction == 'outbound' and not m.delivered %}
+        <span class="pill" style="background:#6b2f2f;color:#fff;">not delivered</span>
+        <form method="post" action="{% url 'inventory:community_retry_message' m.pk %}" style="display:inline;">{% csrf_token %}<button class="btn secondary" type="submit">Retry</button></form>
+      {% endif %}
+      <br>{{ m.body|linebreaksbr }}
+    </p>
+  {% empty %}
+    <p class="muted">No messages yet.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Reply</h2>
+  <form method="post" action="{% url 'inventory:community_send_message' %}">
+    {% csrf_token %}
+    <input type="hidden" name="peer_id" value="{{ peer.pk }}">
+    <textarea name="body" rows="4" style="width:100%;background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:9px;border-radius:6px;" placeholder="Write a message…"></textarea>
+    <button class="btn" type="submit">Send</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Block</h2>
+  <p class="muted">Blocking cuts all contact — they can no longer message you, search your parts, or appear with you on the map — and they cannot reconnect until you unblock them.</p>
+  <form method="post" action="{% url 'inventory:community_block' peer.pk %}" onsubmit="return confirm('Block {{ peer.name }}? They will not be able to reach you or reconnect.')">
+    {% csrf_token %}
+    <button class="btn danger" type="submit">Block {{ peer.name }}</button>
+  </form>
+</div>
+{% endblock %}

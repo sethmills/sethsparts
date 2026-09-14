@@ -14,12 +14,13 @@ session; HANDOFF.md covers the "what's true right now" facts that do.
 
 ## What this actually is
 
-Seth catalogued his workshop (electronics parts cabinets, storage totes,
-general tools) into this app so he can scan a barcode on a drawer/tote and see
-what's in it, get low-stock alerts, plan builds against a bill of materials,
-and — because the electronics cabinet drawers are further subdivided into 16
-bins each — get a physical LED indicator lighting up exactly which drawer
-(and which bin within it) has the part he's looking for.
+This started as one person's home workshop — electronics parts cabinets,
+storage totes, general tools — catalogued into the app so the owner can scan a
+barcode on a drawer/tote and see what's in it, get low-stock alerts, plan
+builds against a bill of materials, and — because the electronics cabinet
+drawers are further subdivided into 16 bins each — get a physical LED
+indicator lighting up exactly which drawer (and which bin within it) has the
+part they're looking for.
 
 It's built to run as one person's private, self-hosted tool — not a SaaS
 product. Two instances can also find each other: a workshop that opts in appears
@@ -245,7 +246,7 @@ resolution, stock/builds, bins, LED, labels and the label drivers, intake, the H
 Assistant endpoint, kiosk auth, community crypto/pairing/pins, reference, help, site
 settings, templates). It uses Django's own test database, so it never touches
 `db.sqlite3`. External HTTP — the Pi's LED controller, the label print-bridge and other
-workshops — is mocked, so the whole suite runs offline: **825 tests in about 45 seconds,
+workshops — is mocked, so the whole suite runs offline: **898 tests in about 45 seconds,
 no hardware needed.**
 
 Two deliberate conventions worth knowing before you add tests:
@@ -260,7 +261,7 @@ Two deliberate conventions worth knowing before you add tests:
   docstring saying so. That is on purpose: if someone later "fixes" it, the test
   should fail and make them read the reasoning first.
 
-`scripts/mutation_check.py` is the safety net for the safety net — 82 deliberate
+`scripts/mutation_check.py` is the safety net for the safety net — 88 deliberate
 breakages (reverses the FIFO consumption order, swaps the LED row/column split,
 disables the bin-scan conflict check, puts the login wall back on the Django admin page,
 drops the "newest pin wins" rule, turns a signed removal back into a location...), each
@@ -398,6 +399,16 @@ key, separate from whatever key you push with.
   map and searching each other's parts are separate permissions **on purpose**, so
   connecting for the map never hands over your inventory. Revoking takes effect
   immediately, including for the map endpoint.
+- **Community search** (`/community/search/`, "Search friends") — search the parts of
+  workshops you're connected to, on a page kept separate from your own search. Results
+  are fuzzed ("some" / "a few" / "none") and never reveal exact stock or a drawer
+  location; every search a connection makes is logged so you can check it.
+- **Messages** (`/community/messages/`) — one-to-one messages with connected workshops,
+  delivered directly between instances. Blocking a workshop cuts messaging, search, and
+  map pins together, and it stays blocked until you unblock it.
+- **Email notifications** (`/setup/email/`) — get an email when a message, connection, or
+  search happens while you're away. Through your own SMTP account (a Gmail app password
+  is the easy path, any provider works); nothing is sent until you opt in.
 - **Reference library** (`/reference/`) — pinouts, datasheets and cheat sheets, organised
   by category, with an optional archive step that fetches and keeps a local copy of what a
   link points at (http/https only, size-capped, and never for repurchase links, which
@@ -417,7 +428,7 @@ key, separate from whatever key you push with.
 
 ## Cloning this for someone else
 
-The goal is for Seth's dad (or anyone else) to clone this repo and stand up
+The goal is for a friend, family member, or anyone else to clone this repo and stand up
 their own instance for their own workshop — a different LED array, possibly a
 different label printer, but the same drawer/row/bin structure.
 
@@ -445,16 +456,27 @@ configure the app, then work through the enrichment queue researching parts. It 
 to be handed to someone who has never set up an agent before, and it costs cents.
 
 **What's still missing:** running the whole thing on their own Pi — tunnels, backups
-and all — rather than on an externally-hosted server. Deliberately deferred until Seth
-considers his own instance finished; see the backlog in `docs/HANDOFF.md`.
+and all — rather than on an externally-hosted server. Deliberately deferred until the
+original instance is considered finished; see the backlog in `docs/HANDOFF.md`.
 
-## Community search (specified, not built)
+## Community: search, messages, and email
 
 Cross-instance search across your connections, opt-in and category-scoped, kept on its
-own page rather than merged into local search. The groundwork is in place — connections,
-per-connection permissions (`Peer.shares_parts`), rate limiting on the claim endpoint, and
-a log of what connected workshops have searched for — but there are no routes for the
-search itself yet. Full spec: `docs/PLAN_community_search.md`.
+own page (`/community/search/`, "Search friends") rather than merged into local search.
+A connected workshop can only ever search the categories you've marked shareable, and
+results are deliberately fuzzed — "some" / "a few" / "none" — never a precise count or a
+drawer location. Every search is logged so you can see what a connection has looked for.
+
+Connections can also message each other one-to-one (`/community/messages/`), delivered
+point-to-point over the same per-peer key as everything else. Connecting is the consent
+to be messaged. Blocking a workshop cuts messaging, search, and map pins together, and a
+blocked workshop cannot reconnect until you unblock it.
+
+Email notifications (`/setup/email/`) send you a message when something happens while
+you're away — a new message, a new connection, or a peer searching your parts — each
+individually toggleable, through your own SMTP account (a Gmail app password is the
+documented path; any provider works). Nothing is sent until you configure it and turn a
+notification on. Full design notes: `docs/PLAN_community_sharing.md`.
 
 ## Safety
 
@@ -501,7 +523,7 @@ InvenTree is MIT-licensed, as this is.
 
 ## Licence
 
-MIT — see `LICENSE`. Copyright (c) 2026 Seth Mills.
+MIT — see `LICENSE`.
 
 Third-party code redistributed here (MapLibre GL JS, vendored so the map page
 makes no third-party requests, and the fonts the label renderer uses) is

@@ -7,8 +7,8 @@ kind of tool as Claude Code or Codex — running on **DeepSeek**, and then hands
 You do the four steps once. After that the assistant does the work: it can read this project,
 run its commands, look things up on the web, and fill in the parts data with you.
 
-Nothing here is Seth's personal setup — the DeepSeek configuration below is exactly what his
-own instance runs on, which is why it's written down.
+The DeepSeek configuration below is exactly what this project's maintainer runs on,
+which is why it's written down.
 
 ## Step 1 — Install the Hermes desktop app
 

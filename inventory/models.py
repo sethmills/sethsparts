@@ -643,6 +643,10 @@ class Peer(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
+    blocked = models.BooleanField(
+        default=False,
+        help_text="Blocked workshops are fully cut off — no messages, no search, no pins — and cannot reconnect until unblocked.",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -733,6 +737,36 @@ class PeerSearchLog(models.Model):
 
     def __str__(self):
         return f"{self.peer.name}: {self.query!r} -> {self.result_count}"
+
+
+class Message(models.Model):
+    """A message between this instance and one connected workshop.
+
+    One row per message, in either direction. `direction` records whether the owner
+    sent it (`outbound`) or a peer sent it (`inbound`). `remote_id` is the *sender's*
+    id for the message — it is what makes delivery idempotent, so a retry of a push
+    that actually reached the peer the first time (but whose response was lost) cannot
+    be stored twice at the far end.
+    """
+
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+    DIRECTION_CHOICES = [(INBOUND, "Received"), (OUTBOUND, "Sent")]
+
+    peer = models.ForeignKey(Peer, on_delete=models.CASCADE, related_name="messages")
+    direction = models.CharField(max_length=8, choices=DIRECTION_CHOICES)
+    body = models.TextField()
+    remote_id = models.CharField(max_length=64, blank=True)
+    delivered = models.BooleanField(default=True)
+    read = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sent_at"]
+
+    def __str__(self):
+        who = "from" if self.direction == self.INBOUND else "to"
+        return f"{who} {self.peer.name}: {self.body[:40]}"
 
 
 class CommunityIdentity(models.Model):
@@ -1000,6 +1034,38 @@ class SiteSettings(models.Model):
             "from your tunnel or reverse proxy. Only used to check that it works."
         ),
     )
+
+    # Email notifications. Two opt-ins, deliberately separate: the SMTP settings must
+    # be filled in, and each notification turned on individually. Until both happen the
+    # app sends nothing. SMTP is the one mechanism rather than OAuth on purpose — a
+    # Gmail "app password" is something a non-technical owner can generate in a couple
+    # of minutes (the page walks through it), and it works with any provider.
+    email_enabled = models.BooleanField(
+        default=False,
+        help_text="Master switch. Nothing is sent until this is on.",
+    )
+    smtp_host = models.CharField(max_length=200, blank=True, help_text="e.g. smtp.gmail.com")
+    smtp_port = models.PositiveIntegerField(
+        default=587, help_text="587 is Gmail's and most providers'; 465 is the TLS-only alternative."
+    )
+    smtp_user = models.CharField(
+        max_length=200, blank=True, help_text="The account that sends the mail, e.g. you@gmail.com"
+    )
+    smtp_password = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="A Gmail app password (see the page's instructions), not your login password.",
+    )
+    smtp_use_tls = models.BooleanField(default=True, help_text="STARTTLS. Leave on — almost every provider wants it.")
+    email_from = models.CharField(
+        max_length=200, blank=True, help_text="The From: address. Defaults to the SMTP account above."
+    )
+    notify_email = models.CharField(
+        max_length=200, blank=True, help_text="Where notifications go. Defaults to the From: address."
+    )
+    notify_on_message = models.BooleanField(default=False)
+    notify_on_connection = models.BooleanField(default=False)
+    notify_on_search = models.BooleanField(default=False)
 
     # Set the first time the starter reference set is loaded. The loader is one-shot
     # by default: without this, re-running it would quietly resurrect documents the

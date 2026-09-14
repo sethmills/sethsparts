@@ -1,6 +1,11 @@
 {% extends "inventory/base.html" %}
 {% block title %}Connections — {{ site_name }}{% endblock %}
 {% block content %}
+{% if not email_configured %}
+<div class="card" style="border-color:#2c303a;">
+  <p class="muted">💡 Want to know when someone connects or messages you, without checking the app? <a href="{% url 'inventory:setup_email' %}">Set up email notifications →</a></p>
+</div>
+{% endif %}
 <div class="card">
   <h1>Connections</h1>
   <p class="muted">Other workshops running this app. Connecting lets you see each other on the community map and, if you choose, search each other's parts. There's no central server — your instance asks the workshops you're connected to, and they pass on what they know.</p>
@@ -60,6 +65,16 @@
       <form method="post" action="{% url 'inventory:community_revoke' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
         <button class="btn danger" type="submit" onclick="return confirm('Disconnect from {{ peer.name }}?')">Disconnect</button>
       </form>
+      {% if not peer.blocked %}
+        <form method="post" action="{% url 'inventory:community_block' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+          <button class="btn danger" type="submit" onclick="return confirm('Block {{ peer.name }}? They cannot reach you or reconnect until you unblock them.')">Block</button>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'inventory:community_unblock' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
+          <button class="btn secondary" type="submit">Unblock</button>
+        </form>
+      {% endif %}
+      <a class="btn secondary" href="{% url 'inventory:community_message_thread' peer.pk %}">💬 Message</a>
       {% if peer.status == 'revoked' %}
         <form method="post" action="{% url 'inventory:community_forget' peer.pk %}" style="margin-top:6px;display:inline;">{% csrf_token %}
           <button class="btn secondary" type="submit" onclick="return confirm('Remove {{ peer.name }} and everything recorded about them?')">Forget entirely</button>

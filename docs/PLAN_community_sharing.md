@@ -3,7 +3,7 @@
 **Status: design agreed, not built.** Supersedes `PLAN_community_search.md` (which
 covered only the search half and remains correct on most of it).
 
-This is the second revision — the first explored a lot of option space that Seth has
+This is the second revision — the first explored a lot of option space that the owner has
 since closed, so it has been cut back to the decided design. Read this whole file
 before writing code. If you are the implementing assistant: read `README.md` and the
 "Current live state" section of `docs/HANDOFF.md` first. Leave a dated entry in
@@ -14,7 +14,7 @@ before writing code. If you are the implementing assistant: read `README.md` and
 ## 1. What this is
 
 Workshops running this app can optionally find each other, and optionally share parts
-with each other. Built for Seth and his dad first, released publicly second.
+with each other. Built for the maintainer and their family first, released publicly second.
 
 Three things, deliberately separate, each off by default:
 
@@ -24,7 +24,7 @@ Three things, deliberately separate, each off by default:
 | 2 | **Discoverability** — appear as an anonymous pin on other people's maps | the noticeboard |
 | 3 | **Connect requests** — ask a pin you can see to connect | the noticeboard |
 
-Feature 1 is the thing Seth and his dad actually need. Features 2 and 3 are the map.
+Feature 1 is the thing the maintainer and their family actually need. Features 2 and 3 are the map.
 
 ## 2. Privacy model — three independent levels
 
@@ -40,7 +40,7 @@ Private by default, always.
 someone's peer does not put you on the map. Keep them separate in the UI, the model,
 and the code — that separation is the privacy backbone.
 
-**Seth's requirement:** the discoverability choice is asked **during initial setup**,
+**Requirement:** the discoverability choice is asked **during initial setup**,
 so a new owner decides consciously rather than never finding the setting. Changeable
 at any time in Settings.
 
@@ -59,8 +59,8 @@ hand back the right granularity directly.
 | US ZIP+4 | a block | a few | ❌ never |
 
 **For the UK the unit is the outcode, never the full postcode.** A full UK postcode
-identifies roughly fifteen households — publishing one publishes a doorstep. Seth
-confirmed this knowingly; it is less precise than "ZIP code level" sounds, and
+identifies roughly fifteen households — publishing one publishes a doorstep. It
+is less precise than "ZIP code level" sounds, and
 deliberately so.
 
 ### 3.2 Geocoding — researched and verified live
@@ -112,15 +112,16 @@ TLS is already mandatory (Cloudflare Tunnel).
 
 ### 4.1 Prerequisite: peers must be reachable
 
-Direct peer search needs **each instance reachable from the internet**. Seth's is
-(Cloudflare Tunnel). But the stated goal for his dad is *"running entirely on their own
-Pi locally"* — a LAN-only instance **cannot be searched by anyone**. This is the main
+Direct peer search needs **each instance reachable from the internet** (this project's
+live instance uses a Cloudflare Tunnel). But the stated goal for a family member is
+*running entirely on their own Pi locally* — a LAN-only instance **cannot be searched by
+anyone**. This is the main
 setup hurdle for the public audience and must be documented as a prerequisite, not
 discovered by confused users.
 
-## 5. The noticeboard — Seth runs it
+## 5. The noticeboard — the maintainer runs it
 
-**Decided:** Seth hosts the noticeboard on his own server, and the documentation says
+**Decided:** the maintainer hosts the noticeboard on their own server, and the documentation says
 plainly that it is a hobby service for this small community, that anyone can opt out,
 and that anyone can run their own instead.
 
@@ -145,7 +146,7 @@ passwords. A display name is **not** part of the map — the map shows anonymous
 
 ### 5.2 Opt-out must genuinely remove, not hide
 
-Seth's own point, and it is the load-bearing requirement. When an owner switches
+The load-bearing requirement. When an owner switches
 discoverability off:
 
 1. The instance calls `DELETE /pin/<instance_id>` on the noticeboard.
@@ -161,11 +162,12 @@ not accumulate.
 
 ## 6. Discovery — the connections ARE the network
 
-**Seth's design, and it is better than the first draft of this plan.** An earlier
+**This design is better than the first draft of this plan.** An earlier
 revision proposed a central list of noticeboard URLs and explicitly *rejected*
-peer-to-peer gossip because a brand-new instance has nobody to ask. Seth's fix closes
-that hole: **ship every new install already connected to one seed peer** (his
-instance), and the map feature only unlocks once you have at least one connection.
+peer-to-peer gossip because a brand-new instance has nobody to ask. The fix closes
+that hole: **ship every new install already connected to one seed peer** (the
+maintainer's instance), and the map feature only unlocks once you have at least one
+connection.
 
 The network is then the graph of connections, not a service:
 
@@ -194,7 +196,7 @@ would reduce the single dependency further, once other instances exist.
 
 ### 6.1 Two relationships, deliberately separate
 
-Seth's "add me to every install" needs a permission split, or it becomes a privacy
+The "maintainer connected to every install by default" needs a permission split, or it becomes a privacy
 problem: being connected to the maintainer must **not** mean the maintainer can search
 that workshop's inventory, or every install would be sharing its parts by default.
 
@@ -227,7 +229,7 @@ firewall — but the network should not depend on it.
 
 ## 7. Sign entries from day one (and why not a blockchain)
 
-Seth asked whether everyone could be a noticeboard, gossiping to keep the most recent
+A question worth settling: whether everyone could be a noticeboard, gossiping to keep the most recent
 state — a blockchain. The instinct is right; the tool is wrong.
 
 **What the design actually needs is authentication and freshness, not consensus.**
@@ -368,9 +370,9 @@ product; data is minimised to a coarse cell and an opaque id; erasure is one
 notice before the board is advertised publicly, and to handle a breach notification
 (ICO, within 72 hours) if that ever arises.
 
-**Also worth restating:** publishing the code does not make Seth the controller for
-other people's instances — only for the board he runs, because that is the only place
-he determines what happens to the data. That is why the board is optional and the
+**Also worth restating:** publishing the code does not make the maintainer the
+controller for other people's instances — only for the board they run, because that is
+the only place they determine what happens to the data. That is why the board is optional and the
 format is portable.
 
 **And the risk that is not legal:** a map of home workshops full of tools is a target
@@ -379,27 +381,27 @@ undermine that by adding names, exact locations, or finer pins to the default vi
 
 ## 10. Releasing publicly
 
-- No Seth-specific assumptions: board URL, tile URL, instance name and country are all
+- No maintainer-specific assumptions: board URL, tile URL, instance name and country are all
   configuration with sensible defaults.
 - The board must remain optional and independently runnable, so nobody is forced to
-  trust Seth's, and he is not obliged to serve strangers.
+  trust the maintainer's, and the maintainer is not obliged to serve strangers.
 - Country handling must not be hardcoded to UK/US — postcodes.io and Zippopotam are
   the good paths, Nominatim is the general case that keeps everyone else working.
 - Documentation *is* the feature: the tunnel prerequisite (§4.1), pairing, what peers
   can and cannot see, and running your own board.
-- **The "dad" case is the test.** If pairing cannot be done by a non-technical person
+- **The family-member case is the test.** If pairing cannot be done by a non-technical person
   over the phone in two minutes, it is not finished.
 
 ## 11. Build order
 
 **1. Sharing and pairing.** Peer model, inbound/outbound search, short-code pairing,
-revocation, access log. No location at all. This is what unblocks Seth and his dad, and
+revocation, access log. No location at all. This is what unblocks the maintainer and their family, and
 it is deliberately the smallest useful release.
 
 **2. Location.** During setup, ask the discoverability question; geocode the postcode
 to an outcode/ZIP centroid; store it. Nothing shared yet.
 
-**3. The board + the map.** Seth's board service, signed pins from day one (§7),
+**3. The board + the map.** The maintainer's board service, signed pins from day one (§7),
 opt-out that genuinely deletes (§5.2), the map, and connect requests (§8.4).
 
 If the map is wanted sooner, 2 and 3 can move, but stage 1 should not wait behind them.

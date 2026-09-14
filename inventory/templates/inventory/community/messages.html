@@ -1,0 +1,32 @@
+{% extends "inventory/base.html" %}
+{% block title %}Messages — {{ site_name }}{% endblock %}
+{% block content %}
+{% if not email_configured %}
+<div class="card" style="border-color:#2c303a;">
+  <p class="muted">💡 Miss messages because you don't log in every day? <a href="{% url 'inventory:setup_email' %}">Get an email when someone messages you →</a></p>
+</div>
+{% endif %}
+<div class="card">
+  <h1>Messages</h1>
+  <p class="muted">Private messages between you and the workshops you're connected to. Anyone you've connected with can message you — connecting is the consent. If someone messages you and you'd rather they didn't, open the conversation and block them.</p>
+</div>
+
+<div class="card">
+  {% for peer, unread, latest in threads %}
+    <p style="border-top:1px solid #2c303a;padding:12px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>
+        <a href="{% url 'inventory:community_message_thread' peer.pk %}"><strong>{{ peer.name }}</strong></a>
+        {% if unread %}<span class="pill">{{ unread }} new</span>{% endif %}
+        <br><span class="muted">{{ latest.body|truncatechars:80 }}</span>
+      </span>
+      <span class="muted">{{ latest.sent_at|date:"j M Y H:i" }}</span>
+    </p>
+  {% empty %}
+    <p class="muted">No messages yet. Connect to a workshop, then open its conversation here to say hello.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <p><a class="btn secondary" href="{% url 'inventory:community_connections' %}">Connections →</a></p>
+</div>
+{% endblock %}

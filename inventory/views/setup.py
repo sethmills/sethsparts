@@ -19,7 +19,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from .. import archiving, community_pins, geocoding, hardware_config, label_printing, updates, wizard
+from .. import archiving, community_pins, geocoding, hardware_config, label_printing, notifications, updates, wizard
 from ..label_drivers import DRIVERS, driver_keys, get_driver
 from ..models import CommunityProfile, Drawer, DrawerLedSegment, LedStrip, ReferenceDoc, SiteSettings
 from ..site_config import get_site_settings
@@ -773,3 +773,47 @@ def setup_finish(request):
 
     outstanding = wizard.required_outstanding()
     return render(request, "inventory/setup/finish.html", _shell(request, wizard.FINISH, outstanding=outstanding))
+
+
+# --- Email notifications (settings only, not a wizard step) ------------------
+
+
+@login_required
+def setup_email(request):
+    """Configure optional email notifications.
+
+    Not a wizard step: it is off by default and entirely optional, so it lives only
+    under Settings. The page carries the Gmail app-password walkthrough inline, because
+    the single biggest reason people skip email is not knowing how to get the
+    credential — not the couple of minutes it actually takes.
+    """
+    site = _site()
+    if request.method == "POST":
+        action = request.POST.get("action")
+        site.email_enabled = bool(request.POST.get("email_enabled"))
+        site.smtp_host = (request.POST.get("smtp_host") or "").strip()
+        try:
+            site.smtp_port = int(request.POST.get("smtp_port") or 587)
+        except ValueError:
+            site.smtp_port = 587
+        site.smtp_user = (request.POST.get("smtp_user") or "").strip()
+        site.smtp_password = (request.POST.get("smtp_password") or "").strip()
+        site.smtp_use_tls = bool(request.POST.get("smtp_use_tls"))
+        site.email_from = (request.POST.get("email_from") or "").strip()
+        site.notify_email = (request.POST.get("notify_email") or "").strip()
+        site.notify_on_message = bool(request.POST.get("notify_on_message"))
+        site.notify_on_connection = bool(request.POST.get("notify_on_connection"))
+        site.notify_on_search = bool(request.POST.get("notify_on_search"))
+        site.save()
+
+        if action == "test":
+            ok, detail = notifications.send(
+                f"[{site.site_name}] Test email",
+                "This is a test. If you're reading it, email notifications work.",
+            )
+            (messages.success if ok else messages.error)(request, detail)
+        else:
+            messages.success(request, "Saved.")
+        return redirect("inventory:setup_email")
+
+    return render(request, "inventory/setup/email.html", _shell(request, None))

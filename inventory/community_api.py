@@ -73,6 +73,10 @@ def claim(code_text: str, *, name: str, base_url: str, public_key: str, callback
                 "outbound_api_key": callback_key or "",
             },
         )
+        if peer.blocked:
+            # A blocked workshop stays cut off even with a fresh code — otherwise
+            # "block" would only last until the next pairing code reached them.
+            return None, "This workshop has been blocked and cannot reconnect."
         if not created:
             # Reconnecting with a fresh code: update what we know, keep the permissions.
             peer.name = (name or "").strip()[:PEER_NAME_MAX] or peer.name
