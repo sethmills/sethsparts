@@ -74,6 +74,7 @@ docs/
 scripts/
   export_parts_review.py  Regenerates the parts-review workbook (kept locally)
   mutation_check.py       Verifies the test suite actually catches broken logic
+  audit_public_repo.py    Scans the whole git history for secrets before going public
 led-controller/           LED "find the part" system -- Pi bridge + firmware
 label-printer/            Print-bridge for the label printer (raw USB bytes, or CUPS)
 pi-kiosk/                 Pi touchscreen kiosk setup (Chromium, autologin, etc.)
@@ -87,6 +88,19 @@ requirements.txt
 the app itself. The parts-review workbook and the clarification worklist (`docs/`,
 gitignored), the database, `media/`, and `.env` all stay on the machine that owns them. A
 clone gets the code, not somebody else's inventory — and nothing here needs them to work.
+
+**Before you make a copy of this public** — or if you just want to know — run:
+
+```bash
+python3 scripts/audit_public_repo.py
+```
+
+It scans **every blob in history**, not the working tree, because publishing a repository
+publishes its past: a key that was committed once and deleted in the next commit is still
+there for anyone to fetch. It reports key and token shapes, assignments with real-looking
+values, and files that should never be tracked at all (`.env`, keys, databases, `media/`),
+exits non-zero if anything wants a look, and prints what it deliberately ignored along with
+the reason — so a new finding stands out instead of being buried in noise.
 
 ## View layout
 
