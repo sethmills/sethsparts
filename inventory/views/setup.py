@@ -6,6 +6,7 @@ with, and "change my workshop's name" should not require /admin/.
 """
 from __future__ import annotations
 
+import time
 from zoneinfo import ZoneInfo, available_timezones
 
 from django.contrib import messages
@@ -352,7 +353,117 @@ def _test_led_controller() -> tuple[bool, str]:
     return True, "Controller is up, but it has no strips configured yet — add them on the Pi."
 
 
-# --- Step 4: printer --------------------------------------------------------
+# --- Step 4: flash the LED controller's board ------------------------------
+
+#: The script that does the flashing, and where it lives once copied to the Pi.
+FLASH_SCRIPT_PATH = "~/led-controller/pi/flash-scorpio.py"
+
+#: How long the verification demo runs before switching itself off. Long enough to walk to
+#: the workshop and look at the strips, short enough that nobody has to remember to turn it
+#: off — the board's demo is a toggle and stays on until it is told otherwise.
+DEMO_SECONDS = 5
+
+
+@login_required
+def setup_flash(request):
+    """Walk the owner through flashing the LED controller, then check the result.
+
+    **The app cannot do the flashing.** The board is plugged into a Raspberry Pi, and this
+    runs on a server somewhere else entirely — the only thing that connects them is an HTTP
+    bridge that can send locate commands. So the page's job is the two halves it can honestly
+    own: the instructions, which are the part people get wrong from a wall of text, and the
+    verification, which is the part `did that actually work?` usually has to guess at.
+
+    Verification is a live check rather than a "mark as done" checkbox, and that is
+    deliberate: a checkbox would record that somebody *believes* they flashed a board. The
+    check asks the Pi to run its demo, which the Pi can only do by reaching the board over
+    USB — so a pass means the firmware is running, and a failure says which bit is missing.
+    """
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "check":
+            ok, detail = _check_controller_board()
+            (messages.success if ok else messages.error)(request, detail)
+            return redirect("inventory:setup_flash")
+        # There is nothing to save on this step — the check above is the whole interaction.
+        # A bare POST (a stale form, a back button) just moves on, like every other step.
+        return redirect("inventory:setup_printer")
+
+    return render(
+        request,
+        "inventory/setup/flash.html",
+        _shell(
+            request,
+            wizard.FLASH,
+            script_path=FLASH_SCRIPT_PATH,
+            controller_url=hardware_config.led_url(),
+            controller_source=hardware_config.led_source(),
+            has_leds=hardware_config.has_leds(),
+        ),
+    )
+
+
+def _check_controller_board() -> tuple[bool, str]:
+    """Ask the Pi whether the board is actually talking.
+
+    Two questions, and they are different: `/health` only proves the Pi's *service* is up
+    (it never touches the board), while the demo has to go over USB serial to the board and
+    comes back as 502 when it cannot. That second one is the honest "is the firmware
+    running?" test, which is why this is not the same check the Lights step does.
+    """
+    import requests
+
+    url = hardware_config.led_url()
+    if not url:
+        return False, "No LED controller address set yet — do the Lights step first."
+
+    key = hardware_config.led_key()
+    headers = {"X-Api-Key": key} if key else {}
+
+    try:
+        health = requests.get(f"{url}/health", headers=headers, timeout=8)
+    except requests.RequestException as exc:
+        return False, (
+            f"Couldn't reach the LED controller at {url}: {exc}. "
+            "Flashing is not the problem here — the Pi's service is unreachable."
+        )
+    if health.status_code >= 400:
+        return False, f"{url} answered HTTP {health.status_code} for its health check."
+
+    try:
+        response = requests.post(f"{url}/demo", json={"on": True}, headers=headers, timeout=10)
+    except requests.RequestException as exc:
+        return False, f"Reached the controller, but the demo request failed: {exc}"
+
+    if response.status_code == 502:
+        return False, (
+            "The Pi is running but couldn't reach the board over USB. That is exactly what "
+            "an unflashed (or unplugged, or wrongly-addressed) board looks like — re-run the "
+            f"flash script on the Pi ({FLASH_SCRIPT_PATH}) and read what it says about the "
+            "board's serial channel."
+        )
+    if response.status_code >= 400:
+        return False, f"The controller answered HTTP {response.status_code} for the demo."
+
+    # Turn it back off: the demo is a toggle that stays on until told otherwise, and leaving
+    # a workshop lit up because somebody pressed a button in a browser is not a feature.
+    turned_off = True
+    try:
+        time.sleep(DEMO_SECONDS)
+        requests.post(f"{url}/demo", json={"on": False}, headers=headers, timeout=10)
+    except requests.RequestException:
+        turned_off = False
+
+    detail = (
+        f"The board is running the firmware — the strips ran the demo for {DEMO_SECONDS} "
+        "seconds. If you were watching and saw it, that is the whole check."
+    )
+    if not turned_off:
+        detail += " I couldn't turn it back off, though — do that from the Lights page."
+    return True, detail
+
+
+# --- Step 5: printer --------------------------------------------------------
 
 
 def _clean_driver(value) -> str:

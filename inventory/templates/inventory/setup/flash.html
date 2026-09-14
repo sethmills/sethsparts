@@ -1,0 +1,137 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Flash the LED controller — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Flash the LED controller</h1>
+  <p class="muted">
+    The strips are driven by a small board — an Adafruit Feather RP2040 Scorpio — that plugs
+    into your Raspberry Pi over USB. It needs firmware on it before the app can light anything up.
+  </p>
+  <p class="muted">
+    <strong>This app can't flash it for you</strong>, and it would be lying if it pretended
+    otherwise: the board is plugged into the Pi, and the app runs somewhere else entirely.
+    What it can do is tell you exactly what to run where the board is, and then check the
+    result for you afterwards — which is the part that usually gets guessed at.
+  </p>
+  {% if not controller_url %}
+    <p style="border-left:3px solid var(--muted);padding-left:10px;">
+      <span class="muted">
+        No LED controller set up yet, so there is nothing to check at the end. Do the
+        <strong>Lights</strong> step first (or after this one — flashing works either way).
+      </span>
+    </p>
+  {% endif %}
+  <p class="muted">
+    Skipping this is fine if you have no LED strips, or you flashed the board already.
+    Nothing else in the app depends on it, and you can come back to this page from
+    <strong>Setup</strong> at any time.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Put the board into flashing mode</h2>
+  <p class="muted">
+    The board has a <strong>BOOTSEL</strong> button. With the Pi switched on:
+  </p>
+  <ol class="muted">
+    <li>Hold <strong>BOOTSEL</strong> down.</li>
+    <li>Plug the board into the Pi's USB port — a <strong>data</strong> cable, not a charge-only one.</li>
+    <li>Let go of BOOTSEL once it's plugged in.</li>
+  </ol>
+  <p class="muted">
+    It should now appear to the Pi as a USB drive called <code>RPI-RP2</code>. That drive
+    <em>is</em> the board, in the mode where it accepts firmware.
+  </p>
+  <p class="muted">
+    <strong>Already running CircuitPython?</strong> Then you don't need any of this — the
+    board shows up as <code>CIRCUITPY</code> instead, and the script notices that and just
+    replaces the firmware files. That's the usual case when you're updating rather than
+    setting up a board for the first time.
+  </p>
+</div>
+
+<div class="card">
+  <h2>2. Run the script on the Pi</h2>
+  <p class="muted">
+    Over SSH, on the Pi the board is plugged into. This is the same script whether you're
+    flashing a brand-new board or updating one that already works:
+  </p>
+  <pre style="background:#10131a;border:1px solid #2c303a;padding:12px;border-radius:6px;overflow-x:auto;"><code>scp led-controller/pi/flash-scorpio.py pi:~/led-controller/pi/
+ssh pi
+python3 ~/led-controller/pi/flash-scorpio.py</code></pre>
+  <p class="muted">
+    It's interactive on purpose — the parts it can't do for you are physical (holding a
+    button, watching whether strips light up), and the parts it can do are the ones people
+    get wrong from written instructions alone. It will:
+  </p>
+  <ol class="muted">
+    <li>Work out whether this is a fresh board or an update, from what's mounted.</li>
+    <li>Install CircuitPython itself — fresh boards only (it needs the <code>.uf2</code> for
+        <em>this</em> board: <a href="https://circuitpython.org/board/adafruit_feather_rp2040_scorpio/">circuitpython.org/board/adafruit_feather_rp2040_scorpio</a>;
+        drop it in <code>scorpio-firmware/</code> or pass <code>--uf2</code>).</li>
+    <li>Install the libraries the firmware imports (<code>adafruit_neopxl8</code> and its
+        dependencies) — fresh boards only, offering both the official <code>circup</code>
+        route and the bundle zip.</li>
+    <li>Copy <code>boot.py</code> and <code>code.py</code> onto the board.</li>
+    <li>Check it: the board's serial channels, the Pi's service config, and a live command
+        to the board.</li>
+  </ol>
+  <p class="muted">
+    Only want to look, without changing anything? <code>python3 ~/led-controller/pi/flash-scorpio.py --check</code>.
+  </p>
+  <p style="border-left:3px solid var(--danger);padding-left:10px;">
+    <span class="muted">
+      <strong>The one that costs an evening:</strong> <code>boot.py</code> asks for a second
+      serial channel, and that only takes effect after a <strong>true hardware reset</strong> —
+      press the board's reset button, or run <code>microcontroller.reset()</code> from its
+      REPL. A soft reset (Ctrl-D) does <em>not</em> re-enumerate USB, so the channel silently
+      stays missing and every command times out. The script checks for the channel and says
+      so if it's absent.
+    </span>
+  </p>
+</div>
+
+<div class="card">
+  <h2>3. Check that it worked</h2>
+  <p class="muted">
+    This is the check the app <em>can</em> do, and it's a real one: it asks the Pi to run the
+    board's demo, which the Pi can only do by reaching the board over USB. So a pass means
+    the firmware is running, not that a box was ticked.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <button class="btn" type="submit" name="action" value="check">Check the board</button>
+    </p>
+    <p class="muted">
+      The strips will run the demo for a few seconds and then switch themselves off, so have
+      a look at them while it runs. If nothing is set up yet, this says so rather than
+      failing mysteriously.
+    </p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>When it doesn't work</h2>
+  <ul class="muted">
+    <li><strong>No drive appears at all.</strong> Almost always the cable — charge-only USB
+        cables power the board and carry no data. Then check <code>lsusb</code> and
+        <code>dmesg | tail</code> on the Pi.</li>
+    <li><strong><code>RPI-RP2</code> appears but the board stays dark afterwards.</strong>
+        Wrong <code>.uf2</code> — it has to be the Feather RP2040 <em>Scorpio</em> image,
+        not another RP2040 board's.</li>
+    <li><strong>Script says the data channel is missing.</strong> That's the hardware-reset
+        trap above; the board needs its reset button, not Ctrl-D.</li>
+    <li><strong>The check says the Pi couldn't reach the board.</strong> The service is
+        reading the wrong serial device. In <code>/etc/led-controller/env</code>,
+        <code>SCORPIO_SERIAL_PORT</code> should point at the <code>-if02</code> path under
+        <code>/dev/serial/by-id/</code> — the board's second channel. A bare
+        <code>/dev/ttyACM0</code> is ambiguous when both channels are present, and
+        <code>-if00</code> is the REPL, which will not answer commands. Then:
+        <code>sudo systemctl restart led-controller</code>.</li>
+    <li><strong>Nothing here is set up yet.</strong> The Pi side of this is
+        <code>led-controller/</code> in the repository — its README covers the service
+        install, and answers this section in more detail.</li>
+  </ul>
+</div>
+{% endblock %}

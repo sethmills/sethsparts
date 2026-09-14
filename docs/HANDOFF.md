@@ -2,7 +2,7 @@
 
 Read `README.md` first (repo layout, local dev, deploy, feature tour), then this file. This doc is a dated running log — newest entries at the bottom — plus the "current live state" facts below that don't change often. There is no build history outside this repo; if you're picking this up from a fresh clone or a different assistant, everything you need is in here and in git history.
 
-## Current live state (last refreshed 2026-09-13)
+## Current live state (last refreshed 2026-09-14)
 
 - **Live site:** https://sethsparts.com (Django + SQLite, Docker, Cloudflare Tunnel — no nginx/Caddy).
 - **Server:** a Hetzner VPS, app at `/opt/sethsparts`. The address and hostname are kept out of this repo deliberately (it is public, and they describe infrastructure rather than the app) — they aren't needed to deploy, see `docs/RUNNING.md`.
@@ -17,7 +17,7 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
 - **Parts-review workbook:** kept locally as `docs/parts_review.xlsx` and **not committed** (gitignored — this repo is public and that file is this workshop's inventory). Regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>`, which merges in whatever has already been typed into the "fill in" columns by Part ID, so re-running never clobbers progress. The clarification worklist beside it (`docs/clarification_workstream.md`) is local for the same reason.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
-- **Test suite:** `./venv/bin/python manage.py test inventory` — 776 tests, ~42s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 76 deliberate breakages, currently 76/76 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 825 tests, ~45s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 82 deliberate breakages, currently 82/82 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -908,9 +908,76 @@ positive in exactly the file that documents variable names.
 
 776 tests, 76/76 mutations caught.
 
+### Flashing the LED controller's board, as a guided step (2026-09-14)
+
+**What was asked for:** a walkthrough for flashing the Scorpio — present in the setup wizard,
+skippable, and reachable again from Settings later — that instructs a person on putting the
+board into flashing mode (it is plugged into the Pi over USB) and then verifying it worked.
+Plus correcting the README, which still listed this as missing.
+
+**The honest constraint shaped the design.** The app cannot flash a board: the board is
+plugged into the workshop Pi, and the app runs on the Hetzner box. The only connection
+between them is the Pi's narrow HTTP bridge, so anything that looked like the app doing the
+flashing would be a lie with a progress bar. The work split in two, and each half is labelled
+for what it is:
+
+- **The script does the flashing** — `led-controller/pi/flash-scorpio.py`, new. It runs on the
+  Pi and is interactive in five stages: work out which job this is (a board in bootloader mode
+  mounts as `RPI-RP2`, so CircuitPython itself needs installing; a board mounted as `CIRCUITPY`
+  only needs the firmware files), install CircuitPython if needed, install the libraries the
+  firmware imports, copy `boot.py`/`code.py`, then verify. Flags: `--check` (verify, change
+  nothing), `--yes`, `--uf2`, `--libs-from`, `--route`, `--timeout`.
+  Its decisions are pure functions and are unit-tested (`inventory/tests/test_flash_scorpio.py`,
+  29 tests): mount detection, which route applies, the two serial channels, the library and
+  firmware checks, and the env-file reader.
+- **The app does the instructions and the verification** — a new wizard step, "Flash the LED
+  controller", sitting between Lights and Printer (the order the physical job happens in) and
+  therefore in Settings for good, since the wizard steps double as the settings pages. It
+  explains BOOTSEL and the script, and then a "Check the board" button does the part the app
+  genuinely can: `POST /demo` to the Pi, which the Pi can only answer by reaching the board
+  over USB serial.
+
+**Why the check is `/demo` and not `/health`,** which matters and is the sort of thing that
+gets conflated: `/health` on the Pi only proves the *service* is running — it never touches
+the board — so it cannot tell an unflashed board from a working one. The demo goes over the
+wire to the board, and comes back as 502 when the board is not there. That makes a pass mean
+"the firmware is running", and a failure say which of the two things is broken. The check is
+also live rather than a "mark as done" checkbox, deliberately: a checkbox would record that
+somebody *believes* they flashed a board.
+
+**Details worth keeping:**
+- The demo is a toggle that stays on until told otherwise, so the check switches it off again
+  after `DEMO_SECONDS` (5) — a workshop left lit up by a button in a browser is not a feature.
+  If the switch-off fails, the message says so rather than pretending.
+- The page makes **no request during a render** (the same rule the update check follows): the
+  GET is instructions only, the button does the work. There is a test that patches `requests.get`
+  to raise and asserts the page still renders.
+- The step is `required=False`, and a test asserts it stays that way: a workshop with no LED
+  strips must never be nagged about flashing a board.
+
+**A real bug, found by running the script rather than trusting it:** the annotations used
+`str | None`, which is a syntax error below Python 3.10 — and the Mac's bare `python3` is
+3.9.6, which is also what an older Pi OS ships. Fixed with `from __future__ import annotations`
+so the script runs on anything 3.7+. The smoke test (`--check` on a machine with no board and
+no service) now reports cleanly on both 3.9.6 and the venv's 3.12, exit 1, naming what is
+missing instead of a traceback.
+
+**What has not been done:** the script has never been run against a real board. Its flashing
+path is written from the procedure that was actually performed by hand (item 76) — including
+the two traps recorded there, the `usb_cdc` channel needing a *true* hardware reset and
+`SCORPIO_SERIAL_PORT` needing the `-if02` data channel rather than `-if00` or a bare
+`/dev/ttyACM0` — but its verify path is the only part that has run for real. First use on
+hardware should be watched.
+
+6 new mutations, including the one that matters most for this feature: *"the board check
+claims success when the board never answered"*. If a later change lets that through, the whole
+page becomes a comfortable lie.
+
+86 tests in `test_setup_wizard.py` (14 new), 29 in `test_flash_scorpio.py`.
+
 ### Backlog / discussed, not built
 
-- **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio, and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."
+- **Guided install for a clone deployment (Seth's dad).** Explicitly deferred — "not at this moment... when we are finished." Eventual goal: clone this repo for someone else's workshop (different LED array, possibly different label printer, same drawer/row/bin structure), with a guided setup covering rebranding (app name/URL), flashing the Scorpio (**done since** — it is a wizard step plus an interactive script, see the entry above), and — the biggest architectural difference — running fully locally on that person's own Pi instead of an externally-hosted server like Seth's Hetzner setup. Revisit once Seth considers his own instance "complete."
 - **Cross-instance community part search.** Seth's idea: opt-in search across other self-hosted instances' inventories (share-code gated), so if he doesn't have a part he can see if a community member does, then coordinate pickup directly — no payments, no in-app messaging beyond "here's how to reach them." Full planning doc written: **`docs/PLAN_community_search.md`** — a private friends-list model (not a public directory), category-level opt-in sharing, a thin machine-to-machine search endpoint peers call into each other, and a separate `/network-search/` page (kept explicitly apart from the main `/search/` so Seth's own results never get diluted with other people's inventory). Deliberately not built yet — Seth wants to see another AI assistant's attempt at implementing it against that spec before it's reviewed/merged.
 
 ## Files Seth has shared, still relevant

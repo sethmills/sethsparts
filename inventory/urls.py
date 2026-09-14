@@ -68,6 +68,7 @@ urlpatterns = [
     path("setup/account/", views.setup_account, name="setup_account"),
     path("setup/site/", views.setup_site, name="setup_site"),
     path("setup/lights/", views.setup_lights, name="setup_lights"),
+    path("setup/flash/", views.setup_flash, name="setup_flash"),
     path("setup/printer/", views.setup_printer, name="setup_printer"),
     path("setup/reference/", views.setup_reference, name="setup_reference"),
     path("setup/community/", views.setup_community, name="setup_community"),

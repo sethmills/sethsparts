@@ -578,6 +578,49 @@ MUTATIONS = [
         '                ok=True,\n                error=(\n                    f"GitHub won\'t show {repo()} to an unsigned-in request (HTTP 404). "',
         "inventory.tests.test_updates",
     ),
+    # --- flashing the LED controller's board ---------------------------------
+    (
+        "The board check claims success when the board never answered",
+        ROOT / "inventory" / "views" / "setup.py",
+        "    if response.status_code == 502:\n        return False, (",
+        "    if response.status_code == 502:\n        return True, (",
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "The board check's demo is left running instead of switched off",
+        ROOT / "inventory" / "views" / "setup.py",
+        'requests.post(f"{url}/demo", json={"on": False}, headers=headers, timeout=10)',
+        'requests.post(f"{url}/demo", json={"on": True}, headers=headers, timeout=10)',
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "The board check forgets the controller's shared secret",
+        ROOT / "inventory" / "views" / "setup.py",
+        'response = requests.post(f"{url}/demo", json={"on": True}, headers=headers, timeout=10)',
+        'response = requests.post(f"{url}/demo", json={"on": True}, headers={}, timeout=10)',
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "The flashing step is dropped from the wizard (unreachable from Settings)",
+        ROOT / "inventory" / "wizard.py",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, ACCESS]",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, PRINTER, REFERENCE, COMMUNITY, ACCESS]",
+        "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "The flashing script looks for the console channel instead of the data one",
+        ROOT / "led-controller" / "pi" / "flash-scorpio.py",
+        'if entry.name.endswith("-if02"):',
+        'if entry.name.endswith("-if00"):',
+        "inventory.tests.test_flash_scorpio",
+    ),
+    (
+        "The flashing script calls a present library missing (a false trail)",
+        ROOT / "led-controller" / "pi" / "flash-scorpio.py",
+        'candidates = [lib / f"{name}.mpy", lib / f"{name}.py", lib / name]',
+        'candidates = [lib / f"{name}.mpy"]',
+        "inventory.tests.test_flash_scorpio",
+    ),
 ]
 
 

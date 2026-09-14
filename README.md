@@ -25,9 +25,9 @@ It's built to run as one person's private, self-hosted tool — not a SaaS
 product. Two instances can also find each other: a workshop that opts in appears
 on a map as an anonymous pin, and connecting to one lets you search its parts if
 you both choose. Standing up a *second* instance for someone else is most of the
-way there — the setup wizard covers rebranding and hardware — but flashing a
-Scorpio for their wiring and running it entirely on their own Pi is still to
-come. See "Cloning this for someone else" below.
+way there — the setup wizard covers rebranding, hardware, and flashing the LED
+controller's board — but running it entirely on their own Pi is still to come.
+See "Cloning this for someone else" below.
 
 ## Architecture
 
@@ -75,7 +75,7 @@ scripts/
   export_parts_review.py  Regenerates the parts-review workbook (kept locally)
   mutation_check.py       Verifies the test suite actually catches broken logic
   audit_public_repo.py    Scans the whole git history for secrets before going public
-led-controller/           LED "find the part" system -- Pi bridge + firmware
+led-controller/           LED "find the part" system -- Pi bridge, firmware, flash script
 label-printer/            Print-bridge for the label printer (raw USB bytes, or CUPS)
 pi-kiosk/                 Pi touchscreen kiosk setup (Chromium, autologin, etc.)
 Dockerfile
@@ -243,7 +243,7 @@ resolution, stock/builds, bins, LED, labels and the label drivers, intake, the H
 Assistant endpoint, kiosk auth, community crypto/pairing/pins, reference, help, site
 settings, templates). It uses Django's own test database, so it never touches
 `db.sqlite3`. External HTTP — the Pi's LED controller, the label print-bridge and other
-workshops — is mocked, so the whole suite runs offline: **759 tests in about 40 seconds,
+workshops — is mocked, so the whole suite runs offline: **825 tests in about 45 seconds,
 no hardware needed.**
 
 Two deliberate conventions worth knowing before you add tests:
@@ -258,7 +258,7 @@ Two deliberate conventions worth knowing before you add tests:
   docstring saying so. That is on purpose: if someone later "fixes" it, the test
   should fail and make them read the reasoning first.
 
-`scripts/mutation_check.py` is the safety net for the safety net — 75 deliberate
+`scripts/mutation_check.py` is the safety net for the safety net — 82 deliberate
 breakages (reverses the FIFO consumption order, swaps the LED row/column split,
 disables the bin-scan conflict check, puts the login wall back on the Django admin page,
 drops the "newest pin wins" rule, turns a signed removal back into a location...), each
@@ -425,10 +425,20 @@ rebranding and every piece of hardware configuration, the label printer is a dri
 layer rather than one hardcoded printer, and `docs/RUNNING.md` is a from-scratch guide
 that assumes nothing about the machine. `docker compose up -d` is the whole install.
 
-**What's still missing:** flashing a Scorpio for someone else's LED wiring, and running
-the whole thing on their own Pi — tunnels, backups and all — rather than on an
-externally-hosted server. Deliberately deferred until Seth considers his own instance
-finished; see the backlog in `docs/HANDOFF.md`.
+Flashing the LED controller's board is a step in that wizard too ("Flash the LED
+controller", right after Lights, and reachable from **Settings** later). The app can't
+do the flashing itself — the board is plugged into *their* Pi, and the app runs
+somewhere else — so the step explains what to run where the board is, and then checks
+the result for real: it asks the Pi to run the board's demo, which only works if the
+firmware is running. The script it tells them to run, `led-controller/pi/flash-scorpio.py`,
+is interactive and handles both cases: a board that has never had CircuitPython on it,
+and the ordinary update of an existing one. It also knows about the two traps that
+cost real evenings here — the bootloader button dance, and the `usb_cdc` channel that
+only appears after a true hardware reset.
+
+**What's still missing:** running the whole thing on their own Pi — tunnels, backups
+and all — rather than on an externally-hosted server. Deliberately deferred until Seth
+considers his own instance finished; see the backlog in `docs/HANDOFF.md`.
 
 ## Community search (specified, not built)
 

@@ -22,6 +22,7 @@
     <li>Does the drawer have an LED mapping? Without one there's nothing to light, and the app says so.</li>
     <li>Is the strip named in the mapping present in the Pi's <code>strip_map.json</code>? That file maps a strip name to a physical channel.</li>
   </ol>
+  <p class="muted">If all three pass and the strips still stay dark, suspect the board itself. The quickest test is <strong>Settings → Flash the LED controller</strong>, which asks the Pi to run the board's demo — that only works if firmware is actually running on it. The same page walks through installing that firmware, including the one that catches everybody: the board needs a <em>true</em> hardware reset after its first boot, because a soft reset never brings up the second serial channel.</p>
   <p class="muted">A drawer usually has two mappings — one per side of the cabinet — and both light together. Within a drawer, one strip shows the row and the other shows the column, so a bin's position reads across the two.</p>
 </div>
 

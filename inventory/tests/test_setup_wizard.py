@@ -276,8 +276,199 @@ class LightsStepTests(WizardFlowTestCase):
         self.assertEqual(DrawerLedSegment.objects.count(), 0)
 
     def test_saving_moves_on_to_the_next_step(self):
+        """The next step is Flashing, which sits between telling the app about the
+        controller and configuring a printer — the order the physical job happens in."""
         response = self.client.post(reverse("inventory:setup_lights"), {"action": "save", "led_controller_url": ""})
-        self.assertRedirects(response, reverse("inventory:setup_printer"))
+        self.assertRedirects(response, reverse("inventory:setup_flash"))
+
+
+class FlashStepTests(WizardFlowTestCase):
+    """The flashing walkthrough.
+
+    The page's two jobs are instructions and verification, and only the second one can be
+    tested mechanically — so what is pinned here is that the instructions name the things
+    someone actually needs (the script, the button, the modes) and that the verification
+    tells the truth in every direction, including the one that matters most: a board that
+    isn't there must never come back as a pass.
+    """
+
+    def setUp(self):
+        self.create_account()
+        site = SiteSettings.load()
+        site.led_controller_url = "http://pi:8080"
+        site.led_controller_key = "shared-secret"
+        site.save()
+        # Rendering once drains the "account created" message that create_account left in
+        # the session. Without this, every later assertion about message *tags* would be
+        # reading that message rather than the one the check produced.
+        self.client.get(reverse("inventory:setup_flash"))
+
+    def health(self, status=200, body=None):
+        class R:
+            status_code = status
+            text = ""
+
+            def json(self):
+                return body if body is not None else {"ok": True, "strips_configured": ["cabinet1-left"]}
+
+        return R()
+
+    def demo(self, status=200):
+        class R:
+            status_code = status
+            text = '{"ok": true}'
+
+            def json(self):
+                return {}
+
+        return R()
+
+    # --- what the page says, and what it does not do ----------------------
+
+    def test_it_walks_through_the_physical_part(self):
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, "BOOTSEL")
+        self.assertContains(response, "RPI-RP2")
+        self.assertContains(response, "CIRCUITPY")
+
+    def test_it_names_the_script_to_run_and_where(self):
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, "flash-scorpio.py")
+
+    def test_it_is_honest_that_the_app_cannot_do_the_flashing(self):
+        """Literal template text, so the apostrophe is not escaped — unlike a value
+        rendered from context, which would come back as &#x27;."""
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, "This app can't flash it for you")
+
+    def test_it_warns_about_the_hardware_reset_trap(self):
+        """The one that cost an evening: a soft reset leaves the data channel missing."""
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, "hardware reset")
+        self.assertContains(response, "microcontroller.reset()")
+
+    def test_the_page_makes_no_request_to_the_hardware(self):
+        """A sibling rule in this app: nothing external during a render. Checking is a
+        button somebody presses, not something a page load does behind their back."""
+        with mock.patch("requests.get", side_effect=AssertionError("no request during a render")):
+            response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_skipping_is_a_link_to_the_next_step(self):
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, reverse("inventory:setup_printer"))
+
+    def test_it_says_so_when_there_is_no_controller_to_check(self):
+        site = SiteSettings.load()
+        site.led_controller_url = ""
+        site.save()
+        response = self.client.get(reverse("inventory:setup_flash"))
+        self.assertContains(response, "No LED controller set up yet")
+
+    def test_it_needs_a_login(self):
+        from django.test import Client
+
+        response = Client().get(reverse("inventory:setup_flash"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
+
+    # --- the check itself -------------------------------------------------
+
+    def test_check_with_no_address_configured_says_so(self):
+        site = SiteSettings.load()
+        site.led_controller_url = ""
+        site.save()
+        response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "No LED controller address")
+
+    def test_check_with_an_unreachable_service_says_flashing_is_not_the_problem(self):
+        import requests
+
+        with mock.patch("requests.get", side_effect=requests.ConnectionError("connection refused")):
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "refused")
+        self.assertContains(response, "Flashing is not the problem")
+
+    def test_check_reports_a_service_whose_health_check_fails(self):
+        with mock.patch("requests.get", return_value=self.health(status=500)):
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "HTTP 500")
+
+    def test_a_board_that_is_not_there_is_never_reported_as_a_pass(self):
+        """The whole point of the check. The Pi answers, the board does not, and the person
+        is told which of the two is broken."""
+        with mock.patch("requests.get", return_value=self.health()), \
+             mock.patch("requests.post", return_value=self.demo(status=502)) as demo_call:
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "couldn&#x27;t reach the board", html=False)
+        self.assertContains(response, "serial channel")
+        self.assertEqual(demo_call.call_count, 1)
+        tags = [message.tags for message in response.context["messages"]]
+        self.assertEqual(tags, ["error"])
+        self.assertNotContains(response, "ran the demo")
+
+    def test_check_passes_when_the_board_answers_and_turns_the_demo_off_after(self):
+        """The demo is a toggle that stays on until told otherwise, so the check has to
+        undo it — a workshop left lit up by a browser button is not a feature."""
+        with mock.patch("requests.get", return_value=self.health()), \
+             mock.patch("requests.post", return_value=self.demo()) as demo_call, \
+             mock.patch("inventory.views.setup.time.sleep"):
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "ran the demo")
+        self.assertEqual(demo_call.call_count, 2)
+        first, second = demo_call.call_args_list
+        self.assertEqual(first.kwargs["json"], {"on": True})
+        self.assertEqual(second.kwargs["json"], {"on": False})
+
+    def test_the_check_sends_the_shared_secret(self):
+        """Both calls, not just the health check. The demo is the request that actually
+        reaches the board, and the one the Pi refuses without the key — asserting only the
+        first would leave the important one unguarded."""
+        with mock.patch("requests.get", return_value=self.health()) as health_call, \
+             mock.patch("requests.post", return_value=self.demo()) as demo_call, \
+             mock.patch("inventory.views.setup.time.sleep"):
+            self.client.post(reverse("inventory:setup_flash"), {"action": "check"})
+        self.assertEqual(health_call.call_args.kwargs["headers"]["X-Api-Key"], "shared-secret")
+        self.assertEqual(demo_call.call_count, 2)
+        for call in demo_call.call_args_list:
+            self.assertEqual(call.kwargs["headers"]["X-Api-Key"], "shared-secret")
+
+    def test_a_demo_that_errors_is_reported_with_its_status(self):
+        with mock.patch("requests.get", return_value=self.health()), \
+             mock.patch("requests.post", return_value=self.demo(status=403)):
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "HTTP 403")
+
+    def test_the_demo_request_failing_outright_is_reported(self):
+        import requests
+
+        with mock.patch("requests.get", return_value=self.health()), \
+             mock.patch("requests.post", side_effect=requests.Timeout("timed out")):
+            response = self.client.post(reverse("inventory:setup_flash"), {"action": "check"}, follow=True)
+        self.assertContains(response, "timed out")
+
+    def test_a_bare_post_moves_on_without_claiming_anything_was_saved(self):
+        """There is nothing to save here, so it must not say "Saved" — it moves on."""
+        response = self.client.post(reverse("inventory:setup_flash"), {}, follow=True)
+        self.assertNotContains(response, "Saved")
+        self.assertEqual(response.redirect_chain, [(reverse("inventory:setup_printer"), 302)])
+
+    def test_it_sits_between_lights_and_printer_in_the_wizard(self):
+        keys = [step.key for step in wizard.visible_steps()]
+        self.assertEqual(keys.index("flash"), keys.index("lights") + 1)
+        self.assertEqual(keys.index("printer"), keys.index("flash") + 1)
+
+    def test_it_is_skippable(self):
+        """Seth's requirement, and the app's own rule: nothing here may be compulsory.
+        A step that is `required` shows up in the "you haven't finished" nudge, and a
+        workshop with no LED strips should never be nagged about flashing a board."""
+        step = wizard.step_by_key("flash")
+        self.assertFalse(step.required)
+        self.assertEqual(wizard.required_outstanding(), [])
+
+    def test_it_appears_on_the_setup_hub_so_it_can_be_reached_later(self):
+        response = self.client.get(reverse("inventory:setup_hub"))
+        self.assertContains(response, reverse("inventory:setup_flash"))
 
 
 class PrinterStepTests(WizardFlowTestCase):

@@ -142,6 +142,14 @@ controller output each strip is plugged into and **sends that to the Pi** — on
 can see the wiring, so the app asks rather than guessing, and the Pi's `strip_map.json`
 is written by that push.
 
+Putting the firmware on the board — the Feather RP2040 Scorpio — is its own wizard step,
+**Flash the LED controller**, right after Lights. It explains rather than does, because
+the board is plugged into the Pi and the app isn't running there: the page tells you what
+to run on the Pi (`led-controller/pi/flash-scorpio.py`, interactive, and it handles both a
+brand-new board and an ordinary firmware update), then checks the result for real by
+asking the Pi to run the board's demo. Skippable like every step, and reachable again
+under Settings.
+
 **Label printer.** A Pi with the print bridge in `label-printer/`, next to the printer.
 The app renders the label and sends the finished bytes; nothing needs a driver on the
 machine running the app. Pick your printer's language in Settings:

@@ -50,6 +50,12 @@ LIGHTS = Step(
     "Tell the app about your LED controller, so it can point at a drawer.",
     "inventory:setup_lights",
 )
+FLASH = Step(
+    "flash",
+    "Flash the LED controller",
+    "Put the firmware on the board that drives the strips. The app walks you through it.",
+    "inventory:setup_flash",
+)
 PRINTER = Step(
     "printer",
     "Labels",
@@ -77,8 +83,9 @@ ACCESS = Step(
 FINISH = Step("finish", "Done", "That's everything.", "inventory:setup_finish")
 
 # Order matters: it is the order the pages are presented in, and the order "what's
-# next" follows.
-_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, PRINTER, REFERENCE, COMMUNITY, ACCESS]
+# next" follows. Flashing sits right after Lights because that is the order the physical
+# job happens in: point the app at the controller, then put firmware on the board.
+_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, ACCESS]
 
 
 def account_exists() -> bool:
