@@ -1,20 +1,38 @@
+/* Two themes, both dark. `:root` is the default ("precision"); `data-theme="warm"`
+   overrides the palette. Both share structure (radius, shadow, tap-min), so a theme
+   changes colour and temperature, never layout. */
 :root {
-  --bg: #14161b;
-  --panel: #1c1f26;
-  --panel-raised: #21252d;
-  --border: #2c313c;
-  --text: #eceef1;
-  --muted: #939bab;
-  --accent: #e8c15a;
-  --accent-ink: #211a06;
-  --accent2: #5aa9e6;
-  --danger: #e35d5d;
-  --ok: #6fbf73;
+  --bg: #0b0e13;
+  --panel: #11161d;
+  --panel-raised: #171e27;
+  --border: #232b36;
+  --text: #e8ecef;
+  --muted: #8b96a3;
+  --accent: #3fb6e0;
+  --accent-ink: #07141c;
+  --accent2: #6fc6e8;
+  --danger: #e05a5a;
+  --ok: #3ecf8e;
+  --field-bg: #0e131a;
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.24);
-  --field-bg: #10131a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.3);
   --tap-min: 44px;
+}
+
+[data-theme="warm"] {
+  --bg: #12100c;
+  --panel: #1a1610;
+  --panel-raised: #221c13;
+  --border: #2e2720;
+  --text: #ede6da;
+  --muted: #a89a84;
+  --accent: #e0a33d;
+  --accent-ink: #241a06;
+  --accent2: #d9b87c;
+  --danger: #d96a5a;
+  --ok: #7fce7a;
+  --field-bg: #16120c;
 }
 
 * { box-sizing: border-box; }
@@ -147,7 +165,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: 
   justify-content: center;
   gap: 6px;
   background: var(--accent2);
-  color: #10131a;
+  color: var(--accent-ink);
   border: none;
   border-radius: var(--radius-sm);
   padding: 11px 18px;

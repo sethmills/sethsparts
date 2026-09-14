@@ -980,6 +980,12 @@ class SiteSettings(models.Model):
         default="metric",
         help_text="Which units are offered first. Every unit stays selectable either way.",
     )
+    theme = models.CharField(
+        max_length=10,
+        choices=[("precision", "Precision — cool slate and cyan"), ("warm", "Warm — charcoal and amber")],
+        default="precision",
+        help_text="The app's look. Both dark; pick whichever suits the workshop.",
+    )
     # Hardware addresses, which is what lets the setup wizard configure them at all —
     # before this they existed only as environment variables, so a browser-based setup
     # could not have set them. Plain CharField rather than URLField on purpose: people

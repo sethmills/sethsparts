@@ -40,6 +40,15 @@
       <br><span class="muted">Only decides which units are offered first. Every unit stays available either way, because a UK workshop stocked from US suppliers genuinely has both.</span>
     </p>
 
+    <p>
+      <label for="theme"><strong>Theme</strong></label><br>
+      <select id="theme" name="theme" style="background:#10131a;color:#e6e8eb;border:1px solid #2c303a;padding:10px;border-radius:6px;width:100%;">
+        <option value="precision" {% if site.theme == 'precision' %}selected{% endif %}>Precision — cool slate &amp; cyan</option>
+        <option value="warm" {% if site.theme == 'warm' %}selected{% endif %}>Warm — charcoal &amp; amber</option>
+      </select>
+      <br><span class="muted">Both dark — pick whichever feels right. You can change it any time.</span>
+    </p>
+
     <p><button class="btn" type="submit">Save and continue →</button></p>
   </form>
 </div>

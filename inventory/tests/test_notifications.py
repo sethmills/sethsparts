@@ -140,6 +140,24 @@ class EndpointWiringTests(TestCase):
         SMTP.assert_not_called()
 
 
+class ThemeTests(TestCase):
+    def test_precision_is_the_default_theme(self):
+        self.assertEqual(SiteSettings.load().theme, "precision")
+
+    def test_the_theme_can_be_switched_and_persists(self):
+        site = SiteSettings.load()
+        site.theme = "warm"
+        site.save()
+        self.assertEqual(SiteSettings.load().theme, "warm")
+
+    def test_the_theme_reaches_templates(self):
+        from django.test import RequestFactory
+
+        from ..context_processors import site_context
+
+        self.assertEqual(site_context(RequestFactory().get("/"))["theme"], "precision")
+
+
 class SettingsPageTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="owner", password="x")

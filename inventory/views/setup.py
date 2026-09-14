@@ -155,6 +155,7 @@ def setup_site(request):
         zone = (request.POST.get("timezone") or "").strip()
         country = (request.POST.get("country") or "").strip().upper()[:2]
         unit_system = request.POST.get("unit_system") or "metric"
+        theme = request.POST.get("theme") or "precision"
 
         if not name:
             messages.error(request, "Give your workshop a name — it goes in the header of every page.")
@@ -165,6 +166,7 @@ def setup_site(request):
             site.timezone = zone
             site.country = country
             site.unit_system = unit_system if unit_system in ("metric", "imperial") else "metric"
+            site.theme = theme if theme in ("precision", "warm") else "precision"
             site.save()
             messages.success(request, "Saved.")
             return redirect(wizard.next_step_after(wizard.SITE.key).url_name)

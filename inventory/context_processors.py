@@ -28,6 +28,7 @@ def site_context(request):
         "site_country": country(),
         "unit_system": unit_system(),
         "setup_complete": bool(obj and obj.setup_completed_at),
+        "theme": obj.theme if obj and obj.theme else "precision",
         "unread_messages": unread,
         "email_configured": bool(obj and obj.email_enabled and obj.smtp_host and obj.smtp_user and obj.smtp_password),
         # "Configured", not "reachable" — the URL may be set while the Pi is off, and
