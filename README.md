@@ -242,6 +242,41 @@ Cross-instance search across a friends list of other Seth's-Parts
 installs, opt-in and category-scoped, kept on its own page rather than
 merged into local search. Full spec: `docs/PLAN_community_search.md`.
 
+## Safety
+
+This is software that switches physical things — it lights an LED output to
+point at a drawer, and sends bytes to a label printer. Read this before wiring
+anything up.
+
+- **The app validates what it sends but cannot know what's wired where.** LED
+  channels are range-checked on both the app side and the Pi side, and a label
+  too wide for the print head is refused rather than silently clipped. But a
+  strip mapped to the wrong channel will happily light the wrong drawer — the
+  app cannot tell you your wiring is wrong, only that the number it was given
+  is a legal one.
+- **Do not power LED strips from the Pi.** Addressable strips draw far more
+  current than a GPIO pin or the Pi's own 5 V rail can supply. Size and fuse a
+  separate supply for the strips; the Pi only sends data.
+- **Never put mains voltage on the controller's outputs.** If your strips or
+  their supply need mains, that part is ordinary electrical work and separate
+  from anything here.
+- **The label printer bridge writes to a raw USB device node or a CUPS queue.**
+  The app runs no printer driver itself and cannot detect that a printer is
+  unplugged — `/health` on the bridge is what distinguishes "unplugged" from
+  "not installed".
+- The MIT licence in `LICENSE` disclaims warranty and liability. That is the
+  legal form of the paragraph above.
+
+## Licence
+
+MIT — see `LICENSE`. Copyright (c) 2026 Seth Mills.
+
+Third-party code redistributed here (MapLibre GL JS, vendored so the map page
+makes no third-party requests, and the fonts the label renderer uses) is
+covered in `THIRD_PARTY_NOTICES.md`, including the map-data attribution
+required by OpenStreetMap's ODbL — **don't remove the map's attribution
+control.**
+
 ## Picking this up with a different AI assistant / on a different machine
 
 1. Read this file, then `docs/HANDOFF.md` top to bottom — its "Current live
