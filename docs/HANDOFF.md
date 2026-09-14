@@ -17,7 +17,7 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
 - **Parts-review workbook:** kept locally as `docs/parts_review.xlsx` and **not committed** (gitignored — this repo is public and that file is this workshop's inventory). Regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>`, which merges in whatever has already been typed into the "fill in" columns by Part ID, so re-running never clobbers progress. The clarification worklist beside it (`docs/clarification_workstream.md`) is local for the same reason.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
-- **Test suite:** `./venv/bin/python manage.py test inventory` — 759 tests, ~41s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 75 deliberate breakages, currently 75/75 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 776 tests, ~42s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 76 deliberate breakages, currently 76/76 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -893,7 +893,20 @@ Also hardened: `.gitignore` now covers `.deploy_key`, `*.pem` and `id_rsa*` — 
 production checkout's deploy key lives on the server and has never been committed, but an
 ignore rule is cheaper than trusting that it never gets `git add -A`'d there.
 
-760 tests, 76/76 mutations caught.
+**The audit is kept as a tool, not a throwaway:** `python3 scripts/audit_public_repo.py`. It
+scans every blob in history for key/token shapes, real-looking assignments and paths that
+should never be tracked, and exits non-zero when anything wants a look — the answer to "am I
+leaking anything?" that can be asked again, before this repo or any other goes public. Two
+things make it worth keeping: it is **quiet on a clean repository** (every known-benign
+finding is printed with its reason each run, so exit-0/exit-1 still means something), and its
+pattern matching is unit-tested in `inventory/tests/test_audit_public_repo.py` on both halves
+— catches a private key, a real AWS key, a GitHub token and a secret assignment; ignores
+placeholders, empty assignments, and AWS's own documented example key. Its one real bug,
+found by writing the tests, was an assignment pattern that matched across a newline, so a
+bare `LABEL_PRINTER_KEY=` followed by an unrelated next line read as a secret — a false
+positive in exactly the file that documents variable names.
+
+776 tests, 76/76 mutations caught.
 
 ### Backlog / discussed, not built
 
