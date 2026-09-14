@@ -150,6 +150,19 @@ class SettingsPageTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 302)
 
+    def test_email_is_offered_as_a_wizard_step(self):
+        from .. import wizard
+
+        self.assertEqual(wizard.EMAIL.key, "email")
+        self.assertIn(wizard.EMAIL, wizard.visible_steps())
+
+    def test_saving_moves_on_to_the_next_step(self):
+        from .. import wizard
+
+        response = self.client.post(self.url, {"action": "save", "smtp_host": "smtp.gmail.com", "smtp_port": "587"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse(wizard.next_step_after(wizard.EMAIL.key).url_name))
+
     def test_the_page_shows_the_gmail_instructions(self):
         response = self.client.get(self.url)
         self.assertContains(response, "app password")

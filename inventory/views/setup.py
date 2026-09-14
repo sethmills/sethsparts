@@ -812,8 +812,8 @@ def setup_email(request):
                 "This is a test. If you're reading it, email notifications work.",
             )
             (messages.success if ok else messages.error)(request, detail)
-        else:
-            messages.success(request, "Saved.")
-        return redirect("inventory:setup_email")
+            return redirect("inventory:setup_email")
+        messages.success(request, "Saved.")
+        return redirect(wizard.next_step_after(wizard.EMAIL.key).url_name)
 
-    return render(request, "inventory/setup/email.html", _shell(request, None))
+    return render(request, "inventory/setup/email.html", _shell(request, wizard.EMAIL))

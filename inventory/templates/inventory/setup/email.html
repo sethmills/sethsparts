@@ -1,9 +1,9 @@
-{% extends "inventory/base.html" %}
+{% extends "inventory/setup/_wizard.html" %}
 {% block title %}Email notifications — {{ site_name }}{% endblock %}
-{% block content %}
+{% block step_body %}
 <div class="card">
   <h1>Email notifications</h1>
-  <p class="muted">Get an email when something happens that you'd want to know about even when you're not logged in — a new message, a new connection, or a workshop searching your parts. Everything here is off until you turn it on.</p>
+  <p class="muted">Get an email when something happens that you'd want to know about even when you're not logged in — a new message, a new connection, or a workshop searching your parts. Everything here is off until you turn it on, and this step is optional: skip it now and it'll still be waiting in Settings whenever you want it.</p>
 </div>
 
 <div class="card">
@@ -54,7 +54,7 @@
     <p><label><input type="checkbox" name="notify_on_search" value="1" {% if site.notify_on_search %}checked{% endif %}> A connected workshop searches my parts</label></p>
 
     <p style="margin-top:14px;">
-      <button class="btn" type="submit" name="action" value="save">Save</button>
+      <button class="btn" type="submit" name="action" value="save">Save and continue →</button>
       <button class="btn secondary" type="submit" name="action" value="test">Save &amp; send a test email</button>
     </p>
   </form>

@@ -603,9 +603,16 @@ MUTATIONS = [
     (
         "The flashing step is dropped from the wizard (unreachable from Settings)",
         ROOT / "inventory" / "wizard.py",
-        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, ACCESS]",
-        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, PRINTER, REFERENCE, COMMUNITY, ACCESS]",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, EMAIL, ACCESS]",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, PRINTER, REFERENCE, COMMUNITY, EMAIL, ACCESS]",
         "inventory.tests.test_setup_wizard",
+    ),
+    (
+        "The email step is dropped from the wizard (notifications hidden in Settings)",
+        ROOT / "inventory" / "wizard.py",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, EMAIL, ACCESS]",
+        "_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, ACCESS]",
+        "inventory.tests.test_notifications",
     ),
     (
         "The flashing script looks for the console channel instead of the data one",
