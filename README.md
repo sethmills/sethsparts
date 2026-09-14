@@ -438,6 +438,12 @@ and the ordinary update of an existing one. It also knows about the two traps th
 cost real evenings here — the bootloader button dance, and the `usb_cdc` channel that
 only appears after a true hardware reset.
 
+**An AI assistant can do most of that setup with them** — `docs/AGENT_SETUP.md` is a
+four-step guide to installing [Hermes Agent](https://hermes-agent.nousresearch.com/) on
+their own computer, running it on DeepSeek's API, and handing it the job: install and
+configure the app, then work through the enrichment queue researching parts. It is written
+to be handed to someone who has never set up an agent before, and it costs cents.
+
 **What's still missing:** running the whole thing on their own Pi — tunnels, backups
 and all — rather than on an externally-hosted server. Deliberately deferred until Seth
 considers his own instance finished; see the backlog in `docs/HANDOFF.md`.
