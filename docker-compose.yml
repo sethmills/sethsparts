@@ -29,6 +29,11 @@ services:
       # password). Leave unset in .env and that endpoint just no-ops.
       - KIOSK_AUTOLOGIN_TOKEN=${KIOSK_AUTOLOGIN_TOKEN:-}
       - KIOSK_AUTOLOGIN_USERNAME=${KIOSK_AUTOLOGIN_USERNAME:-seth}
+      # Optional -- powers the opt-in "Suggest enrichment" button (DeepSeek).
+      # Leave unset in .env and the button just stays hidden.
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      # Optional -- the DeepSeek model to use. Defaults to deepseek-chat in settings.py.
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-}
 
   # Cloudflare Tunnel -- optional, and OFF unless you ask for it.
   #
