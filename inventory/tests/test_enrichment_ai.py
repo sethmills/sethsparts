@@ -42,6 +42,13 @@ class EnrichmentSuggestTests(TestCase):
         self.assertIsNone(result)
         self.assertIn("unexpected response", err)
 
+    def test_extract_json_tolerates_fences_and_prose(self):
+        from ..enrichment_ai import _extract_json
+
+        obj = '{"category": "Tools", "description": "x", "manufacturer": ""}'
+        self.assertEqual(_extract_json('```json\n' + obj + '\n```'), obj)
+        self.assertEqual(_extract_json('Here you go: ' + obj), obj)
+
 
 @override_settings(DEEPSEEK_API_KEY="")
 class EnrichmentNotConfiguredTests(TestCase):

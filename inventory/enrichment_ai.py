@@ -7,6 +7,7 @@ off — the button hidden — until configured.
 """
 
 import json
+import re
 
 import requests
 from django.conf import settings
@@ -20,6 +21,20 @@ _SYSTEM_PROMPT = (
     'else: {"category": "...", "description": "...", "manufacturer": "..."}. '
     "Use empty strings when unsure. Never invent a model number not in the name."
 )
+
+
+def _extract_json(text):
+    """Pull the first JSON object out of a model reply, tolerating markdown fences
+    or surrounding prose — the chat model is asked for JSON but isn't always terse."""
+    text = (text or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("no JSON object in reply")
+    return text[start:end + 1]
 
 
 def is_configured():
@@ -51,13 +66,12 @@ def suggest_enrichment(name, category=None, description=None, manufacturer=None)
                     {"role": "user", "content": user_text},
                 ],
                 "temperature": 0,
-                "response_format": {"type": "json_object"},
             },
             timeout=30,
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+        parsed = json.loads(_extract_json(content))
         return {
             "category": (parsed.get("category") or "").strip(),
             "description": (parsed.get("description") or "").strip(),
