@@ -6,8 +6,9 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 
 - **Live site:** https://sethsparts.com (Django + SQLite, Docker, Cloudflare Tunnel — no nginx/Caddy).
 - **Server:** `root@95.217.21.132` (Hetzner, hostname `content-hub`), app at `/opt/sethsparts`.
-- **Deploy flow:** `git push` → on the server: `cd /opt/sethsparts && git pull && docker compose up -d --build`. The server has its own **read-only** deploy key (`.deploy_key`, gitignored) — separate from whatever key pushes to GitHub.
-- **GitHub:** private repo `sethmills/sethsparts`, `main` branch.
+- **Deploy flow:** `git push` → on the server: **back up `data/db.sqlite3` first**, then `cd /opt/sethsparts && git pull --ff-only && docker compose up -d --build`. Back up first because the container runs `migrate` before gunicorn on every start, so a deploy is also a migration run against the live database. The server has its own **read-only** deploy key (`.deploy_key`, gitignored) — separate from whatever key pushes to GitHub.
+- **GitHub:** private repo `sethmills/sethsparts`, `main` branch — private for now, but written for release: treat every diff as if it were already public.
+- **Version / releases:** `inventory/version.py` is `0.1.0`, and `v0.1.0` is tagged and pushed. The update check asks GitHub (`releases/latest`, then `tags`), so a tag that only exists locally does nothing at all — publishing a release means pushing the tag (item 26).
 - **Secrets:** live only in `/opt/sethsparts/.env` on the server (gitignored, never committed) — see `.env.example` in the repo root for the full list with explanations: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `TUNNEL_TOKEN` (required), plus optional `VOICE_SEARCH_API_KEY`, `LED_CONTROLLER_URL`/`KEY`, `LABEL_PRINTER_URL`/`KEY`, `KIOSK_AUTOLOGIN_TOKEN`/`USERNAME`.
 - **Cloudflare:** one account, multiple tunnels — `sethsparts.com` (the main site, Hetzner-hosted) and `sethsparts-led-controller` (runs on the workshop Pi itself, currently carrying **two** public hostnames on its "Published application routes" tab: `led.sethsparts.com` → `localhost:9000` and `label.sethsparts.com` → `localhost:9020`). **Gotcha worth remembering:** this tunnel's dashboard "Hostname routes" tab is empty/unused — routes actually live under the differently-named "Published application routes" tab. Don't assume a tunnel's routes aren't configured just because one tab looks empty; check both.
 - **Logins:** the app has its own login page at `/login/` (item 25), with **Log out** in the More menu. The Django admin keeps its own separate login at `/admin/login/`. Username `seth` for both; passwords were set by Seth directly (not recorded here).
@@ -16,7 +17,7 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard toggle that used to exist here was removed (never rendered above the fullscreen kiosk surface); Seth uses a physical keyboard now.
 - **Parts-review workbook:** `docs/parts_review.xlsx`, regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>` — merges in whatever Seth already typed into the "fill in" columns by Part ID, so re-running never clobbers his progress. He's still actively working through it, alongside `docs/clarification_workstream.md`.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
-- **Test suite:** `./venv/bin/python manage.py test inventory` — 635 tests, ~37s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py`, which proves the suite fails when the logic it protects is broken and must stay at 100%. See "Tests" in `README.md`, and item 21 below.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 759 tests, ~41s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 75 deliberate breakages, currently 75/75 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -745,6 +746,36 @@ against the real database (1,379 stock rows): forward, back, forward.
 **Not built, deliberately:** connect requests between strangers (plan §8.4) need the
 noticeboard relay, and the noticeboard is optional by design — the gossip network covers
 people who are already connected, which is the case that matters for Seth and his dad.
+
+### 28. Seth read it: a comment rendering on the page, and a README that had drifted — ✅ done (2026-09-13)
+
+Both found by Seth, both by looking at the thing rather than by running the tests.
+
+**A template comment was rendering as text.** Django's `{# ... #}` is a *single-line*
+comment; across lines the template engine does not see a comment at all, it sees text — so
+`base.html`'s note about the logout form appeared at the bottom of the More menu with its
+braces attached. Twice, in fact: `community/map.html` had the same mistake in the head of
+the map page. I had already fixed a third instance in `login.html` earlier the same night
+and never looked for the others, which is the actual lesson — so the fix is
+`inventory/tests/test_templates.py`, which scans every template for a `{#` that does not
+close on its own line, and separately compiles every template (a tag typo is a 500 on
+whichever page uses it, whenever that page is next visited). There is a mutation for the
+first check, so it has to keep working: 75 mutations, 75 caught.
+
+**The README described an app that no longer exists.** Most of it was right; the parts that
+had drifted were the parts nobody re-reads. "A second instance isn't built yet" predated
+the whole community feature; the label printer was still "relays raw ZPL to a Zebra
+GK420T" after it became a four-driver layer; the view list was missing four modules; the
+test counts were from two rounds of work ago; and several built features were not mentioned
+at all (the setup wizard, in-app help, the update check, kiosk mode, the Home Assistant
+endpoint, the reference library). Fixed, plus the deploy steps — which were missing the
+database backup, now load-bearing because the container migrates on every start — and a new
+"Migrations" section documenting the exercise-it-against-real-data rule. The "current live
+state" block at the top of this file had the same drift and was refreshed with it.
+
+Worth noting for whoever picks this up: the docs are the only part of this repo with no
+test behind them, so they are the part that rots. Three of tonight's entries exist because
+somebody read something instead of running something.
 
 ### Backlog / discussed, not built
 

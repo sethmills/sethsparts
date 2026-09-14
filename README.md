@@ -22,8 +22,12 @@ bins each — get a physical LED indicator lighting up exactly which drawer
 (and which bin within it) has the part he's looking for.
 
 It's built to run as one person's private, self-hosted tool — not a SaaS
-product. A second instance for someone else's workshop is a real goal (see
-"Cloning this for someone else" below) but isn't built yet.
+product. Two instances can also find each other: a workshop that opts in appears
+on a map as an anonymous pin, and connecting to one lets you search its parts if
+you both choose. Standing up a *second* instance for someone else is most of the
+way there — the setup wizard covers rebranding and hardware — but flashing a
+Scorpio for their wiring and running it entirely on their own Pi is still to
+come. See "Cloning this for someone else" below.
 
 ## Architecture
 
@@ -39,8 +43,9 @@ product. A second instance for someone else's workshop is a real goal (see
   - `led-controller/` — drives WS2812B LED strips lining the electronics
     cabinets, via a Feather RP2040 Scorpio, to light up the drawer/bin a part
     lives in.
-  - `label-printer/` — relays raw ZPL to a Zebra GK420T thermal label printer
-    over USB.
+  - `label-printer/` — gets finished label bytes to a thermal label printer over
+    USB: the printer's own command stream where the app has an encoder (ZPL,
+    Brother QL, Dymo), or a PNG handed to CUPS for anything else.
   - The same Pi also runs a **kiosk touchscreen** (`pi-kiosk/`) showing the
     site itself, auto-logged-in, as a physical terminal in the workshop.
   - Each of those three has its own README with full setup steps — this repo
@@ -59,6 +64,9 @@ inventory/               The one Django app -- models, views, templates, admin
   tests/                 The test suite -- one module per area, see "Tests" below
   label_printing.py       Renders custom labels; encodes via label_drivers.py
   label_drivers.py        One class per printer language (ZPL/Brother/Dymo/CUPS)
+  community.py            Pin signing/verifying (no Django imports, so it tests alone)
+  community_pins.py       The map's data: gossip, newest-wins, deletion on opt-out
+  updates.py              The version check (reads a cache; the button does the fetching)
 docs/
   HANDOFF.md              Start here after this file -- running log + backlog
   clarification_workstream.md   Parts too ambiguous for automated enrichment
@@ -66,7 +74,7 @@ scripts/
   export_parts_review.py  Regenerates docs/parts_review.xlsx (merge-safe)
   mutation_check.py       Verifies the test suite actually catches broken logic
 led-controller/           LED "find the part" system -- Pi bridge + firmware
-label-printer/            Zebra GK420T print-bridge
+label-printer/            Print-bridge for the label printer (raw USB bytes, or CUPS)
 pi-kiosk/                 Pi touchscreen kiosk setup (Chromium, autologin, etc.)
 Dockerfile
 docker-compose.yml
@@ -77,9 +85,11 @@ requirements.txt
 ## View layout
 
 `inventory/views/` is a package, one module per topic, rather than one big `views.py`:
-`browse`, `parts`, `bins`, `labels`, `intake`, `searching` (part search + the voice
-API), `tagging`, `projects`, `enrichment`, `lights` (everything that talks to the LED
-controller), `auth` (kiosk auto-login), and `_shared` (helpers several of them need).
+`browse`, `parts`, `bins`, `labels`, `intake`, `searching` (part search + the Home
+Assistant endpoint), `tagging`, `projects`, `enrichment`, `lights` (everything that talks
+to the LED controller), `reference` (the document library), `community` (connections,
+the pins endpoint and the map), `setup` (the wizard), `help`, `auth` (login/logout and
+kiosk auto-login), and `_shared` (helpers several of them need).
 
 `views/__init__.py` re-exports every view, so `inventory/urls.py`'s
 `from . import views` + `views.browse`, and the test suite's
@@ -115,11 +125,13 @@ on, etc.). See `.env.example` for what production actually needs.
 ./venv/bin/python manage.py test inventory
 ```
 
-The suite lives in `inventory/tests/` (one module per area: models, search,
-scan resolution, stock/builds, bins, LED, labels, intake, the voice API, kiosk
-auth). It uses Django's own test database, so it never touches `db.sqlite3`.
-External HTTP — the Pi's LED controller and the label print-bridge — is mocked,
-so the whole suite runs offline in a few seconds and needs no hardware.
+The suite lives in `inventory/tests/` (one module per area: models, search, scan
+resolution, stock/builds, bins, LED, labels and the label drivers, intake, the Home
+Assistant endpoint, kiosk auth, community crypto/pairing/pins, reference, help, site
+settings, templates). It uses Django's own test database, so it never touches
+`db.sqlite3`. External HTTP — the Pi's LED controller, the label print-bridge and other
+workshops — is mocked, so the whole suite runs offline: **759 tests in about 40 seconds,
+no hardware needed.**
 
 Two deliberate conventions worth knowing before you add tests:
 
@@ -133,10 +145,11 @@ Two deliberate conventions worth knowing before you add tests:
   docstring saying so. That is on purpose: if someone later "fixes" it, the test
   should fail and make them read the reasoning first.
 
-`scripts/mutation_check.py` is the safety net for the safety net — it deliberately
-breaks real logic (reverses the FIFO consumption order, swaps the LED
-row/column split, disables the bin-scan conflict check, and so on), runs the
-relevant tests, and reports anything that stayed green:
+`scripts/mutation_check.py` is the safety net for the safety net — 75 deliberate
+breakages (reverses the FIFO consumption order, swaps the LED row/column split,
+disables the bin-scan conflict check, puts the login wall back on the Django admin page,
+drops the "newest pin wins" rule, turns a signed removal back into a location...), each
+followed by the tests that ought to notice, reporting anything that stayed green:
 
 ```bash
 ./venv/bin/python scripts/mutation_check.py
@@ -144,7 +157,28 @@ relevant tests, and reports anything that stayed green:
 
 A test suite that passes proves nothing; this proves it *fails* when the code it
 claims to protect is broken. Run it after adding tests for a new area — a
-mutation that isn't caught is a blind spot.
+mutation that isn't caught is a blind spot. It edits the working tree in place
+(restoring each file as it goes), so don't run it alongside a local test run or a
+commit, and **it must be at 100% before a deploy.** A mutation that reports `!! anchor
+not found` means the code it targets has been rewritten — that is the script telling you
+to move the anchor, not that the behaviour is gone.
+
+### Migrations
+
+Every migration gets exercised against a copy of the **real** database before it ships —
+forward, back, forward again — rather than only against a fresh test database. That is
+the difference between finding out now that a column cannot be added to a table with
+1,379 rows in it, and finding out mid-deploy:
+
+```bash
+cp /path/to/a/populated/db.sqlite3 /tmp/mig.sqlite3
+DJANGO_DB_PATH=/tmp/mig.sqlite3 ./venv/bin/python manage.py migrate            # forward
+DJANGO_DB_PATH=/tmp/mig.sqlite3 ./venv/bin/python manage.py migrate inventory <previous>
+DJANGO_DB_PATH=/tmp/mig.sqlite3 ./venv/bin/python manage.py migrate            # forward again
+```
+
+Compare row counts after each step, and run `makemigrations --check --dry-run`: a model
+change with no migration is a lie the test suite cannot see.
 
 ### Re-running the spreadsheet import
 
@@ -161,9 +195,18 @@ Production runs on a Hetzner VPS. There's no automation — deploying is:
 git push                                      # from your machine
 ssh <server>
 cd /opt/sethsparts
-git pull
+cp data/db.sqlite3 "data/db.sqlite3.pre-deploy-$(date +%Y%m%d-%H%M%S).bak"   # always
+git pull --ff-only
 docker compose up -d --build
 ```
+
+Back up first even though nothing in a deploy should touch the data: the container
+runs `migrate` before gunicorn on every start, so **a deploy is also a migration run
+against the live database** — the backup is the difference between reverting the code
+and restoring the app. Then check `docker logs sethsparts` for the migrations and for a
+clean gunicorn boot, and compare a row count or two (`SELECT COUNT(*) FROM
+inventory_stockitem`) against that backup — the only thing that catches a migration
+which quietly ate data.
 
 `docker compose` runs two containers: the app itself, and `cloudflared` as a
 sidecar that tunnels it to the public domain. Secrets live only in that
@@ -179,6 +222,14 @@ key, separate from whatever key you push with.
   there is nothing to log in with. There is deliberately no password-reset email:
   `manage.py changepassword <username>` is the way back in. `/admin/login/` still
   exists for the Django admin itself.
+- **Setup wizard** (`/setup/`) — what a fresh install shows first: your account, then the
+  workshop's name, timezone and units, then the optional pieces one at a time (lights,
+  label printer, reference library, community, access). Every step is skippable, and every
+  step stays available afterwards under Settings, because a wizard you can only run once
+  is a wizard people work around.
+- **In-app help** (`/help/`) — the same ground as this README, written for whoever uses the
+  workshop rather than whoever wrote it, including what the community feature does and
+  does not share.
 - **Browse / Scan / Search** — `/` lists every drawer up front (day-to-day
   browsing is almost always "which drawer", not "which cabinet"), with the
   full container list below for when cabinet-level organization is what's
@@ -194,7 +245,11 @@ key, separate from whatever key you push with.
   physical LED strip on that cabinet: breathes for a few seconds, then holds
   a static, multi-colored row/column readout (the drawer's left-side strip
   shows the row, the right-side strip shows the column) for ~12s. See
-  `led-controller/`.
+  `led-controller/`. Which strip is plugged into which controller output is
+  recorded in the wizard and pushed to the Pi, so the wiring map lives in the app
+  rather than in a JSON file on the Pi. `/lights/` is the manual side of it: default
+  colour and brightness, the room light, and a demo sweep to check the wiring before
+  trusting the locate feature.
 - **Custom label designer** (`/labels/custom/`) — type text, optionally add a
   barcode, pick one of the physical label sizes on hand, adjust font
   size/bold/italic, live preview, print — renders as a bitmap (real font
@@ -222,25 +277,52 @@ key, separate from whatever key you push with.
 - **Projects / BOM / Build** — versioned bills of materials per project, with
   live stock-coverage math and a "Build" action that FIFO-consumes real stock
   and records what was actually available vs. requested.
-- **Reorder dashboard**, **full export** (DB + media as a zip), **reference
-  docs** section (pinouts/datasheets/cheat sheets, cached locally).
+- **Community connections** (`/community/`) — pair with another workshop by swapping a
+  short-lived code, then choose per connection what it may do. Showing each other on the
+  map and searching each other's parts are separate permissions **on purpose**, so
+  connecting for the map never hands over your inventory. Revoking takes effect
+  immediately, including for the map endpoint.
+- **Reference library** (`/reference/`) — pinouts, datasheets and cheat sheets, organised
+  by category, with an optional archive step that fetches and keeps a local copy of what a
+  link points at (http/https only, size-capped, and never for repurchase links, which
+  rot). Includes a resistor colour-code calculator.
+- **Reorder dashboard** (`/reorder/`) — everything at or below its low-stock threshold in
+  one list to work through.
+- **Full export** (`/export/`) — the database and media as a zip, so "your data" is
+  something you can hold rather than a promise.
+- **Home Assistant** (`/api/locate/?q=…`) — a machine-to-machine lookup keyed by
+  `VOICE_SEARCH_API_KEY`, so an Assist intent can answer "where are the M3 screws?" with
+  the drawer or box they're in.
+- **Update check** — the settings page compares `inventory/version.py` against this
+  project's GitHub releases and tags when you press the button. Never during a page
+  render, and it never updates anything by itself; it also tells you when you're current.
+- **Kiosk mode** — a Pi touchscreen pointed at `/kiosk-autologin/?token=…`, which mints a
+  real session server-side (never the owner's password). See `pi-kiosk/`.
 
 ## Cloning this for someone else
 
-The long-term goal is for Seth's dad (or anyone else) to clone this repo and
-stand up their own instance for their own workshop — different LED array,
-possibly a different label printer, but the same drawer/row/bin structure.
-That needs a guided setup (rebranding the name/URL, flashing a Scorpio for
-their wiring, and — the biggest difference — running entirely on their own
-Pi locally instead of an externally-hosted server). **Not built yet** —
-deliberately deferred until Seth considers his own instance finished. See the
-backlog section of `docs/HANDOFF.md` for the current thinking.
+The goal is for Seth's dad (or anyone else) to clone this repo and stand up
+their own instance for their own workshop — a different LED array, possibly a
+different label printer, but the same drawer/row/bin structure.
 
-## Community search (planned, not built)
+**What's already true:** the app is platform-agnostic — nothing shells out, nothing
+assumes macOS or Linux paths, and a test enforces both — the setup wizard covers
+rebranding and every piece of hardware configuration, the label printer is a driver
+layer rather than one hardcoded printer, and `docs/RUNNING.md` is a from-scratch guide
+that assumes nothing about the machine. `docker compose up -d` is the whole install.
 
-Cross-instance search across a friends list of other Seth's-Parts
-installs, opt-in and category-scoped, kept on its own page rather than
-merged into local search. Full spec: `docs/PLAN_community_search.md`.
+**What's still missing:** flashing a Scorpio for someone else's LED wiring, and running
+the whole thing on their own Pi — tunnels, backups and all — rather than on an
+externally-hosted server. Deliberately deferred until Seth considers his own instance
+finished; see the backlog in `docs/HANDOFF.md`.
+
+## Community search (specified, not built)
+
+Cross-instance search across your connections, opt-in and category-scoped, kept on its
+own page rather than merged into local search. The groundwork is in place — connections,
+per-connection permissions (`Peer.shares_parts`), rate limiting on the claim endpoint, and
+a log of what connected workshops have searched for — but there are no routes for the
+search itself yet. Full spec: `docs/PLAN_community_search.md`.
 
 ## Safety
 
