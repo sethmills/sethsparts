@@ -47,8 +47,10 @@
           <a href="{% url 'inventory:setup_hub' %}">Settings</a>
           <a href="{% url 'inventory:export_inventory' %}">Export</a>
           <a href="/admin/">Admin</a>
-          {# A POST form, not a link: Django's LogoutView is POST-only so that no stray
-             image tag or link prefetch can end someone's session. #}
+          {% comment %}
+            A POST form, not a link: Django's LogoutView is POST-only so that no stray
+            image tag or link prefetch can end someone's session.
+          {% endcomment %}
           <form method="post" action="{% url 'inventory:logout' %}">
             {% csrf_token %}
             <button type="submit">Log out</button>

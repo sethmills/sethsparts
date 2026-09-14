@@ -2,9 +2,11 @@
 {% load static %}
 {% block title %}Community map — {{ site_name }}{% endblock %}
 {% block extra_head %}
-  {# Vendored, not loaded from a CDN: a self-hosted app should not depend on a
-     third party being up to draw its own map, and the workshop Pi's connection is
-     not something to bet a page render on. #}
+  {% comment %}
+    Vendored, not loaded from a CDN: a self-hosted app should not depend on a
+    third party being up to draw its own map, and the workshop Pi's connection is
+    not something to bet a page render on.
+  {% endcomment %}
   <link rel="stylesheet" href="{% static 'inventory/vendor/maplibre-gl.css' %}">
   <style>
     #community-map { height: 420px; border-radius: var(--radius-sm); border: 1px solid var(--border); }

@@ -561,6 +561,16 @@ MUTATIONS = [
         "            if False:",
         "inventory.tests.test_community_pins",
     ),
+    # --- templates ------------------------------------------------------------
+    # A multi-line `{# #}` comment is not a comment: the template engine sees text, so the
+    # note renders on the page. That shipped once, in the More menu.
+    (
+        "A template comment spans lines again (the note renders on the page)",
+        ROOT / "inventory" / "templates" / "inventory" / "base.html",
+        "          {% comment %}",
+        "          {# a note that never closes on this line",
+        "inventory.tests.test_templates",
+    ),
 ]
 
 
