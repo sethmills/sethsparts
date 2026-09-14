@@ -59,4 +59,4 @@ We're making my inventory app releasable to other people. Project is at `~/work/
 ## Files Seth has shared, still relevant
 
 - `/Users/seth/Downloads/amazon_order_history.xlsx` — for the enrichment backlog, later.
-- `docs/parts_review.xlsx` (in this repo) — living document, regenerate via the merge flow whenever Seth sends back an updated copy.
+- `docs/parts_review.xlsx` (**local only, gitignored — deliberately not in this repo**, along with `docs/clarification_workstream.md`) — living working files of this workshop's own inventory, regenerate via the merge flow whenever an updated copy comes back.
