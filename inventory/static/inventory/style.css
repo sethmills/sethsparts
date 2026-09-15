@@ -399,20 +399,16 @@ html.pi-kiosk .pi-only { display: inline-flex; }
   }
   header.topbar nav a:hover { background: var(--panel-raised); border: none; }
 
-  /* In the sidebar there's room for everything, so hide the "More" toggle and
-     list the secondary links directly below the primary ones. */
-  .nav-more { position: static; }
-  .nav-more-input, .nav-more-summary { display: none; }
-  .nav-more-menu {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+  /* "More" stays a dropdown in the sidebar too — just styled to match the flat
+     sidebar links rather than the pill it uses in the top bar. */
+  .nav-more { position: relative; }
+  .nav-more-summary {
+    border-radius: var(--radius-sm);
     background: none;
     border: none;
-    box-shadow: none;
-    padding: 0;
+    width: 100%;
   }
-  .nav-more-menu a { padding: 9px 12px; color: var(--muted); }
-  .nav-more-menu a:hover { background: var(--panel-raised); }
+  .nav-more-summary:hover,
+  .nav-more-input:checked ~ .nav-more-summary { background: var(--panel-raised); color: var(--text); }
+  .nav-more-menu { left: 0; right: auto; }
 }
