@@ -141,6 +141,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Hashed static filenames so a deploy's new CSS/JS is never served stale from a
+# browser or CDN cache: the filename changes, so every caching layer misses and
+# re-fetches. (Django 6.x configures storage via STORAGES, not STATICFILES_STORAGE.)
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "config.storage.LooseManifestStaticFilesStorage"},
+}
 
 # Part/reference-doc attachments (datasheets, pinouts, images).
 MEDIA_URL = 'media/'
