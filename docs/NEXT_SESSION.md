@@ -15,20 +15,20 @@ We're making my inventory app releasable to other people. Project is at `~/work/
 **How this codebase is written (please match it):**
 - Comments explain *why*, not what. The reasoning and the rejected alternative are the valuable part.
 - Every behaviour change gets tests, in `inventory/tests/test_<topic>.py`.
-- Run the suite before every commit: `./venv/bin/python manage.py test` (Python 3.12 venv already exists at `./venv`). Currently **757 tests, ~39s**.
-- `./venv/bin/python scripts/mutation_check.py` must stay at **100%** (now 74 mutations). It deliberately breaks real decisions and checks the suite notices. Add a mutation for anything security- or privacy-relevant you build. If it reports "anchor not found", logic moved and the anchor needs repointing.
+- Run the suite before every commit: `./venv/bin/python manage.py test` (Python 3.12 venv already exists at `./venv`). Currently **992 tests, ~60s**.
+- `./venv/bin/python scripts/mutation_check.py` must stay at **100%** (now 93 mutations). It deliberately breaks real decisions and checks the suite notices. Add a mutation for anything security- or privacy-relevant you build. If it reports "anchor not found", logic moved and the anchor needs repointing.
 - Migrations must be exercised **against a real database with rows in it**, forward and back — not just a fresh test database. `DJANGO_DB_PATH=/tmp/x.sqlite3 ./venv/bin/python manage.py migrate` is the pattern.
 - `inventory/tests/test_portability.py` reads the source and fails on POSIX-only imports, shell-outs, or file access without an explicit `encoding=`. Don't fight it; it exists so the app keeps running on Windows.
 - Tests must never touch the network — `inventory/tests/__init__.py` blocks outbound HTTP and will fail loudly. Patch `requests.get`/`requests.post` explicitly.
 - The `pi-kiosk/`, `led-controller/pi/` and `label-printer/pi/` directories are Raspberry Pi hardware code and are exempt from the portability rules.
 
 **Current state — everything committed and pushed; nothing in flight.**
-- `main` is at **`7246c92`** (or a docs-only commit after it) — the tip of the *rewritten* history (HANDOFF item 31) — and **production is deployed on `7246c92`**: `git describe` on prod reads `v0.3.0-1-g7246c92`. Docs-only commits after it need no deploy.
+- `main` is at **`5ad0fcd`** (`v0.4.0`) — the tip of the *rewritten* history (HANDOFF item 31) plus the 2026-09-15 feature batch — and **production is deployed on `5ad0fcd`**. Docs-only commits after it need no deploy.
 - GitHub detects the licence: `gh api repos/sethmills/sethsparts/license` reports **MIT** (path `LICENSE`). **The repo is public** (2026-09-14) — cloneable by anyone, with history purged of the inventory files first (HANDOFF item 31).
-- Tag **`v0.3.0`** is pushed, and GitHub Releases exist for **`v0.1.0`**, **`v0.2.0`** and **`v0.3.0`** (notes taken from the tag annotations — that is the changelog). `releases/latest` returns `v0.3.0`; check it after creating any older release, because GitHub picks "latest" by creation time, not version.
-- `inventory/version.py` says **`0.3.0`**.
-- **829 tests pass**, mutation check **82/82 caught**.
-- Production verified after the v0.3.0 deploy: 1,379 stock rows, 1,221 parts, 74 containers, one user (`seth`). `/login/` returns 200 (the app's own page), `/` redirects to `/login/?next=/`, the new **Flash the LED controller** step renders on `/setup/flash/` and on the setup hub, and the update check reports "You're up to date (0.3.0)" — it had answered HTTP 404 for as long as the repo was private. No errors in the logs.
+- Tag **`v0.4.0`** is pushed, and GitHub Releases exist for **`v0.1.0`** through **`v0.4.0`** (notes taken from the tag annotations — that is the changelog). `releases/latest` returns `v0.4.0`; check it after creating any older release, because GitHub picks "latest" by creation time, not version.
+- `inventory/version.py` says **`0.4.0`**.
+- **992 tests pass**, mutation check **93/93 caught**.
+- Production verified after the v0.4.0 deploy: 1,379 stock rows, 1,221 parts, 74 containers, one user (`seth`). `/login/` returns 200, and the update check reports "You're up to date (0.4.0)". No errors in the logs. The one-click "Upgrade now" host agent (`sethsparts-upgrade.timer`) is installed and active; the Tavily key is set in prod Settings (not `.env`).
 - Pre-deploy DB backups live in `/opt/sethsparts/data/*.bak` — three `pre-deploy` ones, plus a `pre-community` and a `pre-wizard` snapshot.
 - A pre-purge safety copy of the old history and the two local-only inventory files is at `~/work/sethsparts-backup-pre-purge/` on Seth's Mac (`git bundle` + the files).
 

@@ -246,7 +246,7 @@ resolution, stock/builds, bins, LED, labels and the label drivers, intake, the H
 Assistant endpoint, kiosk auth, community crypto/pairing/pins, reference, help, site
 settings, templates). It uses Django's own test database, so it never touches
 `db.sqlite3`. External HTTP — the Pi's LED controller, the label print-bridge and other
-workshops — is mocked, so the whole suite runs offline: **948 tests in about 50 seconds,
+workshops — is mocked, so the whole suite runs offline: **992 tests in about a minute,
 no hardware needed.**
 
 Two deliberate conventions worth knowing before you add tests:
@@ -305,7 +305,9 @@ is unique.
 
 ## Deployment
 
-Production runs on a Hetzner VPS. There's no automation — deploying is:
+Production runs on a Hetzner VPS. Deploying is one-click from the app — Settings →
+"Upgrade now" (backed by the host agent in `deploy/`, a one-time server install) — or
+manually:
 
 ```bash
 git push                                      # from your machine
@@ -374,16 +376,20 @@ key, separate from whatever key you push with.
   Brother QL raster, Dymo raster, or a PNG handed to CUPS. Sent to the printer
   via `label-printer/`. Only the ZPL path has been tested on real hardware;
   the others are written from the manufacturers' manuals and say so in the UI.
-- **Moving-day intake** — `/intake/new-box/` quick-creates a new container
-  with an auto-assigned number and an immediate printable barcode.
-  `/intake/add/` captures a batch of typed/dictated notes about contents (one
-  per line), optionally unassigned to a container until `/intake/queue/` is
-  used to sort them out.
-- **Enrichment queue** (`/enrichment/`) — finds product pages/images/pinouts/
-  datasheets/pricing for parts worth the lookup. Classification is pure local
-  logic (safe to run any time); the actual web research needs a live agent
-  pass (there's a JSON worklist export for that), then the results get
-  imported back through the same page.
+- **Moving-day intake** — `/intake/new-box/` is one screen: create the tote, list its
+  contents (type them or dictate), and print the barcode. `/intake/add/` captures a batch
+  of typed/dictated notes and assigns them to a **location** — a drawer → bin, or a
+  box/tote — with a "＋ Add new location" step that creates and barcodes a cabinet, bin,
+  or tote on the spot. Unassigned notes get sorted out later in `/intake/queue/`.
+- **Enrichment queue** (`/enrichment/`) — finds product pages, pinouts, datasheets and
+  pricing for parts worth the lookup, entirely in-app. DeepSeek enriches
+  category/description/manufacturer, and — with a Tavily key set — **Enrich with DeepSeek**
+  does the full web research: Tavily searches, DeepSeek reads the results and extracts the
+  product page/datasheet/pricing. Also here: **AI scan for candidates** (one DeepSeek call
+  triaging names), **bulk classify** straight from the queue (no click-through), and
+  **flag for enrichment** on any part page. A JSON worklist export/import remains for
+  anyone who prefers to hand research to a separate web-browsing agent. Both keys are
+  pasted under Settings → **Research & AI**.
 - **Community map** (`/community/map/`) — opt in, and your instance appears as an
   anonymous pin at postcode-district level: no name, no address, no inventory. Pins are
   signed, so a workshop can pass on a pin it did not publish without being able to alter
@@ -420,9 +426,11 @@ key, separate from whatever key you push with.
 - **Home Assistant** (`/api/locate/?q=…`) — a machine-to-machine lookup keyed by
   `VOICE_SEARCH_API_KEY`, so an Assist intent can answer "where are the M3 screws?" with
   the drawer or box they're in.
-- **Update check** — the settings page compares `inventory/version.py` against this
-  project's GitHub releases and tags when you press the button. Never during a page
-  render, and it never updates anything by itself; it also tells you when you're current.
+- **Update check & upgrade** — the settings page compares `inventory/version.py` against
+  this project's GitHub releases and tags when you press the button (never during a page
+  render). When a newer version is available, **Upgrade now** runs a supervised host agent
+  that backs up the database, pulls, rebuilds and restarts, then reports the result back
+  on the same page — no SSH.
 - **Kiosk mode** — a Pi touchscreen pointed at `/kiosk-autologin/?token=…`, which mints a
   real session server-side (never the owner's password). See `pi-kiosk/`.
 
