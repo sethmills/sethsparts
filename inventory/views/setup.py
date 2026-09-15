@@ -81,6 +81,14 @@ def setup_hub(request):
         (messages.success if info.ok else messages.error)(request, updates.describe(info))
         return redirect("inventory:setup_hub")
 
+    if request.method == "POST" and request.POST.get("action") == "upgrade_now":
+        try:
+            updates.request_upgrade()
+            messages.success(request, "Upgrade requested — the host applies it within a minute. Refresh to see the result.")
+        except OSError as exc:
+            messages.error(request, f"Couldn't request the upgrade: {exc}")
+        return redirect("inventory:setup_hub")
+
     site = _site()
     return render(
         request,
@@ -94,6 +102,7 @@ def setup_hub(request):
             # an outbound request just because someone opened it.
             update_info=updates.cached_info(),
             update_check_enabled=updates.enabled(),
+            upgrade_result=updates.read_upgrade_result(),
         ),
     )
 
@@ -157,6 +166,7 @@ def setup_site(request):
         unit_system = request.POST.get("unit_system") or "metric"
         theme = request.POST.get("theme") or "precision"
         show_branding = request.POST.get("show_branding") == "on"
+        show_onscreen_keyboard = request.POST.get("show_onscreen_keyboard") == "on"
 
         if not name:
             messages.error(request, "Give your workshop a name — it goes in the header of every page.")
@@ -169,6 +179,7 @@ def setup_site(request):
             site.unit_system = unit_system if unit_system in ("metric", "imperial") else "metric"
             site.theme = theme if theme in ("precision", "warm") else "precision"
             site.show_branding = show_branding
+            site.show_onscreen_keyboard = show_onscreen_keyboard
             site.save()
             messages.success(request, "Saved.")
             return redirect(wizard.next_step_after(wizard.SITE.key).url_name)
@@ -821,3 +832,44 @@ def setup_email(request):
         return redirect(wizard.next_step_after(wizard.EMAIL.key).url_name)
 
     return render(request, "inventory/setup/email.html", _shell(request, wizard.EMAIL))
+
+
+@login_required
+def setup_ai(request):
+    """The AI keys (DeepSeek + Tavily), settings-only and optional.
+
+    Walks through getting each key — the "sign up for a third-party API" part is what
+    people skip, not the typing. A test button verifies both before anyone runs them
+    over hundreds of parts."""
+    site = _site()
+    if request.method == "POST":
+        site.deepseek_api_key = (request.POST.get("deepseek_api_key") or "").strip()
+        site.tavily_api_key = (request.POST.get("tavily_api_key") or "").strip()
+        site.save()
+
+        if request.POST.get("action") == "test":
+            messages.success(request, _test_ai_keys())
+            return redirect("inventory:setup_ai")
+        messages.success(request, "Saved.")
+        return redirect("inventory:setup_ai")
+
+    return render(request, "inventory/setup/ai.html", _shell(request, wizard.AI))
+
+
+def _test_ai_keys() -> str:
+    """One sentence per key: working, failing, or not set."""
+    from .. import enrichment_ai, research
+
+    lines = []
+    if enrichment_ai.is_configured():
+        _, err = enrichment_ai.suggest_enrichment("10k resistor")
+        lines.append("DeepSeek: working." if not err else f"DeepSeek: {err}")
+    else:
+        lines.append("DeepSeek: no key set.")
+
+    if research.is_configured():
+        _, err = research.search_part("10k resistor")
+        lines.append("Tavily: working." if not err else f"Tavily: {err}")
+    else:
+        lines.append("Tavily: not set (needs a Tavily key and a DeepSeek key).")
+    return " · ".join(lines)

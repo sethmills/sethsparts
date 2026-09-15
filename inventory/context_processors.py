@@ -33,6 +33,7 @@ def site_context(request):
         "setup_complete": bool(obj and obj.setup_completed_at),
         "theme": obj.theme if obj and obj.theme else "precision",
         "show_branding": obj.show_branding if obj else True,
+        "show_onscreen_keyboard": obj.show_onscreen_keyboard if obj else True,
         "unread_messages": unread,
         "shopping_list_count": shopping,
         "email_configured": bool(obj and obj.email_enabled and obj.smtp_host and obj.smtp_user and obj.smtp_password),

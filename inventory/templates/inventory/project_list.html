@@ -3,8 +3,29 @@
 {% block content %}
 <div class="card">
   <h1>Projects</h1>
-  <p class="muted">Create/edit projects and their BOM revisions in <a href="/admin/inventory/project/">the admin</a>; this page is for tracking coverage and building.</p>
+  <p class="muted">Create a project here, then track coverage and builds from its own page. BOM revisions (the parts &amp; quantities) are still edited in <a href="/admin/inventory/bomrevision/">the admin</a>.</p>
 </div>
+
+<div class="card">
+  <h2>New project</h2>
+  <form method="post" action="{% url 'inventory:create_project' %}">
+    {% csrf_token %}
+    <label class="muted">Name</label>
+    <p><input type="text" name="name" maxlength="200" required autofocus></p>
+    <label class="muted">Description <span class="muted">(optional)</span></label>
+    <p><textarea name="description" rows="3"></textarea></p>
+    <label class="muted">Status</label>
+    <p>
+      <select name="status">
+        <option value="active">Active</option>
+        <option value="completed">Completed</option>
+        <option value="archived">Archived</option>
+      </select>
+    </p>
+    <p><button class="btn" type="submit">Create project</button></p>
+  </form>
+</div>
+
 {% for p in projects %}
 <div class="card">
   <h2><a href="{% url 'inventory:project_detail' p.pk %}">{{ p.name }}</a> <span class="pill">{{ p.get_status_display }}</span></h2>
@@ -12,6 +33,6 @@
   <p class="muted">{% if p.latest_revision %}Latest: rev {{ p.latest_revision.version }}{% else %}No BOM revision yet{% endif %}</p>
 </div>
 {% empty %}
-<div class="card"><p class="muted">No projects yet — add one in the admin.</p></div>
+<div class="card"><p class="muted">No projects yet — create one above.</p></div>
 {% endfor %}
 {% endblock %}

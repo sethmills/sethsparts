@@ -80,6 +80,12 @@ EMAIL = Step(
     "Get an email when you're messaged, connected to, or searched — so you don't miss things when you're not logged in.",
     "inventory:setup_email",
 )
+AI = Step(
+    "ai",
+    "Research & AI",
+    "Set the AI keys that power enrichment and web research — both optional.",
+    "inventory:setup_ai",
+)
 ACCESS = Step(
     "access",
     "Reaching it from outside",
@@ -91,7 +97,7 @@ FINISH = Step("finish", "Done", "That's everything.", "inventory:setup_finish")
 # Order matters: it is the order the pages are presented in, and the order "what's
 # next" follows. Flashing sits right after Lights because that is the order the physical
 # job happens in: point the app at the controller, then put firmware on the board.
-_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, EMAIL, ACCESS]
+_ALL_STEPS = [ACCOUNT, SITE, LIGHTS, FLASH, PRINTER, REFERENCE, COMMUNITY, EMAIL, AI, ACCESS]
 
 
 def account_exists() -> bool:

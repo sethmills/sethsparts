@@ -24,6 +24,34 @@ def project_list(request):
 
 
 @login_required
+def create_project(request):
+    """Create a project from the Projects page.
+
+    Projects used to be creatable only through /admin/, which sent the owner on an
+    unnecessary detour — the page that exists to browse projects should also be the
+    page that makes them. BOM revisions are left in /admin/ for now: they are the
+    fiddly half (parts, quantities, versioning) and deserve their own page rather
+    than a cramped inline form.
+    """
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        if not name:
+            messages.error(request, "Give the project a name.")
+        else:
+            status = request.POST.get("status") or Project.ACTIVE
+            if status not in dict(Project.STATUS_CHOICES):
+                status = Project.ACTIVE
+            project = Project.objects.create(
+                name=name,
+                description=(request.POST.get("description") or "").strip(),
+                status=status,
+            )
+            messages.success(request, f"Created project “{project.name}”.")
+            return redirect("inventory:project_detail", pk=project.pk)
+    return redirect("inventory:project_list")
+
+
+@login_required
 def project_detail(request, pk):
     project = get_object_or_404(Project, pk=pk)
     revision = project.latest_revision

@@ -1,0 +1,34 @@
+{% extends "inventory/setup/_wizard.html" %}
+{% block title %}Research &amp; AI — {{ site_name }}{% endblock %}
+{% block step_body %}
+<div class="card">
+  <h1>Research &amp; AI</h1>
+  <p class="muted">Two optional keys power the enrichment queue. Leave either blank and its button simply stays hidden — nothing breaks without them.</p>
+
+  <form method="post" style="max-width:640px">
+    {% csrf_token %}
+    <h2>DeepSeek — descriptive enrichment</h2>
+    <p class="muted">Reads a part name and fills in its category, description and manufacturer. Also the brain that reads web results for the research step below.</p>
+    <ol class="muted">
+      <li>Go to <a href="https://platform.deepseek.com" rel="noopener">platform.deepseek.com</a> and sign up.</li>
+      <li>Open <strong>API Keys</strong> and create a key.</li>
+      <li>Paste it below.</li>
+    </ol>
+    <p><input type="password" name="deepseek_api_key" value="{{ site.deepseek_api_key }}" placeholder="sk-…" style="width:100%" autocomplete="off"></p>
+
+    <h2>Tavily — web research</h2>
+    <p class="muted">Lets the queue actually search the web to find product pages, datasheets and pricing. DeepSeek reads the results; Tavily does the searching (DeepSeek can't browse on its own).</p>
+    <ol class="muted">
+      <li>Go to <a href="https://app.tavily.com" rel="noopener">app.tavily.com</a> and sign up — free, 1,000 searches a month, no card.</li>
+      <li>Copy your API key (it starts with <code>tvly-</code>).</li>
+      <li>Paste it below.</li>
+    </ol>
+    <p><input type="password" name="tavily_api_key" value="{{ site.tavily_api_key }}" placeholder="tvly-…" style="width:100%" autocomplete="off"></p>
+
+    <p style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" type="submit" name="action" value="save">Save</button>
+      <button class="btn secondary" type="submit" name="action" value="test">Test both keys</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

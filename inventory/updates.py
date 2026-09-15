@@ -21,11 +21,13 @@ Deliberately modest, in four ways:
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 
 from .version import __version__
 
@@ -172,3 +174,31 @@ def describe(info: UpdateInfo) -> str:
     if info.ok:
         return f"You're up to date ({info.current})."
     return info.error or "Couldn't check for updates."
+
+
+def data_dir() -> str:
+    """The bind-mounted data directory — the parent of MEDIA_ROOT, where the database
+    and media live. In the Docker deploy this is shared with the host, which is what
+    lets the web process hand the host an upgrade request through a file."""
+    return os.path.dirname(settings.MEDIA_ROOT)
+
+
+def request_upgrade() -> str:
+    """Drop the marker the host-side upgrade agent (deploy/upgrade.sh) watches.
+
+    The web process can't git-pull or rebuild its own container, so "Upgrade now"
+    only writes this file; the host applies the upgrade and writes the result back.
+    Returns the marker's path."""
+    path = os.path.join(data_dir(), "upgrade-request")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"requested {timezone.now().isoformat()}\n")
+    return path
+
+
+def read_upgrade_result() -> str:
+    """The host agent's last upgrade result, or '' if it has not run yet."""
+    try:
+        with open(os.path.join(data_dir(), "upgrade-result"), encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""

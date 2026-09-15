@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for a requested sethsparts upgrade every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=sethsparts-upgrade.service
+
+[Install]
+WantedBy=timers.target

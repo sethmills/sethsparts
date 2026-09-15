@@ -13,15 +13,12 @@ Routes:
                           -- independent of screen size/touch capability, so
                           it keeps working correctly across display swaps and
                           never shows those buttons on someone's phone.
-  POST /exit-browser   -- kill kiosk Chromium, revealing the desktop
-                          underneath (pcmanfm-pi/wf-panel-pi keep running
-                          regardless -- only the kiosk browser is fullscreen
-                          over them). A desktop shortcut relaunches it
-                          (see ../sethsparts-kiosk.desktop).
-
-(The on-screen keyboard toggle that used to live here was removed -- squeekboard's
-overlay never rendered above kiosk Chromium's fullscreen surface anyway, a wlroots
-z-ordering quirk with fullscreen apps, and Seth has a physical keyboard now.)
+  POST /toggle-keyboard -- toggle the on-screen keyboard (squeekboard) on/off.
+                          Opt-in from the app's Settings; the page only shows the
+                          button when the owner has turned it on. Caveat: on some
+                          Pi compositors squeekboard's overlay will not render above
+                          a fullscreen Chromium surface -- if the button appears to
+                          do nothing, that z-ordering quirk (not this service) is why.
 """
 import subprocess
 import threading
@@ -36,6 +33,16 @@ def _kill_chromium_soon():
     # before the process serving the page disappears.
     time.sleep(0.3)
     subprocess.run(["pkill", "-f", "chromium"], capture_output=True)
+
+
+def _toggle_keyboard():
+    # squeekboard is the on-screen keyboard on Raspberry Pi OS (Wayland). Toggle it:
+    # start it if it isn't running, stop it if it is.
+    running = subprocess.run(["pgrep", "-f", "squeekboard"], capture_output=True).returncode == 0
+    if running:
+        subprocess.run(["pkill", "-f", "squeekboard"], capture_output=True)
+    else:
+        subprocess.Popen(["squeekboard"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -60,6 +67,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/exit-browser":
             self._respond(200)
             threading.Thread(target=_kill_chromium_soon, daemon=True).start()
+            return
+
+        if self.path == "/toggle-keyboard":
+            self._respond(200)
+            threading.Thread(target=_toggle_keyboard, daemon=True).start()
             return
 
         self._respond(404)

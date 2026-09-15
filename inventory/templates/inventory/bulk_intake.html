@@ -3,15 +3,22 @@
 {% block content %}
 <div class="card">
   <h1>Add items</h1>
-  <p class="muted">One item per line — type or dictate a whole batch at once, then either pick a box now or leave it unassigned and sort that out later from the <a href="{% url 'inventory:intake_queue' %}">intake queue</a>.</p>
+  <p class="muted">One item per line — type or dictate a whole batch at once, then either pick a location now or leave it unassigned and sort that out later from the <a href="{% url 'inventory:intake_queue' %}">intake queue</a>.</p>
 
   <form method="post" id="bulk-intake-form">
     {% csrf_token %}
     <input type="hidden" name="source" id="note-source" value="typed">
-    <label class="muted">Box (optional)</label>
-    <p>
-      <select name="container">
-        <option value="">— decide later —</option>
+    <label class="muted">Location (optional)</label>
+    <p style="display:flex;gap:8px;flex-wrap:wrap">
+      <select name="location_drawer" id="location-drawer">
+        <option value="">— drawer —</option>
+        {% for d in drawers %}<option value="{{ d.pk }}">#{{ d.container.number }} / {{ d.label }}</option>{% endfor %}
+      </select>
+      <select name="location_bin" id="location-bin">
+        <option value="">— bin —</option>
+      </select>
+      <select name="container" id="location-box">
+        <option value="">— box / tote —</option>
         {% for c in containers %}<option value="{{ c.pk }}">#{{ c.number }} ({{ c.container_type }})</option>{% endfor %}
       </select>
     </p>
@@ -23,67 +30,98 @@
       <span class="muted" id="dictate-status"></span>
     </p>
   </form>
+
+  <details class="card" style="margin-top:12px">
+    <summary>＋ Add new location</summary>
+    <form method="post" action="{% url 'inventory:add_intake_location' %}" style="margin-top:12px">
+      {% csrf_token %}
+      <label class="muted"><input type="checkbox" name="has_bins" id="new-has-bins"> This location will have bins inside it (a cabinet)</label>
+      <div id="new-location-fields" style="margin-top:10px">
+        <label class="muted">Kind</label>
+        <p>
+          <select name="kind" id="new-kind">
+            <option value="bin">Bin (inside a drawer)</option>
+            <option value="tote">Tote / box</option>
+          </select>
+        </p>
+        <div id="new-bin-fields">
+          <label class="muted">Drawer</label>
+          <p>
+            <select name="drawer">
+              <option value="">— drawer —</option>
+              {% for d in drawers %}<option value="{{ d.pk }}">#{{ d.container.number }} / {{ d.label }}</option>{% endfor %}
+            </select>
+          </p>
+          <label class="muted">Bin number (1–16)</label>
+          <p><input type="number" name="bin_number" min="1" max="16" value="1"></p>
+        </div>
+        <div id="new-tote-fields" style="display:none">
+          <label class="muted">Tote type</label>
+          <p><input type="text" name="tote_type" value="tote"></p>
+        </div>
+      </div>
+      <label class="muted">Barcode</label>
+      <p>
+        <select name="barcode_action" id="new-barcode-action">
+          <option value="generate">Generate &amp; print a new one</option>
+          <option value="scan">Scan an existing label</option>
+        </select>
+      </p>
+      <div id="new-scan-field" style="display:none">
+        <label class="muted">Barcode code</label>
+        <p><input type="text" name="code" placeholder="scan or type the barcode"></p>
+      </div>
+      <p><button class="btn secondary" type="submit">Create location</button></p>
+    </form>
+  </details>
 </div>
 
 <script>
 (function () {
-  const btn = document.getElementById('dictate-btn');
-  const textEl = document.getElementById('bulk-text');
-  const sourceEl = document.getElementById('note-source');
-  const statusEl = document.getElementById('dictate-status');
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const hasBins = document.getElementById('new-has-bins');
+  const fields = document.getElementById('new-location-fields');
+  const kind = document.getElementById('new-kind');
+  const binFields = document.getElementById('new-bin-fields');
+  const toteFields = document.getElementById('new-tote-fields');
+  const barcodeAction = document.getElementById('new-barcode-action');
+  const scanField = document.getElementById('new-scan-field');
 
-  if (!SpeechRecognition) {
-    btn.disabled = true;
-    statusEl.textContent = 'Voice dictation isn\'t supported in this browser — type items instead.';
-    return;
-  }
-
-  let recognition = null;
-  let listening = false;
-
-  btn.addEventListener('click', function () {
-    if (listening) {
-      recognition.stop();
-      return;
+  function sync() {
+    if (hasBins.checked) {
+      fields.style.display = 'none';
+    } else {
+      fields.style.display = '';
+      const isBin = kind.value === 'bin';
+      binFields.style.display = isBin ? '' : 'none';
+      toteFields.style.display = isBin ? 'none' : '';
     }
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    scanField.style.display = barcodeAction.value === 'scan' ? '' : 'none';
+  }
+  hasBins.addEventListener('change', sync);
+  kind.addEventListener('change', sync);
+  barcodeAction.addEventListener('change', sync);
+  sync();
+})();
+</script>
 
-    let finalText = textEl.value;
-    let interimLine = '';
+<script>
+(function () {
+  const drawerEl = document.getElementById('location-drawer');
+  const binEl = document.getElementById('location-bin');
+  const binsByDrawer = {};
+  {% for b in bins %}
+  (binsByDrawer[{{ b.drawer_id }}] = binsByDrawer[{{ b.drawer_id }}] || []).push({pk: {{ b.pk }}, label: 'bin {{ b.bin_number }}'});
+  {% endfor %}
 
-    recognition.onstart = function () {
-      listening = true;
-      btn.textContent = '⏹ Stop';
-      statusEl.textContent = 'Listening — pause briefly between items so each becomes its own line…';
-    };
-    recognition.onresult = function (event) {
-      interimLine = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          const sep = finalText && !finalText.endsWith('\n') ? '\n' : '';
-          finalText += sep + event.results[i][0].transcript.trim();
-        } else {
-          interimLine += event.results[i][0].transcript;
-        }
-      }
-      textEl.value = finalText + (interimLine ? '\n' + interimLine : '');
-      sourceEl.value = 'voice';
-    };
-    recognition.onerror = function (event) {
-      statusEl.textContent = 'Dictation error: ' + event.error;
-    };
-    recognition.onend = function () {
-      listening = false;
-      btn.textContent = '🎙 Dictate';
-      statusEl.textContent = '';
-      textEl.value = finalText;
-    };
-    recognition.start();
+  drawerEl.addEventListener('change', function () {
+    let opts = '<option value="">— bin —</option>';
+    (binsByDrawer[drawerEl.value] || []).forEach(function (b) {
+      opts += '<option value="' + b.pk + '">' + b.label + '</option>';
+    });
+    binEl.innerHTML = opts;
   });
 })();
 </script>
+
+{% include "inventory/_dictate.html" %}
 {% endblock %}

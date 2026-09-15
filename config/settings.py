@@ -184,6 +184,11 @@ VOICE_SEARCH_API_KEY = os.environ.get("VOICE_SEARCH_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat"
 
+# Web search for the in-app enrichment "research" step. DeepSeek's chat API can't
+# browse on its own, so Tavily does the searching and DeepSeek reads the results.
+# Empty means research is off and enrichment falls back to descriptive-only suggestions.
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+
 # LED "find the part" indicator controller (Phase 8 backlog item — the Pi host doesn't exist
 # yet). Empty URL means the locate button just reports "not configured" instead of erroring.
 LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")

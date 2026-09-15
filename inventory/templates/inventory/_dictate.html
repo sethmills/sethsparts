@@ -1,0 +1,61 @@
+<script>
+(function () {
+  const btn = document.getElementById('dictate-btn');
+  const textEl = document.getElementById('bulk-text');
+  const sourceEl = document.getElementById('note-source');
+  const statusEl = document.getElementById('dictate-status');
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    btn.disabled = true;
+    statusEl.textContent = 'Voice dictation isn\'t supported in this browser — type items instead.';
+    return;
+  }
+
+  let recognition = null;
+  let listening = false;
+
+  btn.addEventListener('click', function () {
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalText = textEl.value;
+    let interimLine = '';
+
+    recognition.onstart = function () {
+      listening = true;
+      btn.textContent = '⏹ Stop';
+      statusEl.textContent = 'Listening — pause briefly between items so each becomes its own line…';
+    };
+    recognition.onresult = function (event) {
+      interimLine = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const sep = finalText && !finalText.endsWith('\n') ? '\n' : '';
+          finalText += sep + event.results[i][0].transcript.trim();
+        } else {
+          interimLine += event.results[i][0].transcript;
+        }
+      }
+      textEl.value = finalText + (interimLine ? '\n' + interimLine : '');
+      sourceEl.value = 'voice';
+    };
+    recognition.onerror = function (event) {
+      statusEl.textContent = 'Dictation error: ' + event.error;
+    };
+    recognition.onend = function () {
+      listening = false;
+      btn.textContent = '🎙 Dictate';
+      statusEl.textContent = '';
+      textEl.value = finalText;
+    };
+    recognition.start();
+  });
+})();
+</script>

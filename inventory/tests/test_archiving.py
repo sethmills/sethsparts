@@ -307,3 +307,52 @@ class AttachmentArchivingTests(TestCase):
         result = archiving.archive_attachment(attachment)
         self.assertFalse(result.ok)
         self.assertIn("No source link", result.error)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ArchiveAllReferenceCommandTests(TestCase):
+    """The bulk command the setup page's five-at-a-time button points at."""
+
+    def setUp(self):
+        self.category = ReferenceCategory.objects.create(name="Shelf", key="shelf")
+        self.a = ReferenceDoc.objects.create(title="A", category=self.category, external_url="https://example.test/a.pdf")
+        self.b = ReferenceDoc.objects.create(title="B", category=self.category, external_url="https://example.test/b.pdf")
+        self.already = ReferenceDoc.objects.create(
+            title="C", category=self.category, external_url="https://example.test/c.pdf", file="reference/2026/c.pdf"
+        )
+        self.no_link = ReferenceDoc.objects.create(title="D", category=self.category)
+
+    def _call(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("archive_all_reference", *args, stdout=out)
+        return out.getvalue()
+
+    def test_archives_only_docs_that_need_it(self):
+        patcher = mock.patch("requests.get", return_value=FakeResponse())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        self._call()
+
+        self.a.refresh_from_db()
+        self.b.refresh_from_db()
+        self.assertTrue(self.a.file)
+        self.assertTrue(self.b.file)
+
+        # A doc that already has a copy, and one with no link, are left alone.
+        self.already.refresh_from_db()
+        self.assertEqual(self.already.file, "reference/2026/c.pdf")
+
+    def test_dry_run_reports_without_fetching(self):
+        patcher = mock.patch("requests.get")
+        fake = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        output = self._call("--dry-run")
+
+        self.assertIn("2 reference document(s)", output)
+        fake.assert_not_called()

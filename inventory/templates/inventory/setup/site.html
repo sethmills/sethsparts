@@ -20,6 +20,11 @@
     </p>
 
     <p>
+      <label><input type="checkbox" name="show_onscreen_keyboard" {% if site.show_onscreen_keyboard %}checked{% endif %}> <strong>Show the on-screen keyboard button on the Pi</strong></label><br>
+      <span class="muted">A ⌨ button appears in the header only on the shop's Pi kiosk. Untick if that Pi has a physical keyboard.</span>
+    </p>
+
+    <p>
       <label for="timezone"><strong>Which timezone are you in?</strong></label><br>
       <select id="timezone" name="timezone" style="width:100%">
         {% for zone in timezones %}

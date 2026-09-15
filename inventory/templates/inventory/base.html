@@ -36,6 +36,7 @@
     <button type="button" class="btn secondary pi-only" onclick="history.back()" title="Go back">← Back</button>
     <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg> Home</a>
     <button type="button" class="btn secondary pi-only" onclick="if (confirm('Close the browser and show the desktop?')) { fetch('http://127.0.0.1:9091/exit-browser', {method: 'POST', mode: 'no-cors'}).catch(function(){}) }" title="Close the browser and show the Pi's desktop"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg> Desktop</button>
+    {% if show_onscreen_keyboard %}<button type="button" class="btn secondary pi-only" onclick="fetch('http://127.0.0.1:9091/toggle-keyboard', {method: 'POST', mode: 'no-cors'}).catch(function(){})" title="Show or hide the on-screen keyboard">⌨ Keyboard</button>{% endif %}
     <nav>
       <a href="{% url 'inventory:browse' %}">Browse</a>
       <a href="{% url 'inventory:scan' %}">Scan</a>

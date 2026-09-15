@@ -3,10 +3,12 @@ import os
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
+from .. import enrichment_ai, research
 from ..site_config import site_name
 from ..models import (
+    Category,
     Part,
 )
 
@@ -35,6 +37,7 @@ def enrichment_queue(request):
         "inventory/enrichment_queue.html",
         {
             "status_counts": status_counts,
+            "status_choices": Part.ENRICHMENT_CHOICES,
             "pending": pending,
             "needs_review": needs_review,
             "needs_clarification": needs_clarification,
@@ -102,6 +105,168 @@ def import_enrichment_results(request):
             messages.error(request, f"Import failed: {exc}")
         finally:
             os.unlink(tmp_path)
+    return redirect("inventory:enrichment_queue")
+
+
+# --- In-app enrichment (DeepSeek) ---------------------------------------------
+# The export/import path above was built for a web-browsing agent (Claude) that can
+# actually find product pages and datasheets. The integrated DeepSeek chat model can't
+# browse, but it *can* enrich the descriptive fields and triage candidates in one shot
+# — so that part runs in-app, and the export worklist stays for anyone who wants a
+# real product-page hunt.
+
+def _apply_suggestion(part, suggestion):
+    """Apply a DeepSeek suggestion to a part. A suggestion with a category and at least
+    one other fact is applied as done; a thin one is flagged for review rather than
+    trusted blindly."""
+    if not suggestion:
+        return
+    if suggestion.get("category"):
+        category, _ = Category.objects.get_or_create(name=suggestion["category"])
+        part.category = category
+        if category.name.lower() == "electronics":
+            part.is_electronic = True
+    if suggestion.get("description"):
+        part.description = suggestion["description"]
+    if suggestion.get("manufacturer"):
+        part.manufacturer = suggestion["manufacturer"]
+    confident = bool(suggestion.get("category") and (suggestion.get("description") or suggestion.get("manufacturer")))
+    part.enrichment_status = Part.ENRICHMENT_DONE if confident else Part.ENRICHMENT_NEEDS_REVIEW
+    part.save(update_fields=["category", "description", "manufacturer", "is_electronic", "enrichment_status"])
+
+
+def _apply_research(part, data):
+    """Apply web-research findings to a part: the descriptive fields plus the product
+    and datasheet URLs the search actually surfaced."""
+    if data.get("category"):
+        category, _ = Category.objects.get_or_create(name=data["category"])
+        part.category = category
+        if category.name.lower() == "electronics":
+            part.is_electronic = True
+    if data.get("description"):
+        part.description = data["description"]
+    if data.get("manufacturer"):
+        part.manufacturer = data["manufacturer"]
+    if data.get("product_url"):
+        part.reorder_url = data["product_url"]
+    if data.get("datasheet_url"):
+        part.datasheet_url = data["datasheet_url"]
+    confident = data.get("confidence") == "high" and bool(data.get("product_url") or data.get("manufacturer"))
+    part.enrichment_status = Part.ENRICHMENT_DONE if confident else Part.ENRICHMENT_NEEDS_REVIEW
+    part.save(
+        update_fields=["category", "description", "manufacturer", "is_electronic", "reorder_url", "datasheet_url", "enrichment_status"]
+    )
+
+
+@login_required
+def flag_part_for_enrichment(request, pk):
+    part = get_object_or_404(Part, pk=pk)
+    if request.method == "POST":
+        part.enrichment_status = Part.ENRICHMENT_PENDING
+        part.save(update_fields=["enrichment_status"])
+        messages.success(request, f"Flagged “{part.name}” for enrichment.")
+    return redirect("inventory:part_detail", pk=part.pk)
+
+
+@login_required
+def bulk_classify(request):
+    """Reclassify many parts straight from the queue — no clicking into each one.
+
+    One POST carries `status_<pk> = <status>` pairs from the inline dropdowns."""
+    if request.method == "POST":
+        valid = dict(Part.ENRICHMENT_CHOICES)
+        changed = 0
+        for key, value in request.POST.items():
+            if not key.startswith("status_") or value not in valid:
+                continue
+            pk = key[len("status_"):]
+            changed += Part.objects.filter(pk=pk).update(enrichment_status=value)
+        messages.success(request, f"Updated {changed} part{'s' if changed != 1 else ''}.")
+    return redirect("inventory:enrichment_queue")
+
+
+@login_required
+def enrich_pending_with_ai(request):
+    """Run enrichment over every pending part, in-app, and apply it — the
+    export-to-Claude loop replaced with one click. When a search key is configured it
+    does the full web research (product page, datasheet, description); otherwise it
+    falls back to descriptive-only suggestions."""
+    if request.method != "POST":
+        return redirect("inventory:enrichment_queue")
+    if not enrichment_ai.is_configured():
+        messages.error(request, "DeepSeek isn't configured — set your key under Settings → Research & AI.")
+        return redirect("inventory:enrichment_queue")
+
+    use_research = research.is_configured()
+    parts = Part.objects.filter(enrichment_status=Part.ENRICHMENT_PENDING).select_related("category")
+    enriched = review = failed = 0
+    for part in parts:
+        if use_research:
+            data, error = research.research_part(
+                part.name, part.category.name if part.category else None, part.description, part.manufacturer
+            )
+            if error:
+                failed += 1
+                continue
+            _apply_research(part, data)
+        else:
+            suggestion, error = enrichment_ai.suggest_enrichment(
+                part.name, part.category.name if part.category else None, part.description, part.manufacturer
+            )
+            if error:
+                failed += 1
+                continue
+            _apply_suggestion(part, suggestion)
+
+        if part.enrichment_status == Part.ENRICHMENT_DONE:
+            enriched += 1
+        else:
+            review += 1
+
+    mode = "researched" if use_research else "enriched"
+    messages.success(
+        request,
+        f"{mode.capitalize()} {enriched} part(s), flagged {review} for review, {failed} failed, of {parts.count()} pending.",
+    )
+    return redirect("inventory:enrichment_queue")
+
+
+@login_required
+def ai_scan_candidates(request):
+    """One DeepSeek pass over every not-yet-enriched part to flag candidates — the
+    AI-driven version of the local keyword classify. Cost-controlled: one model call
+    per chunk of names, and triggered by hand, never on a schedule."""
+    if request.method != "POST":
+        return redirect("inventory:enrichment_queue")
+    if not enrichment_ai.is_configured():
+        messages.error(request, "DeepSeek isn't configured — set DEEPSEEK_API_KEY.")
+        return redirect("inventory:enrichment_queue")
+
+    names = list(Part.objects.filter(enrichment_status=Part.ENRICHMENT_NOT_NEEDED).values_list("name", flat=True))
+    status_map = {
+        "pending": Part.ENRICHMENT_PENDING,
+        "needs_clarification": Part.ENRICHMENT_NEEDS_CLARIFICATION,
+        "not_needed": Part.ENRICHMENT_NOT_NEEDED,
+    }
+    pending = clarification = 0
+    for i in range(0, len(names), 100):
+        chunk = names[i : i + 100]
+        result, error = enrichment_ai.ai_classify_candidates(chunk)
+        if error:
+            messages.error(request, error)
+            return redirect("inventory:enrichment_queue")
+        for part in Part.objects.filter(enrichment_status=Part.ENRICHMENT_NOT_NEEDED, name__in=chunk):
+            new_status = status_map[result.get(part.name, "not_needed")]
+            if new_status == Part.ENRICHMENT_NOT_NEEDED:
+                continue
+            part.enrichment_status = new_status
+            part.save(update_fields=["enrichment_status"])
+            if new_status == Part.ENRICHMENT_PENDING:
+                pending += 1
+            else:
+                clarification += 1
+
+    messages.success(request, f"AI scan done: flagged {pending} candidate(s) and {clarification} for clarification.")
     return redirect("inventory:enrichment_queue")
 
 

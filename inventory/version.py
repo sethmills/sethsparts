@@ -13,4 +13,4 @@ version exists; a bump without the tag tells them they are current while the rep
 has moved on.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

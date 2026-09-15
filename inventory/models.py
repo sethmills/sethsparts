@@ -464,16 +464,26 @@ class IntakeNote(models.Model):
     queued for Seth to review later and turn into real Part/StockItem entries. Deliberately
     not auto-parsed into structured data; this is just fast capture during a move.
 
-    container is nullable so bulk intake can capture a list of items before deciding where
-    they'll live — "add now, assign a space later" — not just one-at-a-time on an
-    already-chosen container's own page."""
+    A note records *one* location, at the finest granularity known: a specific bin, a
+    drawer, or a box/tote. The three fields are mutually exclusive at the leaf — pick a
+    bin and the drawer is implied; pick a box and there is no drawer. `location` resolves
+    the leaf so callers never have to remember the precedence."""
 
     VOICE = "voice"
     TYPED = "typed"
     SOURCE_CHOICES = [(VOICE, "Voice"), (TYPED, "Typed")]
 
     container = models.ForeignKey(
-        Container, null=True, blank=True, on_delete=models.CASCADE, related_name="intake_notes"
+        Container, null=True, blank=True, on_delete=models.CASCADE, related_name="intake_notes",
+        help_text="The box/tote this was captured against — the moving-day case.",
+    )
+    drawer = models.ForeignKey(
+        Drawer, null=True, blank=True, on_delete=models.CASCADE, related_name="intake_notes",
+        help_text="The cabinet drawer this belongs in, when it has a permanent home.",
+    )
+    bin = models.ForeignKey(
+        Bin, null=True, blank=True, on_delete=models.CASCADE, related_name="intake_notes",
+        help_text="The specific bin within a drawer, when known.",
     )
     text = models.TextField()
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=TYPED)
@@ -483,8 +493,16 @@ class IntakeNote(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    @property
+    def location(self):
+        """The most specific location this note was captured against, or None."""
+        return self.bin or self.drawer or self.container
+
+    def location_summary(self) -> str:
+        return str(self.location) if self.location else "unassigned"
+
     def __str__(self):
-        where = self.container if self.container else "(unassigned)"
+        where = self.location or "(unassigned)"
         return f"{where}: {self.text[:50]}"
 
 
@@ -979,6 +997,21 @@ class SiteSettings(models.Model):
     show_branding = models.BooleanField(
         default=True,
         help_text='Show the sethsparts brand ("Seth\'s Parts") above the shop name in the header. Untick to show only your own name.',
+    )
+    show_onscreen_keyboard = models.BooleanField(
+        default=True,
+        help_text="Show the on-screen keyboard button on the Pi kiosk. Untick if the workshop has a physical keyboard.",
+    )
+    # AI enrichment keys. Settable from Settings (like SMTP) so a non-technical owner
+    # never has to edit .env and restart Docker; the env var is the fallback for people
+    # who deploy with Docker and prefer to keep secrets out of the database.
+    deepseek_api_key = models.CharField(
+        max_length=200, blank=True, help_text="DeepSeek API key for the enrichment suggestions."
+    )
+    tavily_api_key = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Tavily API key for the web-research step (product pages, datasheets, pricing).",
     )
     timezone = models.CharField(
         max_length=64,

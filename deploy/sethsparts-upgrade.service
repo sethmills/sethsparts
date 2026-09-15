@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply a requested sethsparts upgrade (web "Upgrade now")
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sethsparts
+ExecStart=/opt/sethsparts/deploy/upgrade.sh

@@ -3,9 +3,10 @@
 {% block content %}
 <div class="card">
   <h1>New moving box</h1>
-  <p class="muted">Creates the next container number and prints its barcode right away — stick it on the box, then add a photo or dictate its contents from the container's own page whenever you get to it.</p>
+  <p class="muted">Creates the next box number and prints its barcode right away. List its contents now — type them one per line, or dictate — then slap the label on and move on.</p>
   <form method="post">
     {% csrf_token %}
+    <input type="hidden" name="source" id="note-source" value="typed">
     <label class="muted">Type</label>
     <p>
       <input type="text" name="container_type" list="container-types" value="black tote" autocomplete="off">
@@ -20,7 +21,14 @@
         {% for loc in locations %}<option value="{{ loc.pk }}">{{ loc.name }}</option>{% endfor %}
       </select>
     </p>
-    <button class="btn" type="submit">Create &amp; print barcode →</button>
+    <label class="muted">Contents, one per line <span class="muted">(optional)</span></label>
+    <p><textarea name="text" id="bulk-text" rows="6" placeholder="3 phillips screwdrivers&#10;a roll of blue painter's tape"></textarea></p>
+    <p>
+      <button class="btn" type="submit">Create &amp; print barcode →</button>
+      <button type="button" class="btn secondary" id="dictate-btn">🎙 Dictate</button>
+      <span class="muted" id="dictate-status"></span>
+    </p>
   </form>
 </div>
+{% include "inventory/_dictate.html" %}
 {% endblock %}

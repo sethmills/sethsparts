@@ -7,9 +7,9 @@ out where things live later.
 from django.test import TestCase
 from django.urls import reverse
 
-from inventory.models import Container, IntakeNote
+from inventory.models import Bin, Container, IntakeNote
 
-from .factories import make_container, make_user
+from .factories import make_bin, make_container, make_drawer, make_user
 
 
 class BulkIntakeTests(TestCase):
@@ -77,6 +77,62 @@ class BulkIntakeTests(TestCase):
     def test_notes_start_unreviewed(self):
         self.client.post(self.url, {"text": "One"})
         self.assertFalse(IntakeNote.objects.get().reviewed)
+
+
+class BulkIntakeLocationTests(TestCase):
+    """The location field accepts a bin, a drawer, or a box/tote — one leaf per note."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = make_user()
+        cls.container = make_container(number=1)
+        cls.drawer = make_drawer(cls.container, label="drawer 1")
+        cls.bin = make_bin(cls.drawer, bin_number=3)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("inventory:bulk_intake")
+
+    def test_note_can_be_assigned_to_a_drawer(self):
+        self.client.post(self.url, {"text": "Thing", "location_drawer": self.drawer.pk})
+        note = IntakeNote.objects.get()
+        self.assertEqual(note.drawer, self.drawer)
+        self.assertIsNone(note.bin)
+        self.assertIsNone(note.container)
+
+    def test_note_can_be_assigned_to_a_bin(self):
+        self.client.post(self.url, {"text": "Thing", "location_bin": self.bin.pk})
+        note = IntakeNote.objects.get()
+        self.assertEqual(note.bin, self.bin)
+
+    def test_bin_takes_precedence_over_drawer_and_container(self):
+        self.client.post(
+            self.url,
+            {"text": "Thing", "location_bin": self.bin.pk, "location_drawer": self.drawer.pk, "container": self.container.pk},
+        )
+        note = IntakeNote.objects.get()
+        self.assertEqual(note.bin, self.bin)
+        self.assertIsNone(note.drawer)
+        self.assertIsNone(note.container)
+
+    def test_drawer_takes_precedence_over_container(self):
+        self.client.post(self.url, {"text": "Thing", "location_drawer": self.drawer.pk, "container": self.container.pk})
+        note = IntakeNote.objects.get()
+        self.assertEqual(note.drawer, self.drawer)
+        self.assertIsNone(note.container)
+
+    def test_location_summary_reports_the_leaf(self):
+        IntakeNote.objects.create(text="A", container=self.container)
+        IntakeNote.objects.create(text="B", drawer=self.drawer)
+        IntakeNote.objects.create(text="C", bin=self.bin)
+        summaries = {n.text: n.location_summary() for n in IntakeNote.objects.all()}
+        self.assertEqual(summaries["A"], str(self.container))
+        self.assertEqual(summaries["B"], str(self.drawer))
+        self.assertEqual(summaries["C"], str(self.bin))
+
+    def test_unassigned_location_summary(self):
+        note = IntakeNote.objects.create(text="Loose")
+        self.assertEqual(note.location_summary(), "unassigned")
 
 
 class IntakeQueueTests(TestCase):
@@ -191,3 +247,70 @@ class QuickAddContainerTests(TestCase):
     def test_quick_add_accepts_a_free_text_type(self):
         self.client.post(reverse("inventory:quick_add_container"), {"container_type": "garage shelf"})
         self.assertEqual(Container.objects.get(number=1).container_type, "garage shelf")
+
+    def test_quick_add_captures_contents_as_notes_on_the_new_container(self):
+        self.client.post(
+            reverse("inventory:quick_add_container"), {"container_type": "black tote", "text": "One\nTwo\n\nThree"}
+        )
+        container = Container.objects.get(number=1)
+        self.assertEqual(sorted(container.intake_notes.values_list("text", flat=True)), ["One", "Three", "Two"])
+
+    def test_quick_add_accepts_dictated_contents(self):
+        self.client.post(reverse("inventory:quick_add_container"), {"text": "Spoken", "source": IntakeNote.VOICE})
+        self.assertEqual(IntakeNote.objects.get().source, IntakeNote.VOICE)
+
+
+class AddIntakeLocationTests(TestCase):
+    """Creating a location on the spot — cabinet, tote, or bin, each barcoded."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = make_user()
+        cls.drawer = make_drawer(make_container(number=1), label="drawer 1")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("inventory:add_intake_location")
+
+    def test_cabinet_is_created_and_printed(self):
+        resp = self.client.post(self.url, {"has_bins": "on"})
+        cabinet = Container.objects.order_by("-number").first()
+        self.assertEqual(cabinet.container_type, "cabinets")
+        self.assertEqual(cabinet.barcode_id, f"C{cabinet.number}")
+        self.assertRedirects(resp, reverse("inventory:print_labels") + f"?ids=c{cabinet.pk}")
+
+    def test_tote_is_created_and_printed(self):
+        resp = self.client.post(self.url, {"kind": "tote", "tote_type": "blue tote"})
+        tote = Container.objects.get(container_type="blue tote")
+        self.assertEqual(tote.barcode_id, f"C{tote.number}")
+        self.assertRedirects(resp, reverse("inventory:print_labels") + f"?ids=c{tote.pk}")
+
+    def test_bin_generate_creates_and_prints(self):
+        resp = self.client.post(
+            self.url, {"kind": "bin", "drawer": self.drawer.pk, "bin_number": 5, "barcode_action": "generate"}
+        )
+        bin_obj = Bin.objects.get(drawer=self.drawer, bin_number=5)
+        self.assertTrue(bin_obj.barcode_id)
+        self.assertRedirects(resp, reverse("inventory:print_labels") + f"?ids=b{bin_obj.pk}")
+
+    def test_bin_scan_links_an_existing_code(self):
+        resp = self.client.post(
+            self.url, {"kind": "bin", "drawer": self.drawer.pk, "bin_number": 2, "barcode_action": "scan", "code": "PHYS123"}
+        )
+        bin_obj = Bin.objects.get(drawer=self.drawer, bin_number=2)
+        self.assertEqual(bin_obj.barcode_id, "PHYS123")
+        self.assertRedirects(resp, reverse("inventory:bulk_intake"))
+
+    def test_bin_number_is_clamped_to_the_16_bin_grid(self):
+        self.client.post(
+            self.url, {"kind": "bin", "drawer": self.drawer.pk, "bin_number": 99, "barcode_action": "generate"}
+        )
+        self.assertTrue(Bin.objects.filter(drawer=self.drawer, bin_number=16).exists())
+        self.assertFalse(Bin.objects.filter(drawer=self.drawer, bin_number=99).exists())
+
+    def test_scan_conflict_is_rejected(self):
+        Bin.objects.create(drawer=self.drawer, bin_number=1, barcode_id="TAKEN")
+        self.client.post(
+            self.url, {"kind": "bin", "drawer": self.drawer.pk, "bin_number": 3, "barcode_action": "scan", "code": "TAKEN"}
+        )
+        self.assertIsNone(Bin.objects.get(drawer=self.drawer, bin_number=3).barcode_id)

@@ -61,6 +61,17 @@ def setup_is_complete() -> bool:
     return bool(obj and obj.setup_completed_at)
 
 
+def ai_api_key(env_value: str, site_field: str) -> str:
+    """Resolve an AI key: the value saved in Settings if present, else the env var.
+
+    Lets an owner paste keys from the web (like SMTP) while still honouring the
+    Docker/env-var path for people who prefer to keep secrets out of the database.
+    """
+    obj = get_site_settings()
+    saved = getattr(obj, site_field, "") if obj else ""
+    return (saved or env_value or "").strip()
+
+
 def apply_site_branding(obj=None) -> str:
     """Push the chosen name into the admin.
 

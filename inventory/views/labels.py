@@ -9,6 +9,7 @@ from django.urls import reverse
 from .. import hardware_config
 from ..label_drivers import get_driver
 from ..models import (
+    Bin,
     Container,
     Drawer,
 )
@@ -54,21 +55,26 @@ def generate_and_print_labels(request):
 @login_required
 def print_labels(request):
     ids_param = request.GET.get("ids", "")
-    container_ids, drawer_ids = [], []
+    container_ids, drawer_ids, bin_ids = [], [], []
     for token in ids_param.split(","):
         if token.startswith("c"):
             container_ids.append(token[1:])
         elif token.startswith("d"):
             drawer_ids.append(token[1:])
+        elif token.startswith("b"):
+            bin_ids.append(token[1:])
 
     containers = Container.objects.filter(pk__in=container_ids)
     drawers = Drawer.objects.filter(pk__in=drawer_ids).select_related("container")
+    bins = Bin.objects.filter(pk__in=bin_ids).select_related("drawer", "drawer__container")
 
     labels_data = []
     for c in containers:
         labels_data.append({"title": f"Container #{c.number}", "subtitle": c.container_type, "code": c.barcode_id})
     for d in drawers:
         labels_data.append({"title": str(d), "subtitle": "", "code": d.barcode_id})
+    for b in bins:
+        labels_data.append({"title": str(b), "subtitle": "", "code": b.barcode_id})
 
     return render(request, "inventory/print_labels.html", {"labels_data": labels_data})
 

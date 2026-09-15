@@ -52,6 +52,18 @@
       Not checked yet.
     {% endif %}
   </p>
+  {% if update_info.update_available %}
+  <form method="post" style="margin-top:10px">{% csrf_token %}
+    <button class="btn" type="submit" name="action" value="upgrade_now">Upgrade now</button>
+    <span class="muted"> — backs up, pulls the latest, rebuilds and restarts. Takes a minute or two.</span>
+  </form>
+  {% endif %}
+  {% if upgrade_result %}
+  <div class="msg-info" style="margin-top:10px">
+    <p><strong>Last upgrade result</strong></p>
+    <pre style="white-space:pre-wrap">{{ upgrade_result }}</pre>
+  </div>
+  {% endif %}
   {% if update_check_enabled %}
     <form method="post">{% csrf_token %}
       <button class="btn secondary" type="submit" name="action" value="check_updates">Check for updates</button>

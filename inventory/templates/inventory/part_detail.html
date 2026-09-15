@@ -11,6 +11,12 @@
   {% if part.reorder_url %}<p><a href="{{ part.reorder_url }}">Buy / product page →</a></p>{% endif %}
   {% if part.datasheet_url %}<p><a href="{{ part.datasheet_url }}">Datasheet →</a></p>{% endif %}
   {% if part.min_quantity %}<p class="muted">Reorder threshold: {{ part.min_quantity }}</p>{% endif %}
+  {% if part.enrichment_status != "pending" %}
+  <form method="post" action="{% url 'inventory:flag_part_for_enrichment' part.pk %}" style="margin-top:8px">
+    {% csrf_token %}
+    <button class="btn secondary btn-sm" type="submit">Flag for enrichment</button>
+  </form>
+  {% endif %}
 </div>
 
 {% if enrichment_configured %}
