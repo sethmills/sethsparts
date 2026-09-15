@@ -17,7 +17,7 @@ Read `README.md` first (repo layout, local dev, deploy, feature tour), then this
 - **Pi kiosk display:** boots straight into a kiosk Chromium pointed at `https://sethsparts.com/kiosk-autologin/?token=...`, which mints a real session server-side (never Seth's actual password) — see `pi-kiosk/README.md` for the full autostart chain. The on-screen keyboard is an opt-in Settings toggle (`show_onscreen_keyboard`) showing a ⌨ button wired to `/toggle-keyboard` in the kiosk helper; note the fullscreen z-ordering caveat in that helper's docstring — Seth uses a physical keyboard.
 - **Parts-review workbook:** kept locally as `docs/parts_review.xlsx` and **not committed** (gitignored — this repo is public and that file is this workshop's inventory). Regenerated via `scripts/export_parts_review.py --merge <path-to-prior-export>`, which merges in whatever has already been typed into the "fill in" columns by Part ID, so re-running never clobbers progress. The clarification worklist beside it (`docs/clarification_workstream.md`) is local for the same reason.
 - **Hardware bridges, all verified working live:** LED locate (row/column readout, see item 19 below), Zebra label printing (item 18), kiosk auto-login. If something in one of these areas seems broken, check the relevant systemd service on the Pi and its Cloudflare Tunnel hostname before assuming it's a code bug — most past issues here were connectivity/config, not logic.
-- **Test suite:** `./venv/bin/python manage.py test inventory` — 992 tests, ~60s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 93 deliberate breakages, currently 93/93 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
+- **Test suite:** `./venv/bin/python manage.py test inventory` — 1004 tests, ~60s, fully offline (external HTTP mocked, no hardware needed). Also `./venv/bin/python scripts/mutation_check.py` — 94 deliberate breakages, currently 94/94 caught; it has to stay at 100% before a deploy. See "Tests" in `README.md`, and item 21 below.
 
 ## Backlog — requested this session, not yet built
 
@@ -1050,6 +1050,18 @@ One batch closing out every item Seth listed for the "finished place" milestone,
 **Archive.** Added `archive_all_reference` (the setup page only does 5 at a time). Ran it on prod: **13 of 15 archived**, 2 failed on raspberrypi.com HTTP 403s (bot-walled, correctly left as links).
 
 **Verified:** 992 tests (140 new), 93/93 mutations (three anchors re-pointed for the wizard + `is_configured()` refactor). Shipped: commit `5ad0fcd`, tag `v0.4.0`, migrations 0031/0032/0033 applied on prod, host timer enabled, all feature markers render on prod, update check reports "You're up to date (0.4.0)". Tavily key set in prod Settings (not `.env`) and verified with a live search.
+
+### 34. In-app feedback — ✅ built (2026-09-15)
+
+A built-in bug-report / feature-request channel so beta users can send feedback to the maintainer with **zero config** — no email linking, works out of the box. Shipped as `v0.5.0`.
+
+**Feedback form** (`/feedback/`, a persistent **Feedback** nav item, moved out of the More menu at Seth's request). Kind (bug/feature/other), title, details, auto-attaching the page URL, instance name and app version. Three delivery routes, in order: `FEEDBACK_URL` (a relay endpoint) → local `feedback_email` via SMTP → copy-to-clipboard. A beta install needs only `FEEDBACK_URL` in its `.env`; if the relay is down the form falls back to copy-to-clipboard instead of failing. This is the answer to "if they don't link email it won't work" — the maintainer sets the URL once, the user configures nothing.
+
+**Relay endpoint** (`POST /api/feedback/`, public + CSRF-exempt by design — it's machine-to-machine from other installs). Accepts another instance's JSON payload and emails the maintainer (`feedback_email` → `notify_email`). Optionally gated by `FEEDBACK_KEY` — the shared secret is the only thing between a public endpoint and a spam pipe into the maintainer's inbox. `feedback_email` is a new `SiteSettings` field (migration 0034), settable on the email settings page.
+
+**Plumbing.** `notifications.send()` gained an optional `to=` override (the feedback path passes the maintainer's address explicitly). `FEEDBACK_URL`/`FEEDBACK_KEY` env vars added to `config/settings.py`, `.env.example`, `docker-compose.yml`. `docs/AGENT_SETUP.md`'s two v0.4.0-stale bits fixed: the export→Claude enrichment loop is now the in-app flow, and the "parts research needs to search the web" section now explains the app does research in-app while the assistant still wants web search for general setup.
+
+**Verified:** 1004 tests (12 new), 94/94 mutations caught (added a mutation guarding the relay key check). Deploy: `feedback_email` + `FEEDBACK_KEY` set on prod; beta installs get `FEEDBACK_URL`/`FEEDBACK_KEY` in their `.env` via the guided install.
 
 ### Backlog / discussed, not built
 

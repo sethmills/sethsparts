@@ -1,0 +1,34 @@
+{% extends "inventory/base.html" %}
+{% block title %}Send feedback — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Send feedback</h1>
+  <p class="muted">Found a bug, hit an error, or want a feature? Tell the maintainer here — it goes straight to them with the version and the page you were on.</p>
+
+  {% if fallback_text %}
+  <div class="msg-error">
+    <p>Your message couldn't be sent automatically. Copy it and send it to the maintainer another way:</p>
+    <pre style="white-space:pre-wrap">{{ fallback_text }}</pre>
+  </div>
+  {% endif %}
+
+  <form method="post" style="max-width:640px">
+    {% csrf_token %}
+    <input type="hidden" name="page" id="feedback-page">
+    <label class="muted">What is it?</label>
+    <p>
+      <select name="kind">
+        <option value="bug">Bug — something's broken</option>
+        <option value="feature">Feature request</option>
+        <option value="other">Other feedback</option>
+      </select>
+    </p>
+    <label class="muted">Title</label>
+    <p><input type="text" name="title" maxlength="200" placeholder="Short summary"></p>
+    <label class="muted">Details</label>
+    <p><textarea name="message" rows="6" placeholder="What happened, what you expected, and what you were doing when it went wrong."></textarea></p>
+    <p><button class="btn" type="submit">Send feedback</button></p>
+  </form>
+</div>
+<script>document.getElementById('feedback-page').value = window.location.href;</script>
+{% endblock %}

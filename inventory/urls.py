@@ -100,6 +100,8 @@ urlpatterns = [
     path("setup/finish/", views.setup_finish, name="setup_finish"),
     path("help/", views.help_index, name="help_index"),
     path("help/<slug:slug>/", views.help_topic, name="help_topic"),
+    path("feedback/", views.feedback, name="feedback"),
+    path("api/feedback/", views.api_feedback, name="api_feedback"),
     path("reference/", views.reference_list, name="reference_list"),
     # The library is the owner's to arrange, so it gets real editing pages rather than
     # living only in /admin/.

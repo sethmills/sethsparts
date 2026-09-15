@@ -1124,6 +1124,11 @@ class SiteSettings(models.Model):
     notify_email = models.CharField(
         max_length=200, blank=True, help_text="Where notifications go. Defaults to the From: address."
     )
+    feedback_email = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Where in-app feedback (bug reports, feature requests) is sent. Blank means the feedback form offers copy-to-clipboard instead of sending.",
+    )
     notify_on_message = models.BooleanField(default=False)
     notify_on_connection = models.BooleanField(default=False)
     notify_on_search = models.BooleanField(default=False)

@@ -46,6 +46,10 @@
       <label class="muted">Notify me at<br><input name="notify_email" value="{{ site.notify_email }}" placeholder="you@gmail.com"></label>
       <br><span class="muted">Where the emails go. Leave blank to use the address above.</span>
     </p>
+    <p>
+      <label class="muted">In-app feedback goes to<br><input name="feedback_email" value="{{ site.feedback_email }}" placeholder="maintainer@example.com"></label>
+      <br><span class="muted">Where "Send feedback" emails (bug reports, feature requests) are sent. Leave blank and that form offers copy-to-clipboard instead.</span>
+    </p>
     <p><label><input type="checkbox" name="smtp_use_tls" value="1" {% if site.smtp_use_tls %}checked{% endif %}> Use STARTTLS</label> <span class="muted">— leave on; almost every provider requires it.</span></p>
 
     <h3>Email me about…</h3>

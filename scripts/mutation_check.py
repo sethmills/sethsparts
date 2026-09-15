@@ -706,6 +706,17 @@ MUTATIONS = [
         "def is_configured():\n    return True",
         "inventory.tests.test_enrichment_ai",
     ),
+    # --- feedback relay --------------------------------------------------------
+    # The relay endpoint is public by design, so the only thing standing between it
+    # and a spam pipe into the maintainer's inbox is the shared-secret check. Remove
+    # that and any caller can fire emails at them.
+    (
+        "Feedback relay accepts any key (a public endpoint spams the maintainer)",
+        PKG / "help.py",
+        "    if expected_key and payload.get(\"key\") != expected_key:",
+        "    if False:",
+        "inventory.tests.test_feedback",
+    ),
 ]
 
 

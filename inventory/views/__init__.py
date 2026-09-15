@@ -139,6 +139,8 @@ from .community import (
 from .help import (
     help_index,
     help_topic,
+    feedback,
+    api_feedback,
 )
 from .setup import (
     setup_hub,
@@ -290,6 +292,8 @@ __all__ = [
     "api_community_messages",
     "help_index",
     "help_topic",
+    "feedback",
+    "api_feedback",
     "reference_list",
     "reference_manage",
     "reference_add",

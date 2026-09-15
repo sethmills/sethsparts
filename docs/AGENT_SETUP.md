@@ -114,13 +114,11 @@ Do these in order:
 5. Help me get my inventory in, then help me enrich it:
    - Import first (the README covers the import command, or use the app's own intake pages for
      a small amount of stuff).
-   - Then the enrichment queue at /enrichment/ — it finds the parts worth looking up (product
-     pages, datasheets, pinouts, images, prices). Export the JSON worklist from that page, then
-     research the parts on the web and write the results back in the same JSON shape. I'll
-     import it back through the same page, or you can:
-         docker compose exec sethsparts python manage.py ingest_enrichment <file.json>
-     Run it with --dry-run first, and run `manage.py classify_enrichment_queue --dry-run`
-     before changing anything.
+   - Then set the AI keys under Settings → "Research & AI" — a DeepSeek key (descriptive
+     enrichment) and a Tavily key (web research that finds product pages/datasheets/pricing).
+     The enrichment queue at /enrichment/ then does it all in-app: "AI scan for candidates"
+     flags the parts worth looking up, and "Enrich with DeepSeek" fills them in — no exporting
+     and re-importing files back and forth. Ask me to paste each key; don't print them back to me.
 
 6. When we're done, write down what you did and anything you had to work out the hard way, so
    the next conversation doesn't start from scratch. If you learned something specific to this
@@ -134,16 +132,18 @@ setup help costs **cents**, and a large parts-research pass costs a few dollars.
 <https://api-docs.deepseek.com/quick_start/pricing/> — and since it's prepaid, your balance is
 the hard limit.
 
-## If the parts research needs to search the web
+## If the assistant needs to search the web
 
-DeepSeek supplies the thinking, not the searching. Web search is a separate tool, and two things
-give it to you:
+DeepSeek supplies the thinking, not the searching. The app's own parts research now happens
+in-app (it has its own Tavily key, set under Settings → "Research & AI"), but the assistant
+still wants web search for general setup work — reading docs, checking hardware, troubleshooting.
+Two things give it that:
 
 - **Sign in with Nous Portal** — run `hermes setup --portal` (or take the sign-in offer during
   first launch). One sign-in covers a model *and* the tool gateway, web search included. This is
   the simplest option; you can still keep DeepSeek as the default model for everything it does.
 - **A search API key** — Tavily, Exa and Brave all have free tiers. Ask the assistant to add one
-  for you when you get to the enrichment step.
+  for you the first time it needs to look something up online.
 
 Without either, the assistant can still open pages in a real browser on your machine and read
 them — it's just slower than having a search tool.

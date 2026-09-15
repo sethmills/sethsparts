@@ -816,6 +816,7 @@ def setup_email(request):
         site.smtp_use_tls = bool(request.POST.get("smtp_use_tls"))
         site.email_from = (request.POST.get("email_from") or "").strip()
         site.notify_email = (request.POST.get("notify_email") or "").strip()
+        site.feedback_email = (request.POST.get("feedback_email") or "").strip()
         site.notify_on_message = bool(request.POST.get("notify_on_message"))
         site.notify_on_connection = bool(request.POST.get("notify_on_connection"))
         site.notify_on_search = bool(request.POST.get("notify_on_search"))

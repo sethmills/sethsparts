@@ -37,6 +37,11 @@ services:
       # Optional -- web search for the in-app enrichment "research" step (Tavily).
       # Leave unset in .env and the queue falls back to descriptive-only enrichment.
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      # Optional -- in-app feedback relay. FEEDBACK_URL is where the feedback form POSTs
+      # (a maintainer's /api/feedback/ endpoint); FEEDBACK_KEY is the shared secret it
+      # checks. Leave unset and the form falls back to a local email or copy-to-clipboard.
+      - FEEDBACK_URL=${FEEDBACK_URL:-}
+      - FEEDBACK_KEY=${FEEDBACK_KEY:-}
 
   # Cloudflare Tunnel -- optional, and OFF unless you ask for it.
   #

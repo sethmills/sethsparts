@@ -29,14 +29,17 @@ def is_configured() -> bool:
     return bool(s and s.email_enabled and s.smtp_host and s.smtp_user and s.smtp_password)
 
 
-def send(subject, body) -> tuple[bool, str]:
+def send(subject, body, to=None) -> tuple[bool, str]:
     """Send one plain-text email. Returns `(sent, error)` so the settings page's test
-    button can show what went wrong; the notification path ignores the result."""
+    button can show what went wrong; the notification path ignores the result.
+
+    `to` overrides the recipient — the notification path always uses notify_email, but
+    a caller like the feedback form passes the maintainer's address explicitly."""
     s = get_site_settings()
     if not (s and s.email_enabled and s.smtp_host and s.smtp_user and s.smtp_password):
         return False, "Email is not configured yet."
 
-    to = (s.notify_email or s.email_from or s.smtp_user).strip()
+    to = (to or s.notify_email or s.email_from or s.smtp_user).strip()
     from_ = (s.email_from or s.smtp_user).strip()
 
     message = MIMEText(body, "plain", "utf-8")

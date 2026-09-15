@@ -189,6 +189,12 @@ DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-
 # Empty means research is off and enrichment falls back to descriptive-only suggestions.
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 
+# In-app feedback: where the feedback form POSTs (a relay endpoint the maintainer runs),
+# and the shared secret that endpoint checks. Both empty means the form falls back to a
+# local email address or copy-to-clipboard — nothing breaks, it just can't reach anyone.
+FEEDBACK_URL = os.environ.get("FEEDBACK_URL", "")
+FEEDBACK_KEY = os.environ.get("FEEDBACK_KEY", "")
+
 # LED "find the part" indicator controller (Phase 8 backlog item — the Pi host doesn't exist
 # yet). Empty URL means the locate button just reports "not configured" instead of erroring.
 LED_CONTROLLER_URL = os.environ.get("LED_CONTROLLER_URL", "")
