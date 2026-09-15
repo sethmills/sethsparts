@@ -96,7 +96,7 @@ def custom_label(request):
     send it straight to the Zebra GK420T via the Pi's print-bridge. Deliberately stateless —
     nothing here is saved, this is for "I just need a quick label right now," not cataloged
     inventory labels (those are /labels/)."""
-    from . import label_printing
+    from .. import label_printing
 
     if request.method == "POST":
         values = {

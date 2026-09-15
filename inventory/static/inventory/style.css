@@ -395,21 +395,18 @@ html.pi-kiosk .pi-only { display: inline-flex; }
   }
   header.topbar nav a:hover { background: var(--panel-raised); border: none; }
 
-  /* Flatten the "More" dropdown into the sidebar: drop the toggle and force the
-     menu open. A closed <details> hides its non-summary content, so the menu is
-     shown explicitly whether or not the details is open. */
-  .nav-more { position: static; display: block; }
-  .nav-more > summary { display: none; }
-  .nav-more .nav-more-menu,
-  .nav-more:not([open]) .nav-more-menu {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+  /* Keep "More" as a native <details> dropdown in the sidebar. Forcing a closed
+     <details> open with CSS is unreliable across browsers (the content is hidden
+     via the shadow slot, not a plain display:none), so the toggle stays clickable
+     everywhere and the menu drops down as it always has. */
+  .nav-more { position: relative; }
+  .nav-more summary {
+    border-radius: var(--radius-sm);
     background: none;
     border: none;
-    box-shadow: none;
-    padding: 0;
+    padding: 9px 12px;
+    width: 100%;
   }
-  .nav-more .nav-more-menu a { color: var(--muted); }
+  .nav-more summary:hover, .nav-more[open] summary { background: var(--panel-raised); }
+  .nav-more .nav-more-menu { left: 0; right: auto; }
 }
