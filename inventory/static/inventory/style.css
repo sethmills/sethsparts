@@ -115,8 +115,17 @@ header.topbar .brand-credit {
   color: var(--muted);
 }
 header.topbar .brand-apos {
-  color: var(--accent);
-  text-shadow: 0 0 8px var(--accent);
+  color: #6fc6e8;
+  text-shadow: 0 0 4px currentColor, 0 0 9px currentColor;
+  animation: brand-apos-cycle 9s linear infinite, brand-apos-breathe 3.4s ease-in-out infinite;
+}
+@keyframes brand-apos-cycle {
+  0% { color: #6fc6e8; } 16% { color: #8a86f0; } 33% { color: #c58ae8; }
+  50% { color: #e87f9a; } 66% { color: #e0b45a; } 83% { color: #7fdcb0; } 100% { color: #6fc6e8; }
+}
+@keyframes brand-apos-breathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
 }
 header.topbar .brand-tagline {
   font-family: "Space Grotesk", "Inter", sans-serif;
@@ -145,7 +154,7 @@ header.topbar .brand-owner {
 }
 @keyframes brand-dot-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
 @media (prefers-reduced-motion: reduce) {
-  .brand-dot, .brand-dot-glow { animation: none; }
+  .brand-dot, .brand-dot-glow, .brand-apos { animation: none; }
   .brand-dot-glow { opacity: 0.55; }
 }
 
