@@ -67,6 +67,13 @@
 </div>
 
 <div class="card">
+  <h2>Your data</h2>
+  <p><a href="{% url 'inventory:import_csv' %}">Import inventory</a> — <span class="muted">bring parts in from a CSV.</span></p>
+  <p><a href="{% url 'inventory:export_csv' %}">Export inventory</a> — <span class="muted">a spreadsheet of every part and where it lives.</span></p>
+  <p><a href="{% url 'inventory:export_inventory' %}">Backup</a> — <span class="muted">a full zip of the database and photos.</span></p>
+</div>
+
+<div class="card">
   <h2>Other things worth knowing</h2>
   <p><a href="{% url 'inventory:setup_email' %}">Email notifications</a> — <span class="muted">get an email when you get a message, a connection, or a search.</span></p>
   <p><a href="{% url 'inventory:reference_manage' %}">Reference library</a> — <span class="muted">add, edit or remove the charts and pinouts the app keeps for you.</span></p>

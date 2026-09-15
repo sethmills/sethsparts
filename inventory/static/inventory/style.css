@@ -98,12 +98,14 @@ header.topbar nav a {
 }
 header.topbar nav a:hover { color: var(--text); background: #2a2f3a; border-color: var(--muted); text-decoration: none; }
 
-/* "More" nav overflow -- a plain <details> (no JS needed) holding the less-used
-   links, always available everywhere but especially worth collapsing on the
-   Pi kiosk where 11 top-level links is too much for an 800px-wide screen. */
+/* "More" nav overflow -- a CSS-only checkbox toggle (no JS, no <details>, so it
+   behaves identically in every browser) holding the less-used links. */
 .nav-more { position: relative; }
-.nav-more summary {
-  list-style: none;
+.nav-more-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.nav-more-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
   color: var(--muted);
   font-size: 0.9rem;
@@ -112,11 +114,12 @@ header.topbar nav a:hover { color: var(--text); background: #2a2f3a; border-colo
   border-radius: 999px;
   background: var(--panel-raised);
   border: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
 }
-.nav-more summary::-webkit-details-marker { display: none; }
-.nav-more summary:hover { color: var(--text); background: #2a2f3a; border-color: var(--muted); }
-.nav-more[open] summary { color: var(--text); background: #2a2f3a; }
-.nav-more .nav-more-menu {
+.nav-more-summary:hover { color: var(--text); background: #2a2f3a; border-color: var(--muted); }
+.nav-more-input:checked ~ .nav-more-summary { color: var(--text); background: #2a2f3a; }
+.nav-more-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -126,11 +129,12 @@ header.topbar nav a:hover { color: var(--text); background: #2a2f3a; border-colo
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   padding: 6px;
-  display: flex;
+  display: none;
   flex-direction: column;
   min-width: 160px;
 }
-.nav-more .nav-more-menu a {
+.nav-more-input:checked ~ .nav-more-menu { display: flex; }
+.nav-more-menu a {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--text);
@@ -138,7 +142,7 @@ header.topbar nav a:hover { color: var(--text); background: #2a2f3a; border-colo
   border: none;
   white-space: nowrap;
 }
-.nav-more .nav-more-menu a:hover { background: var(--panel); text-decoration: none; }
+.nav-more-menu a:hover { background: var(--panel); text-decoration: none; }
 
 /* Inline SVG icons (replacing emoji) align with their surrounding text and match
    the button/nav line height. The brand logo already sets its own size via
@@ -219,8 +223,8 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
 
 /* "Log out" sits in the More menu alongside links, so it has to look like one while
    still being a button (it posts a form -- see base.html). */
-.nav-more .nav-more-menu form { margin: 0; display: flex; }
-.nav-more .nav-more-menu button {
+.nav-more-menu form { margin: 0; display: flex; }
+.nav-more-menu button {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--text);
@@ -232,7 +236,7 @@ html.pi-kiosk .btn-sm { padding: 11px 18px; font-size: 1rem; min-height: 48px; }
   cursor: pointer;
   white-space: nowrap;
 }
-.nav-more .nav-more-menu button:hover { background: var(--panel); }
+.nav-more-menu button:hover { background: var(--panel); }
 
 /* One card per "where it lives" location on the part page -- replaces a wide
    table whose cells crammed several small buttons together on one side. */
@@ -395,18 +399,20 @@ html.pi-kiosk .pi-only { display: inline-flex; }
   }
   header.topbar nav a:hover { background: var(--panel-raised); border: none; }
 
-  /* Keep "More" as a native <details> dropdown in the sidebar. Forcing a closed
-     <details> open with CSS is unreliable across browsers (the content is hidden
-     via the shadow slot, not a plain display:none), so the toggle stays clickable
-     everywhere and the menu drops down as it always has. */
-  .nav-more { position: relative; }
-  .nav-more summary {
-    border-radius: var(--radius-sm);
+  /* In the sidebar there's room for everything, so hide the "More" toggle and
+     list the secondary links directly below the primary ones. */
+  .nav-more { position: static; }
+  .nav-more-input, .nav-more-summary { display: none; }
+  .nav-more-menu {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     background: none;
     border: none;
-    padding: 9px 12px;
-    width: 100%;
+    box-shadow: none;
+    padding: 0;
   }
-  .nav-more summary:hover, .nav-more[open] summary { background: var(--panel-raised); }
-  .nav-more .nav-more-menu { left: 0; right: auto; }
+  .nav-more-menu a { padding: 9px 12px; color: var(--muted); }
+  .nav-more-menu a:hover { background: var(--panel-raised); }
 }
