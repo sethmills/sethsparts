@@ -8,7 +8,7 @@
 {% endif %}
 <div class="card">
   <h1>Connections</h1>
-  <p class="muted">Other workshops running this app. Connecting lets you see each other on the community map and, if you choose, search each other's parts. There's no central server — your instance asks the workshops you're connected to, and they pass on what they know.</p>
+  <p class="muted">Other workshops running this app. Connecting lets you see each other on the community map and, if you choose, search each other's parts. There's no central server — your shop asks the workshops you're connected to, and they pass on what they know.</p>
   <p class="muted">
     Your address for others to reach you: <code>{{ my_url }}</code>
     {% if not has_location %}
@@ -108,7 +108,7 @@
 
 <div class="card">
   <h2>Turning it all off</h2>
-  <p class="muted">Untick <em>map pins</em> on everyone and remove your district, and this instance is invisible — no pin, no map, no connection requests. Turning sharing off per person is the same idea one level down.</p>
+  <p class="muted">Untick <em>map pins</em> on everyone and remove your district, and this shop is invisible — no pin, no map, no connection requests. Turning sharing off per person is the same idea one level down.</p>
   <p><a class="btn secondary" href="{% url 'inventory:setup_community' %}">Community settings →</a></p>
 </div>
 {% endblock %}

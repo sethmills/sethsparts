@@ -11,15 +11,27 @@
 <body>
   <header class="topbar no-print">
     <a class="brand" href="{% url 'inventory:browse' %}">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg class="brand-mark" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <filter id="brand-glow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="1.4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
         <rect x="2.5" y="2.5" width="19" height="19" rx="3" stroke="currentColor" stroke-width="1.6"/>
         <line x1="2.5" y1="9.5" x2="21.5" y2="9.5" stroke="currentColor" stroke-width="1.6"/>
         <line x1="2.5" y1="16" x2="21.5" y2="16" stroke="currentColor" stroke-width="1.6"/>
         <line x1="6" y1="6" x2="9" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         <line x1="6" y1="12.75" x2="9" y2="12.75" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         <line x1="6" y1="19.25" x2="9" y2="19.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle class="brand-dot-glow" cx="18" cy="6.5" r="2.7" filter="url(#brand-glow)"/>
+        <circle class="brand-dot" cx="18" cy="6.5" r="1.4"/>
       </svg>
-      {{ site_name }}
+      <span class="brand-text">
+        {% if show_branding %}<span class="brand-credit">Seth<span class="brand-apos">'</span>s&nbsp;Parts</span>{% endif %}
+        <span class="brand-tagline">Workshop&nbsp;Inventory</span>
+        <span class="brand-owner">{{ site_name }}</span>
+      </span>
     </a>
     <button type="button" class="btn secondary pi-only" onclick="history.back()" title="Go back">← Back</button>
     <a class="btn secondary pi-only" href="{% url 'inventory:browse' %}" title="Go to Browse"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg> Home</a>

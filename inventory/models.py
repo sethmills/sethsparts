@@ -976,6 +976,10 @@ class SiteSettings(models.Model):
         default="My Parts",
         help_text="Shown in the header, every page title, and the admin.",
     )
+    show_branding = models.BooleanField(
+        default=True,
+        help_text='Show the sethsparts brand ("Seth\'s Parts") above the shop name in the header. Untick to show only your own name.',
+    )
     timezone = models.CharField(
         max_length=64,
         default="UTC",

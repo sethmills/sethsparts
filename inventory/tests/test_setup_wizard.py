@@ -140,6 +140,19 @@ class SiteStepTests(WizardFlowTestCase):
         self.assertEqual(site.country, "US", "country is normalised to upper case")
         self.assertEqual(site.unit_system, "imperial")
 
+    def test_the_brand_toggle_is_saved(self):
+        self.client.post(
+            reverse("inventory:setup_site"),
+            {"site_name": "X", "timezone": "UTC", "show_branding": "on"},
+        )
+        self.assertTrue(SiteSettings.load().show_branding)
+
+        self.client.post(
+            reverse("inventory:setup_site"),
+            {"site_name": "X", "timezone": "UTC"},
+        )
+        self.assertFalse(SiteSettings.load().show_branding)
+
     def test_an_unknown_timezone_is_refused(self):
         """Saving "Mars/Olympus_Mons" would render every timestamp wrong with no clue
         why — and the middleware would simply fall back and hide the mistake."""

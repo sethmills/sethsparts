@@ -26,15 +26,15 @@
 
 <div class="card">
   <h2>There is no central server</h2>
-  <p>Nothing about the community feature lives on a server anyone runs on your behalf. Your instance asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know — but only when you ask it to: the button on the map, or <code>manage.py sync_community_pins</code> on a timer. Simply opening the map contacts nobody.</p>
+  <p>Nothing about the community feature lives on a server anyone runs on your behalf. Your shop asks the workshops you're connected to whether they know anyone nearby, and they pass on what they know — but only when you ask it to: the button on the map, or <code>manage.py sync_community_pins</code> on a timer. Simply opening the map contacts nobody.</p>
   <p>Pins are signed by whoever published them, which is what lets a workshop pass one on without being able to move it, rename it, or invent one that isn't theirs.</p>
   <p>That's why one connection is enough to start seeing a map, and why connecting to any other workshop keeps it working if one goes away.</p>
-  <p class="muted">Every install starts connected to the app's maintainer, so a brand-new instance has somewhere to ask. That connection is pins only, and you can remove it.</p>
+  <p class="muted">Every install starts connected to the app's maintainer, so a brand-new shop has somewhere to ask. That connection is pins only, and you can remove it.</p>
 </div>
 
 <div class="card">
   <h2>Turning it off, properly off</h2>
-  <p>Untick <em>show my workshop as a pin</em> and the pin goes. What gets published afterwards is a signed “I'm gone” note, which every instance that sees it deletes rather than keeps — so an opt-out genuinely removes the data rather than hiding it.</p>
+  <p>Untick <em>show my workshop as a pin</em> and the pin goes. What gets published afterwards is a signed “I'm gone” note, which every shop that sees it deletes rather than keeps — so an opt-out genuinely removes the data rather than hiding it.</p>
   <p>Revoke a connection and it stops being asked anything, immediately.</p>
   <p class="muted">This is the reason the app signs entries instead of using a blockchain. An append-only ledger cannot honour “delete my data” — the entry would survive on every node forever, which is the opposite of what an opt-out has to mean.</p>
 </div>

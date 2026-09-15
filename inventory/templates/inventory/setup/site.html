@@ -8,10 +8,15 @@
   <form method="post" style="max-width:560px">
     {% csrf_token %}
     <p>
-      <label for="site_name"><strong>What's your workshop called?</strong></label><br>
+      <label for="site_name"><strong>What's your shop called?</strong></label><br>
       <input id="site_name" name="site_name" required value="{{ site.site_name }}"
              style="width:100%">
-      <br><span class="muted">Shown in the header, every page title and the admin. “Eric's Parts”, “The Shed”, whatever you'd call it.</span>
+      <br><span class="muted">Shown in the header, every page title and the admin. “Eric's Shop”, “The Shed”, whatever you'd call it.</span>
+    </p>
+
+    <p>
+      <label><input type="checkbox" name="show_branding" {% if site.show_branding %}checked{% endif %}> <strong>Show the sethsparts brand</strong></label><br>
+      <span class="muted">Adds “Seth's Parts” to the header above your shop name. Untick to show only your own name — handy if you run this for someone else.</span>
     </p>
 
     <p>

@@ -160,7 +160,8 @@ class AdminLoginTests(TestCase):
         from its own settings -- so this asserts the template, not the wording."""
         response = self.client.get("/admin/login/")
         self.assertTemplateUsed(response, "admin/login.html")
-        self.assertContains(response, "/static/admin/css/login.css")
+        # Filenames are content-hashed, so assert the path without the ".css".
+        self.assertContains(response, "/static/admin/css/login")
 
 
 class VirginInstallTests(TestCase):

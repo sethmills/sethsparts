@@ -84,6 +84,71 @@ header.topbar .brand {
 header.topbar .brand:hover { text-decoration: none; opacity: 0.85; }
 header.topbar .brand svg { flex: none; display: block; }
 
+/* Brand logo lockup */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/space-grotesk-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/space-grotesk-700.woff2") format("woff2");
+}
+
+header.topbar .brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.12;
+  min-width: 0;
+}
+header.topbar .brand-credit {
+  font-family: "Space Grotesk", "Inter", -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+header.topbar .brand-apos {
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent);
+}
+header.topbar .brand-tagline {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-weight: 600;
+  font-size: 7.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.75;
+}
+header.topbar .brand-owner {
+  font-family: "Space Grotesk", "Inter", -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-top: 3px;
+}
+
+/* The flashing locate dot on the drawer mark */
+.brand-dot, .brand-dot-glow { animation: brand-dot-cycle 9s linear infinite; }
+.brand-dot-glow { animation: brand-dot-cycle 9s linear infinite, brand-dot-breathe 3.4s ease-in-out infinite; }
+@keyframes brand-dot-cycle {
+  0% { fill: #6fc6e8; } 16% { fill: #8a86f0; } 33% { fill: #c58ae8; }
+  50% { fill: #e87f9a; } 66% { fill: #e0b45a; } 83% { fill: #7fdcb0; } 100% { fill: #6fc6e8; }
+}
+@keyframes brand-dot-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+@media (prefers-reduced-motion: reduce) {
+  .brand-dot, .brand-dot-glow { animation: none; }
+  .brand-dot-glow { opacity: 0.55; }
+}
+
 header.topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 header.topbar nav a {
   color: var(--muted);
