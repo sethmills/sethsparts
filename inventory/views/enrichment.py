@@ -1,8 +1,6 @@
 """The enrichment queue, inventory export, and the resistor decoder."""
-import os
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .. import enrichment_ai, research
@@ -15,12 +13,9 @@ from ..models import (
 
 
 # --- Enrichment queue ---------------------------------------------------------
-# The actual research (finding a product page, pinout, datasheet, price) needs a live
-# agent making real web requests -- nothing the deployed app can run unattended for
-# free on a schedule. What *is* buildable and safe to trigger from here: reclassifying
-# candidates (pure DB logic), exporting a worklist for that research pass, and
-# importing the finished results -- so the only manual step is asking Claude to
-# process the exported file, not SSHing in to run management commands by hand.
+# Enrichment is all in-app: local keyword classification, a DeepSeek triage pass, and
+# DeepSeek + Tavily research (product page, datasheet, price) all run from the queue —
+# no export/import round-trip, no external agent.
 
 @login_required
 def enrichment_queue(request):
@@ -58,62 +53,10 @@ def run_enrichment_classification(request):
     return redirect("inventory:enrichment_queue")
 
 
-@login_required
-def export_enrichment_worklist(request):
-    """A JSON list of pending parts for a research pass to work from -- id + whatever's
-    already known, so the research doesn't start from nothing. Not the same shape
-    ingest_enrichment expects back (that's the *output* of research); this is the input."""
-    parts = Part.objects.filter(enrichment_status=Part.ENRICHMENT_PENDING).select_related("category")
-    worklist = [
-        {
-            "id": part.id,
-            "name": part.name,
-            "category": part.category.name if part.category else None,
-            "manufacturer": part.manufacturer,
-            "description": part.description,
-        }
-        for part in parts
-    ]
-    response = JsonResponse(worklist, safe=False, json_dumps_params={"indent": 2})
-    response["Content-Disposition"] = "attachment; filename=enrichment_worklist.json"
-    return response
-
-
-@login_required
-def import_enrichment_results(request):
-    if request.method == "POST":
-        upload = request.FILES.get("results_file")
-        if not upload:
-            messages.error(request, "No file received.")
-            return redirect("inventory:enrichment_queue")
-
-        import tempfile
-        from io import StringIO
-
-        from django.core.management import call_command
-
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp:
-            for chunk in upload.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name
-
-        out = StringIO()
-        try:
-            call_command("ingest_enrichment", tmp_path, stdout=out)
-            messages.success(request, out.getvalue().replace("\n", " · ").strip(" ·"))
-        except Exception as exc:
-            messages.error(request, f"Import failed: {exc}")
-        finally:
-            os.unlink(tmp_path)
-    return redirect("inventory:enrichment_queue")
-
-
 # --- In-app enrichment (DeepSeek) ---------------------------------------------
-# The export/import path above was built for a web-browsing agent (Claude) that can
-# actually find product pages and datasheets. The integrated DeepSeek chat model can't
-# browse, but it *can* enrich the descriptive fields and triage candidates in one shot
-# — so that part runs in-app, and the export worklist stays for anyone who wants a
-# real product-page hunt.
+# DeepSeek enriches the descriptive fields and triages candidates in one shot; when a
+# Tavily key is set, research.py does the actual web search and DeepSeek reads the
+# results — so the whole enrichment pipeline runs in-app, no external agent.
 
 def _apply_suggestion(part, suggestion):
     """Apply a DeepSeek suggestion to a part. A suggestion with a category and at least

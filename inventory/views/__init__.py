@@ -95,8 +95,6 @@ from .projects import (
 from .enrichment import (
     enrichment_queue,
     run_enrichment_classification,
-    export_enrichment_worklist,
-    import_enrichment_results,
     flag_part_for_enrichment,
     bulk_classify,
     enrich_pending_with_ai,
@@ -245,8 +243,6 @@ __all__ = [
     "reorder",
     "enrichment_queue",
     "run_enrichment_classification",
-    "export_enrichment_worklist",
-    "import_enrichment_results",
     "flag_part_for_enrichment",
     "bulk_classify",
     "enrich_pending_with_ai",

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card">
   <h1>Enrichment queue</h1>
-  <p class="muted">Fill in the gaps in your parts data — categories, descriptions, manufacturers — and flag which parts are worth researching. DeepSeek runs in-app for the descriptive fields; the export worklist stays for the product-page/datasheet hunt a web-browsing agent can do.</p>
+  <p class="muted">Fill in the gaps in your parts data — categories, descriptions, manufacturers, product pages, datasheets, pricing. DeepSeek and Tavily run entirely in-app; nothing to export or re-import.</p>
   <p>
     {% for label, count in status_counts %}
       <span class="pill">{{ label }}: {{ count }}</span>
@@ -14,12 +14,12 @@
 <div class="card">
   <h2>Find candidates</h2>
   <p class="muted">Flag parts worth researching. "Classify" is local keyword logic (instant, free); "AI scan" asks DeepSeek to judge each name — one model call, cost-controlled, only when you press it.</p>
-  <p style="display:flex;gap:10px;flex-wrap:wrap">
-    <form method="post" action="{% url 'inventory:run_enrichment_classification' %}">
+  <p style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <form method="post" action="{% url 'inventory:run_enrichment_classification' %}" style="display:inline-flex;margin:0">
       {% csrf_token %}
       <button class="btn" type="submit">Classify now (local)</button>
     </form>
-    <form method="post" action="{% url 'inventory:ai_scan_candidates' %}">
+    <form method="post" action="{% url 'inventory:ai_scan_candidates' %}" style="display:inline-flex;margin:0">
       {% csrf_token %}
       <button class="btn" type="submit">AI scan for candidates</button>
     </form>
@@ -28,20 +28,11 @@
 
 <div class="card">
   <h2>Enrich pending ({{ pending|length }})</h2>
-  <p class="muted">Run DeepSeek over the pending parts and apply category/description/manufacturer in-app — no export/import round-trip. Anything it's unsure about is flagged for review instead of trusted blindly.</p>
+  <p class="muted">Run DeepSeek over the pending parts and apply category, description, manufacturer, and — when a web-search key is set — the product page, datasheet and price, all in-app. Anything it's unsure about is flagged for review instead of trusted blindly.</p>
   <form method="post" action="{% url 'inventory:enrich_pending_with_ai' %}">
     {% csrf_token %}
     <button class="btn" type="submit" {% if not pending %}disabled{% endif %}>Enrich with DeepSeek</button>
   </form>
-  <p class="muted" style="margin-top:12px">For the product-page / datasheet / price hunt — which needs a web-browsing agent, not the chat model — export the worklist and import the results back:</p>
-  <p style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <a href="{% url 'inventory:export_enrichment_worklist' %}" class="btn secondary">⬇ Export worklist.json</a>
-    <form method="post" action="{% url 'inventory:import_enrichment_results' %}" enctype="multipart/form-data" style="display:inline-flex;gap:10px;flex-wrap:wrap;align-items:center">
-      {% csrf_token %}
-      <input type="file" name="results_file" accept="application/json" required>
-      <button class="btn secondary" type="submit">Import results</button>
-    </form>
-  </p>
   {% if pending %}
   <table>
     <tr><th>Part</th><th>Category</th></tr>
