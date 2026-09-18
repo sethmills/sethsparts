@@ -1,0 +1,215 @@
+{
+  "categories": [
+    {
+      "key": "raspberry_pi",
+      "name": "Raspberry Pi",
+      "order": 10
+    },
+    {
+      "key": "arduino",
+      "name": "Arduino",
+      "order": 20
+    },
+    {
+      "key": "electronics",
+      "name": "Electronics reference",
+      "order": 30
+    },
+    {
+      "key": "3d_printing",
+      "name": "3D printing",
+      "order": 40
+    }
+  ],
+  "documents": [
+    {
+      "category": "3d_printing",
+      "title": "3D Print Quality Troubleshooting Guide",
+      "description": "Visual, symptom-based guide to diagnosing and fixing common FDM print defects like stringing, warping, under-extrusion, and layer separation.",
+      "external_url": "https://www.simplify3d.com/resources/print-quality-troubleshooting/",
+      "order": 100
+    },
+    {
+      "category": "3d_printing",
+      "title": "3D Printer Bed Leveling Guide",
+      "description": "Step-by-step guide to leveling a 3D printer's bed (manual and assisted/mesh leveling) to achieve consistent first-layer adhesion.",
+      "external_url": "https://all3dp.com/2/3d-printer-bed-leveling-step-by-step-tutorial/",
+      "order": 100
+    },
+    {
+      "category": "3d_printing",
+      "title": "3D Printing Filament Comparison Chart",
+      "description": "Side-by-side comparison of common filament types (PLA, PETG, ABS, TPU, Nylon, and more) covering print temperature, bed temperature, and material properties.",
+      "external_url": "https://www.matterhackers.com/3d-printer-filament-compare",
+      "order": 100
+    },
+    {
+      "category": "3d_printing",
+      "title": "Heat-Set Threaded Insert Size Reference",
+      "description": "Hole-size and boss-diameter reference for heat-set threaded inserts (M2-M8) used to add durable metal threads to 3D printed parts.",
+      "external_url": "https://tools.creative3dp.com/blog/heat-set-insert-hole-size-chart/",
+      "order": 100
+    },
+    {
+      "category": "3d_printing",
+      "title": "Metric Screw Thread Size Reference (M2-M18)",
+      "description": "Standard ISO metric screw/bolt thread dimensions (major/minor diameter, pitch, tap drill size) for common sizes like M2, M3, and M5 used in 3D printed enclosures and fasteners.",
+      "external_url": "https://www.engineersedge.com/hardware/metric-external-thread-sizes1.htm",
+      "order": 100
+    },
+    {
+      "category": "3d_printing",
+      "title": "Nozzle Size vs. Layer Height Guide",
+      "description": "Practical guidance from Prusa's knowledge base on choosing a layer height relative to nozzle diameter (max ~80% of nozzle size) for print quality and speed trade-offs.",
+      "external_url": "https://help.prusa3d.com/article/layers-and-perimeters_1748",
+      "order": 100
+    },
+    {
+      "category": "arduino",
+      "title": "Arduino Language Reference",
+      "description": "Official Arduino API/language reference documenting every built-in function, structure, and variable type used when writing Arduino sketches.",
+      "external_url": "https://www.arduino.cc/reference/en/",
+      "order": 100
+    },
+    {
+      "category": "arduino",
+      "title": "Arduino Mega 2560 Pinout Diagram",
+      "description": "Official Arduino documentation and full pinout diagram for the Mega 2560, useful for projects needing many I/O pins, multiple UARTs, or extra PWM/interrupt lines.",
+      "external_url": "https://docs.arduino.cc/hardware/mega-2560/",
+      "order": 100
+    },
+    {
+      "category": "arduino",
+      "title": "Arduino Nano Pinout Diagram",
+      "description": "Official Arduino documentation and full pinout diagram for the compact Nano board, popular for breadboard and space-constrained projects.",
+      "external_url": "https://docs.arduino.cc/hardware/nano/",
+      "order": 100
+    },
+    {
+      "category": "arduino",
+      "title": "Arduino Uno R3 Pinout Diagram",
+      "description": "Official Arduino documentation and full pinout diagram for the Uno R3 board, showing digital/analog pins, power, and communication interfaces.",
+      "external_url": "https://docs.arduino.cc/hardware/uno-rev3/",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "555 Timer IC Pinout & Circuit Reference",
+      "description": "Pin-by-pin reference for the classic 555 timer IC plus common astable, monostable, and bistable circuit configurations.",
+      "external_url": "https://components101.com/ics/555-timer-ic-pinout-datasheet",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "AWG Wire Gauge Current Capacity Chart",
+      "description": "American Wire Gauge reference table listing conductor diameter, resistance, and safe maximum current (ampacity) for both chassis wiring and power transmission use.",
+      "external_url": "https://www.powerstream.com/Wire_Size.htm",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Adafruit's Guide to Excellent Soldering",
+      "description": "A thorough, well-regarded walkthrough of tools, technique, and troubleshooting for through-hole and basic SMD hand soldering.",
+      "external_url": "https://learn.adafruit.com/adafruit-guide-excellent-soldering",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Battery Chemistry & Nominal Voltage Reference",
+      "description": "Comparison of common battery chemistries and formats (alkaline, NiMH/NiCd, LiPo, lithium coin cells, lead acid) with their nominal voltages and rechargeability.",
+      "external_url": "https://learn.sparkfun.com/tutorials/battery-technologies/all",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Breadboard Basics & Internal Wiring",
+      "description": "Explains how a solderless breadboard's internal metal strips connect rows and power rails, essential for understanding how components on a breadboard are actually wired together.",
+      "external_url": "https://learn.sparkfun.com/tutorials/how-to-use-a-breadboard",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Ceramic Capacitor Code Chart",
+      "description": "Reference table for decoding the 3-digit EIA capacitance codes printed on ceramic and film capacitors (e.g. \"104\" = 100nF/0.1uF) into pF, nF, and uF values.",
+      "external_url": "https://kaizerpowerelectronics.dk/theory/capacitor-code-table/",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "ESD Safety Reference for Handling Electronics",
+      "description": "Fundamentals of electrostatic discharge (ESD) and how it damages sensitive components, plus the grounding/handling practices used to prevent it, from the industry ESD standards body.",
+      "external_url": "https://www.esda.org/esd-overview/esd-fundamentals/",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "I2C Device Address Reference",
+      "description": "Adafruit's comprehensive, community-maintained list of I2C bus addresses used by common sensors, displays, and breakout boards, useful for resolving address conflicts.",
+      "external_url": "https://learn.adafruit.com/i2c-addresses/the-list",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Linear Voltage Regulator Pinout Reference (7805/LM317/AMS1117)",
+      "description": "Pinout and usage reference for the most common linear voltage regulators used in hobby electronics, covering the fixed-output 78xx family, the adjustable LM317, and the compact AMS1117 LDO.",
+      "external_url": "https://components101.com/ics/7805-voltage-regulator-ic-pinout-datasheet",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Ohm's Law / Power Law Wheel",
+      "description": "The classic circular cheat sheet showing all the algebraic relationships between voltage, current, resistance, and power for quick calculation.",
+      "external_url": "https://en.wikipedia.org/wiki/Ohm%27s_law",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Resistor Color Code Chart",
+      "description": "Standard chart for decoding 4-band, 5-band, and 6-band resistor color codes into resistance value, tolerance, and temperature coefficient.",
+      "external_url": "https://en.wikipedia.org/wiki/Electronic_color_code",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "SMD Passive Component Size Chart",
+      "description": "Reference chart of standard surface-mount package sizes (0201, 0402, 0603, 0805, 1206, 1210, etc.) with both imperial and metric dimensions for resistors and capacitors.",
+      "external_url": "https://www.electronics-notes.com/articles/electronic_components/surface-mount-technology-smd-smt/packages.php",
+      "order": 100
+    },
+    {
+      "category": "electronics",
+      "title": "Small Connector Ecosystem Guide (JST/Dupont/Qwiic/Grove)",
+      "description": "Overview and comparison of the small board-to-wire connector standards common in maker electronics, including JST-PH/XH, Dupont, STEMMA QT/Qwiic (JST-SH), and Grove.",
+      "external_url": "https://hackaday.com/2022/05/04/the-connector-zoo-i2c-ecosystems/",
+      "order": 100
+    },
+    {
+      "category": "raspberry_pi",
+      "title": "Raspberry Pi Computer Hardware Documentation",
+      "description": "Official Raspberry Pi Foundation documentation covering the 40-pin GPIO header, pin functions, and electrical characteristics for all Raspberry Pi computer models.",
+      "external_url": "https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#gpio-and-the-40-pin-header",
+      "order": 100
+    },
+    {
+      "category": "raspberry_pi",
+      "title": "Raspberry Pi GPIO Pinout (pinout.xyz)",
+      "description": "Interactive, clickable reference for every pin on the Raspberry Pi 40-pin (and 26-pin) GPIO header across all models, plus a huge database of HAT/pHAT add-on board pinouts.",
+      "external_url": "https://pinout.xyz/",
+      "order": 100
+    },
+    {
+      "category": "raspberry_pi",
+      "title": "Raspberry Pi HAT+ Specification",
+      "description": "Official mechanical, electrical, and EEPROM specification for designing Raspberry Pi HAT+ (Hardware Attached on Top) add-on boards, the current standard superseding the original HAT spec.",
+      "external_url": "https://datasheets.raspberrypi.com/hat/hat-plus-specification.pdf",
+      "order": 100
+    },
+    {
+      "category": "raspberry_pi",
+      "title": "Raspberry Pi Models & Specs Comparison",
+      "description": "Official comparison tables covering every current Raspberry Pi product line (flagship SBCs, Zero, Compute Module, keyboard computers, and Pico) with SoC, memory, GPIO, and connectivity specs.",
+      "external_url": "https://www.raspberrypi.com/documentation/computers/raspberry-pi.html",
+      "order": 100
+    }
+  ]
+}

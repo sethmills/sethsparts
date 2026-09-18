@@ -203,7 +203,7 @@ class JoinFlowTests(PairingTestCase):
 
     def test_a_successful_join_creates_an_active_peer(self):
         fake, _ = self.join(FakeHostResponse({"name": "Dad's workshop", "public_key": "ef" * 32, "callback_key": "host-issued"}))
-        peer = Peer.objects.get()
+        peer = Peer.objects.get(is_seed=False)
         self.assertEqual(peer.name, "Dad's workshop")
         self.assertEqual(peer.status, Peer.ACTIVE)
         self.assertTrue(peer.exchanges_pins)
@@ -211,13 +211,13 @@ class JoinFlowTests(PairingTestCase):
 
     def test_the_hosts_key_is_stored_for_calling_them(self):
         self.join(FakeHostResponse({"name": "H", "public_key": "ef" * 32, "callback_key": "host-issued"}))
-        self.assertEqual(Peer.objects.get().outbound_api_key, "host-issued")
+        self.assertEqual(Peer.objects.get(is_seed=False).outbound_api_key, "host-issued")
 
     def test_our_own_key_is_stored_for_them_to_call_us(self):
         """The two credentials have to land on the right sides, or one workshop can
         act as the other."""
         self.join(FakeHostResponse({"name": "H", "callback_key": "host-issued"}))
-        peer = Peer.objects.get()
+        peer = Peer.objects.get(is_seed=False)
         self.assertTrue(peer.inbound_api_key)
         self.assertNotEqual(peer.inbound_api_key, peer.outbound_api_key)
 
@@ -239,7 +239,7 @@ class JoinFlowTests(PairingTestCase):
     def test_a_refused_join_leaves_nothing_behind(self):
         """Half-connected state would be worse than a clean failure."""
         self.join(FakeHostResponse({"error": "That code isn't valid."}, status_code=400))
-        self.assertFalse(Peer.objects.exists())
+        self.assertFalse(Peer.objects.filter(is_seed=False).exists())
 
     def test_the_hosts_reason_is_shown(self):
         _, response = self.join(FakeHostResponse({"error": "That code isn't valid."}, status_code=400))

@@ -19,6 +19,8 @@ for why that is enough.
 """
 from __future__ import annotations
 
+import os
+
 import requests
 from django.db import transaction
 from django.utils import timezone
@@ -33,6 +35,33 @@ TIMEOUT = 15
 CODE_INVALID = "That code isn't valid. Codes are single-use and expire after 24 hours — ask for a fresh one."
 CODE_MISSING = "No pairing code was given."
 PEER_NAME_MAX = 200
+
+# The default gossip neighbour every install ships connected to: the maintainer's
+# instance. Pins only — never inventory access. Env-overridable so a fork can point
+# the seed at its own maintainer without a code change.
+SEED_PEER_NAME = os.environ.get("SEED_PEER_NAME", "Seth's Parts")
+SEED_PEER_URL = os.environ.get("SEED_PEER_URL", "https://sethsparts.com")
+
+
+def ensure_seed_peer() -> bool:
+    """Create the maintainer's seed connection if it isn't there yet.
+
+    A brand-new install has nobody to ask, so the map would be dead on arrival
+    without one default gossip neighbour. Idempotent, and deliberately a plain
+    active pins-only row — no inventory access, removable in one click like any
+    other connection. Returns True if it created one.
+    """
+    if Peer.objects.filter(is_seed=True).exists():
+        return False
+    Peer.objects.create(
+        name=SEED_PEER_NAME,
+        base_url=SEED_PEER_URL,
+        is_seed=True,
+        exchanges_pins=True,
+        shares_parts=False,
+        status=Peer.ACTIVE,
+    )
+    return True
 
 
 def claim(code_text: str, *, name: str, base_url: str, public_key: str, callback_key: str) -> tuple[Peer | None, str]:

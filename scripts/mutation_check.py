@@ -706,6 +706,14 @@ MUTATIONS = [
         "def is_configured():\n    return True",
         "inventory.tests.test_enrichment_ai",
     ),
+    # --- seed peer -------------------------------------------------------------
+    (
+        "Seed peer grants inventory access (the pins-only default is gone)",
+        ROOT / "inventory" / "community_api.py",
+        "        is_seed=True,\n        exchanges_pins=True,\n        shares_parts=False,",
+        "        is_seed=True,\n        exchanges_pins=True,\n        shares_parts=True,",
+        "inventory.tests.test_community_models",
+    ),
     # --- feedback relay --------------------------------------------------------
     # The relay endpoint is public by design, so the only thing standing between it
     # and a spam pipe into the maintainer's inbox is the shared-secret check. Remove

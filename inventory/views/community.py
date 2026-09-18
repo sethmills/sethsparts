@@ -236,6 +236,7 @@ def community_sync_pins(request):
 
 @login_required
 def community_connections(request):
+    community_api.ensure_seed_peer()
     site = CommunityProfile.load()
     return render(
         request,

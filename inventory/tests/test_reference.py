@@ -362,7 +362,7 @@ class StarterFileTests(TestCase):
 
     def setUp(self):
         self.data = json.loads(
-            (Path(__file__).resolve().parent.parent / "data" / "starter_reference.json").read_text(encoding="utf-8")
+            (Path(__file__).resolve().parent.parent / "fixtures" / "starter_reference.json").read_text(encoding="utf-8")
         )
 
     def test_the_file_is_present_and_well_formed(self):

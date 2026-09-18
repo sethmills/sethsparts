@@ -159,6 +159,27 @@ class PeerDefaultTests(TestCase):
         self.assertFalse(seed.shares_parts)
 
 
+class SeedPeerTests(TestCase):
+    """Every fresh install ships connected to the maintainer, so the map isn't
+    dead on arrival. `ensure_seed_peer` is what makes that real."""
+
+    def test_it_creates_a_pins_only_active_connection(self):
+        from inventory.community_api import ensure_seed_peer
+
+        self.assertTrue(ensure_seed_peer())
+        seed = Peer.objects.get(is_seed=True)
+        self.assertEqual(seed.status, Peer.ACTIVE)
+        self.assertTrue(seed.exchanges_pins)
+        self.assertFalse(seed.shares_parts)
+
+    def test_it_is_idempotent(self):
+        from inventory.community_api import ensure_seed_peer
+
+        self.assertTrue(ensure_seed_peer())
+        self.assertFalse(ensure_seed_peer())
+        self.assertEqual(Peer.objects.filter(is_seed=True).count(), 1)
+
+
 class CategorySharingTests(TestCase):
     def test_nothing_is_shareable_by_default(self):
         """800+ parts, and sharing is opted into per category rather than per part —

@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from inventory.models import ReferenceCategory, ReferenceDoc, SiteSettings
 
-STARTER_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "starter_reference.json"
+STARTER_FILE = Path(__file__).resolve().parent.parent.parent / "fixtures" / "starter_reference.json"
 
 
 class Command(BaseCommand):
