@@ -19,30 +19,28 @@ from ._shared import _drawer_number, _slugify_drawer_code
 
 
 # --- Bin barcodes (bulk scan-to-link) ----------------------------------------
-# Only cabinets 1-3 (containers #38/#39/#40, drawers 1-27) are subdivided into the
-# 16-bin grid -- cabinet 4 (container #119, drawers 28-36) holds oversized/different
-# items with no bin subdivisions, per Seth.
-BIN_ELIGIBLE_CONTAINERS = [38, 39, 40]
+# A drawer's bin_count decides whether it has bins and how many: 0 means none,
+# 16 is the default 4x4 cabinet, and larger cabinets (up to 100) are a per-drawer
+# choice. The old hardcoded "cabinets 38/39/40 only" rule is gone.
 BINS_PER_DRAWER = 16
+MAX_BINS = 100
 
 
 def _bin_eligible_drawers():
-    drawers = list(Drawer.objects.filter(container__number__in=BIN_ELIGIBLE_CONTAINERS).select_related("container"))
+    drawers = list(Drawer.objects.filter(bin_count__gt=0).select_related("container"))
     drawers.sort(key=_drawer_number)
     return drawers
 
 
 def _ensure_bins_seeded():
-    """Create any missing Bin rows (1-16) for every bin-eligible drawer. Idempotent —
-    safe to call on every page load."""
+    """Create any missing Bin rows for every drawer that has bins. Idempotent — safe
+    to call on every page load."""
     drawers = _bin_eligible_drawers()
-    existing = set(
-        Bin.objects.filter(drawer__container__number__in=BIN_ELIGIBLE_CONTAINERS).values_list("drawer_id", "bin_number")
-    )
+    existing = set(Bin.objects.values_list("drawer_id", "bin_number"))
     to_create = [
         Bin(drawer=drawer, bin_number=n)
         for drawer in drawers
-        for n in range(1, BINS_PER_DRAWER + 1)
+        for n in range(1, drawer.bin_count + 1)
         if (drawer.id, n) not in existing
     ]
     if to_create:
@@ -52,11 +50,11 @@ def _ensure_bins_seeded():
 
 def _ensure_bins_for_drawer(drawer):
     """Same idea as _ensure_bins_seeded but scoped to one drawer — cheap enough to call
-    from drawer_detail on every visit, instead of re-checking all 27 bin-eligible drawers."""
-    if drawer.container.number not in BIN_ELIGIBLE_CONTAINERS:
+    from drawer_detail on every visit, instead of re-checking every drawer."""
+    if drawer.bin_count <= 0:
         return False
     existing_numbers = set(drawer.bins.values_list("bin_number", flat=True))
-    to_create = [Bin(drawer=drawer, bin_number=n) for n in range(1, BINS_PER_DRAWER + 1) if n not in existing_numbers]
+    to_create = [Bin(drawer=drawer, bin_number=n) for n in range(1, drawer.bin_count + 1) if n not in existing_numbers]
     if to_create:
         Bin.objects.bulk_create(to_create)
     return True
@@ -86,7 +84,7 @@ def bin_setup(request):
     return render(
         request,
         "inventory/bin_setup.html",
-        {"rows": rows, "total_done": total_done, "total_bins": len(drawers) * BINS_PER_DRAWER},
+        {"rows": rows, "total_done": total_done, "total_bins": sum(d.bin_count for d in drawers)},
     )
 
 
@@ -220,20 +218,41 @@ def delete_sub_bin(request, pk):
 
 @login_required
 def print_bin_grid(request, pk):
-    """Print all 16 bin barcodes for a drawer, laid out in a 4x4 grid matching the
-    physical layout. Any bin without a barcode gets a deterministic one assigned first,
-    so the printed sheet links straight back to the bins."""
+    """Print every bin barcode for a drawer, laid out in the drawer's own grid
+    (bin_count bins across bin_columns columns) to match the physical layout. Any bin
+    without a barcode gets a deterministic one assigned first, so the sheet links
+    straight back to the bins."""
     drawer = get_object_or_404(Drawer, pk=pk)
     if not _ensure_bins_for_drawer(drawer):
-        messages.error(request, "This drawer isn't one of the 16-bin cabinets, so there are no bins to label.")
+        messages.error(request, "This drawer has no bins to label.")
         return redirect("inventory:drawer_detail", pk=drawer.pk)
 
     drawer_code = _slugify_drawer_code(drawer.container.number, drawer.label)
-    bins = sorted(drawer.bins.all(), key=lambda b: b.bin_number)
+    bins = list(drawer.bins.filter(bin_number__lte=drawer.bin_count).order_by("bin_number"))
     for b in bins:
         if not b.barcode_id:
             b.barcode_id = f"{drawer_code}-{b.bin_number:02d}"
             b.save(update_fields=["barcode_id"])
 
-    rows = [[b for b in bins if b.bin_row == r] for r in range(1, 5)]
+    cols = max(1, drawer.bin_columns)
+    rows = [bins[i : i + cols] for i in range(0, len(bins), cols)]
     return render(request, "inventory/bin_grid_print.html", {"drawer": drawer, "rows": rows})
+
+
+@login_required
+def update_drawer_bins(request, pk):
+    """Change how many bins a drawer has (and how the printed sheet is laid out)."""
+    drawer = get_object_or_404(Drawer, pk=pk)
+    if request.method == "POST":
+        try:
+            count = max(0, min(MAX_BINS, int(request.POST.get("bin_count") or "0")))
+            cols = max(1, min(MAX_BINS, int(request.POST.get("bin_columns") or "4")))
+        except ValueError:
+            messages.error(request, "Bin count and columns must be whole numbers.")
+            return redirect("inventory:drawer_detail", pk=drawer.pk)
+        drawer.bin_count = count
+        drawer.bin_columns = cols
+        drawer.save(update_fields=["bin_count", "bin_columns"])
+        _ensure_bins_for_drawer(drawer)
+        messages.success(request, f"Drawer {drawer.label} now has {count} bins across {cols} columns.")
+    return redirect("inventory:drawer_detail", pk=drawer.pk)

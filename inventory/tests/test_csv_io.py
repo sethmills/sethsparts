@@ -97,7 +97,7 @@ class AnalyzeAndCommitTests(TestCase):
         self.assertEqual(si.drawer.label, "drawer a1")
 
     def test_bad_bin_is_reported_and_skipped(self):
-        rows = [{"part_name": "X", "container_number": "1", "bin_number": "99"}]
+        rows = [{"part_name": "X", "container_number": "1", "bin_number": "101"}]
         analysis = analyze_rows(rows)
         self.assertTrue(analysis["errors"])
         self.assertEqual(analysis["counts"]["stock_items"], 0)

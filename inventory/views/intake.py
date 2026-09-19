@@ -14,7 +14,7 @@ from ..models import (
     Location,
 )
 
-from .bins import BINS_PER_DRAWER
+from .bins import MAX_BINS
 
 
 
@@ -173,7 +173,7 @@ def _create_intake_bin(request):
         bin_number = int(request.POST.get("bin_number") or 1)
     except ValueError:
         bin_number = 1
-    bin_number = max(1, min(BINS_PER_DRAWER, bin_number))
+    bin_number = max(1, min(drawer.bin_count or 1, bin_number))
 
     bin_obj, created = Bin.objects.get_or_create(drawer=drawer, bin_number=bin_number)
 

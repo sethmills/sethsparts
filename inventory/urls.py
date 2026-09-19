@@ -125,6 +125,7 @@ urlpatterns = [
     path("bins/<int:pk>/scan/", views.api_scan_bin, name="api_scan_bin"),
     path("bins/<int:pk>/", views.bin_detail, name="bin_detail"),
     path("drawers/<int:pk>/print-bin-grid/", views.print_bin_grid, name="print_bin_grid"),
+    path("drawers/<int:pk>/bins/", views.update_drawer_bins, name="update_drawer_bins"),
     path("bins/<int:pk>/register-barcode/", views.register_bin_barcode, name="register_bin_barcode"),
     path("bins/<int:pk>/locate/", views.locate_bin, name="locate_bin"),
     path("bins/<int:pk>/add-sub-bin/", views.add_sub_bin, name="add_sub_bin"),

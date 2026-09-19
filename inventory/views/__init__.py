@@ -56,8 +56,8 @@ from .tagging import (
     _tagging_location_choices,
 )
 from .bins import (
-    BIN_ELIGIBLE_CONTAINERS,
     BINS_PER_DRAWER,
+    MAX_BINS,
     _bin_eligible_drawers,
     _ensure_bins_seeded,
     _ensure_bins_for_drawer,
@@ -70,6 +70,7 @@ from .bins import (
     register_sub_bin_barcode,
     delete_sub_bin,
     print_bin_grid,
+    update_drawer_bins,
 )
 from .labels import (
     labels,
@@ -216,8 +217,8 @@ __all__ = [
     "tagging_list",
     "tagging_update",
     "_tagging_location_choices",
-    "BIN_ELIGIBLE_CONTAINERS",
     "BINS_PER_DRAWER",
+    "MAX_BINS",
     "_bin_eligible_drawers",
     "_ensure_bins_seeded",
     "_ensure_bins_for_drawer",
@@ -230,6 +231,7 @@ __all__ = [
     "register_sub_bin_barcode",
     "delete_sub_bin",
     "print_bin_grid",
+    "update_drawer_bins",
     "labels",
     "generate_and_print_labels",
     "print_labels",

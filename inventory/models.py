@@ -42,6 +42,8 @@ class Drawer(models.Model):
     container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="drawers")
     label = models.CharField(max_length=100, help_text="e.g. 'drawer b2'")
     barcode_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    bin_count = models.PositiveSmallIntegerField(default=16, help_text="Bin slots in this drawer (0 = no bins, up to 100)")
+    bin_columns = models.PositiveSmallIntegerField(default=4, help_text="Columns in the printed grid, matching the physical layout")
 
     class Meta:
         ordering = ["container__number", "label"]

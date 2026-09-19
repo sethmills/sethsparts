@@ -1,8 +1,8 @@
 """Bin / sub-bin behaviour -- seeding, the rapid bulk-scan flow, and conflicts.
 
-Only cabinets 1-3 (containers 38, 39, 40) have the 16-bin subdivision, so the
-eligibility rule and the idempotency of seeding are both load-bearing: the
-seeding helper is called on ordinary page loads.
+A drawer's bin_count decides whether it has bins and how many (0 = none, default
+16, up to 100). The idempotency of seeding is load-bearing: the seeding helper is
+called on ordinary page loads.
 """
 import json
 
@@ -16,15 +16,14 @@ from .factories import make_bin, make_container, make_drawer, make_user
 
 
 class BinEligibilityTests(TestCase):
-    def test_eligible_containers_are_38_39_40(self):
-        from inventory.views import BIN_ELIGIBLE_CONTAINERS
-
-        self.assertEqual(sorted(BIN_ELIGIBLE_CONTAINERS), [38, 39, 40])
-
-    def test_sixteen_bins_per_drawer(self):
+    def test_sixteen_bins_is_the_default(self):
         from inventory.views import BINS_PER_DRAWER
 
         self.assertEqual(BINS_PER_DRAWER, 16)
+
+    def test_a_drawer_defaults_to_sixteen_bins(self):
+        drawer = make_drawer(make_container(number=38), label="drawer 1")
+        self.assertEqual(drawer.bin_count, 16)
 
 
 class BinsSeedingTests(TestCase):
@@ -33,7 +32,7 @@ class BinsSeedingTests(TestCase):
         cls.cabinet = make_container(number=38, container_type="cabinets")
         cls.drawer = make_drawer(cls.cabinet, label="drawer 1")
         cls.tote = make_container(number=5, container_type="black tote")
-        cls.tote_drawer = make_drawer(cls.tote, label="drawer 99")
+        cls.tote_drawer = make_drawer(cls.tote, label="drawer 99", bin_count=0)
 
     def test_seeding_creates_sixteen_bins_on_an_eligible_drawer(self):
         _ensure_bins_seeded()

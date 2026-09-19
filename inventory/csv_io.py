@@ -57,7 +57,7 @@ COLUMN_ALIASES = {
     "notes": ["notes", "source notes", "comments", "comment"],
 }
 
-BINS_PER_DRAWER = 16
+MAX_BINS = 100
 
 
 def _norm_header(value):
@@ -188,7 +188,7 @@ def _parse_bin(value):
         n = int(float(raw))
     except (ValueError, TypeError):
         return False
-    return n if 1 <= n <= BINS_PER_DRAWER else False
+    return n if 1 <= n <= MAX_BINS else False
 
 
 def _get_category(name, caches, new_categories, seen_new):
@@ -321,7 +321,7 @@ def analyze_rows(rows):
 
         bin_number = _parse_bin(row.get("bin_number"))
         if bin_number is False:
-            errors.append((i, f"bin number '{row.get('bin_number')}' isn't 1-{BINS_PER_DRAWER}"))
+            errors.append((i, f"bin number '{row.get('bin_number')}' isn't 1-{MAX_BINS}"))
             continue
 
         quantity_raw = (row.get("quantity") or "").strip()
