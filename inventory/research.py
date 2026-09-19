@@ -27,6 +27,7 @@ FIELDS = (
     "datasheet_url",
     "pinout_url",
     "price",
+    "image_url",
     "confidence",
 )
 
@@ -94,7 +95,7 @@ def extract_part_data(name: str, results, context: str = ""):
         "Given this part name and the search results, identify the part and extract what you can.\n"
         "Reply with a JSON object and nothing else, using these keys:\n"
         '{"matched_product_name": "", "category": "", "description": "", "manufacturer": "", '
-        '"product_url": "", "datasheet_url": "", "pinout_url": "", "price": "", '
+        '"product_url": "", "datasheet_url": "", "pinout_url": "", "price": "", "image_url": "", '
         '"confidence": "high"}\n'
         "Use empty strings when unsure. Only use URLs that actually appear in the results. "
         'Set "confidence" to "low" if the match is uncertain or the part is generic.\n'

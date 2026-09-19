@@ -102,6 +102,32 @@ def _apply_research(part, data):
         update_fields=["category", "description", "manufacturer", "is_electronic", "reorder_url", "datasheet_url", "price", "enrichment_status"]
     )
 
+    if data.get("image_url"):
+        _attach_product_image(part, data["image_url"])
+
+
+def _attach_product_image(part, image_url):
+    """Download the product image research found and store it as an Image attachment.
+
+    Gives enriched parts a thumbnail without a manual upload. Best-effort: a dead or
+    non-image link must never fail the rest of the enrichment."""
+    from django.core.files.base import ContentFile
+
+    from ..archiving import fetch, filename_for
+    from ..models import Attachment
+
+    result = fetch(image_url, max_bytes=5 * 1024 * 1024)
+    if not result.ok or not result.content_type.startswith("image/"):
+        return False
+    Attachment.objects.create(
+        part=part,
+        file=ContentFile(result.content, name=filename_for(image_url, result.content_type)),
+        doc_type=Attachment.IMAGE,
+        source_url=image_url,
+        title="Product image",
+    )
+    return True
+
 
 @login_required
 def flag_part_for_enrichment(request, pk):
