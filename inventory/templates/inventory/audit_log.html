@@ -1,0 +1,24 @@
+{% extends "inventory/base.html" %}
+{% block title %}Recent activity — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Recent activity</h1>
+  <p class="muted">Stock adjustments, moves, removals and build consumption — the last 200 events, newest first.</p>
+</div>
+
+<div class="card">
+  {% for e in events %}
+  <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)">
+    <span>
+      <strong>{{ e.verb }}</strong>
+      {% if e.part %} · <a href="{% url 'inventory:part_detail' e.part.pk %}">{{ e.part.name }}</a>{% endif %}
+      {% if e.actor %}<span class="muted"> — {{ e.actor.username }}</span>{% endif %}
+      <br><span class="muted">{% for k, v in e.payload.items %}{{ k }}: {{ v }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+    </span>
+    <span class="muted" style="white-space:nowrap">{{ e.created_at|date:"Y-m-d H:i" }}</span>
+  </div>
+  {% empty %}
+  <p class="muted">No activity recorded yet — it starts once stock changes are made.</p>
+  {% endfor %}
+</div>
+{% endblock %}

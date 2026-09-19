@@ -16,12 +16,13 @@
 <div class="card">
   {% if needs_reorder %}
   <table>
-    <tr><th>Part</th><th>Have</th><th>Min</th><th>Buy</th><th></th></tr>
+    <tr><th>Part</th><th>Have</th><th>Min</th><th>30d use</th><th>Buy</th><th></th></tr>
     {% for row in needs_reorder %}
     <tr>
       <td><a href="{% url 'inventory:part_detail' row.part.pk %}">{{ row.part.name }}</a></td>
       <td class="msg-error">{{ row.have }}</td>
       <td>{{ row.min_quantity }}</td>
+      <td>{% if row.used_30d %}{{ row.used_30d }}{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{{ row.shortfall }}</td>
       <td>
         <form method="post" action="{% url 'inventory:shopping_list_add' row.part.pk %}" style="display:inline">

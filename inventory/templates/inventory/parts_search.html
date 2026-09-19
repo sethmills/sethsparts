@@ -45,10 +45,15 @@
     <p class="muted">Also matched on: {{ matched_extra_terms|join:", " }}</p>
   {% endif %}
   {% for p in parts %}
-    <p>
-      <a href="{% url 'inventory:part_detail' p.pk %}">{{ p.name }}</a>
-      {% if p.category %}<span class="pill">{{ p.category }}</span>{% endif %}
-      {% if p.manufacturer %}<span class="pill">{{ p.manufacturer }}</span>{% endif %}
+    <p style="display:flex;align-items:center;gap:10px">
+      <span style="width:40px;height:40px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--panel-raised);border-radius:6px;overflow:hidden">
+        {% if p.thumb %}<img src="{{ p.thumb }}" alt="" style="width:100%;height:100%;object-fit:cover">{% endif %}
+      </span>
+      <span>
+        <a href="{% url 'inventory:part_detail' p.pk %}">{{ p.name }}</a>
+        {% if p.category %}<span class="pill">{{ p.category }}</span>{% endif %}
+        {% if p.manufacturer %}<span class="pill">{{ p.manufacturer }}</span>{% endif %}
+      </span>
     </p>
   {% empty %}
     <p class="muted">No matches.</p>

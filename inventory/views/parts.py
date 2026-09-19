@@ -16,6 +16,7 @@ from ._shared import _location_choices
 
 from ..duplicate_detection import find_duplicate_parts
 from ..enrichment_ai import is_configured, suggest_enrichment
+from .. import audit
 
 
 @login_required
@@ -163,6 +164,42 @@ def part_detail(request, pk):
     )
 
 
+@login_required
+def part_edit(request, pk):
+    """Edit a part's descriptive fields and links after it has been created."""
+    part = get_object_or_404(Part, pk=pk)
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        if not name:
+            messages.error(request, "Part name is required.")
+            return redirect("inventory:part_edit", pk=part.pk)
+
+        raw_min_qty = (request.POST.get("min_quantity") or "").strip()
+        min_quantity = None
+        if raw_min_qty:
+            try:
+                min_quantity = max(0, int(raw_min_qty))
+            except ValueError:
+                messages.error(request, f"'{raw_min_qty}' isn't a whole number for reorder threshold.")
+                return redirect("inventory:part_edit", pk=part.pk)
+
+        part.name = name
+        part.category_id = request.POST.get("category") or None
+        part.manufacturer = (request.POST.get("manufacturer") or "").strip()
+        part.description = (request.POST.get("description") or "").strip()
+        part.is_electronic = bool(request.POST.get("is_electronic"))
+        part.reorder_url = (request.POST.get("reorder_url") or "").strip()
+        part.datasheet_url = (request.POST.get("datasheet_url") or "").strip()
+        part.price = (request.POST.get("price") or "").strip()
+        part.min_quantity = min_quantity
+        part.save()
+        messages.success(request, f"Updated {part.name}.")
+        return redirect("inventory:part_detail", pk=part.pk)
+
+    return render(request, "inventory/part_edit.html", {"part": part, "categories": Category.objects.all()})
+
+
 def _apply_enrichment_suggestion(part, suggestion):
     if not suggestion:
         return
@@ -207,9 +244,14 @@ def update_stock_quantity(request, pk):
         except ValueError:
             messages.error(request, f"'{raw}' isn't a whole number.")
             return redirect("inventory:part_detail", pk=stock_item.part_id)
+        old_qty = stock_item.quantity
         stock_item.quantity = new_qty
         stock_item.quantity_raw = str(new_qty)
         stock_item.save(update_fields=["quantity", "quantity_raw"])
+        audit.log(
+            "stock.adjust", part=stock_item.part, actor=request.user,
+            before=old_qty, after=new_qty, container=stock_item.container_id, bin=stock_item.bin_number,
+        )
         messages.success(request, f"Updated quantity to {new_qty}.")
     return redirect("inventory:part_detail", pk=stock_item.part_id)
 
@@ -220,6 +262,10 @@ def update_stock_bin(request, pk):
     if request.method == "POST":
         raw = (request.POST.get("bin_number") or "").strip()
         if not raw:
+            audit.log(
+                "stock.move", part=stock_item.part, actor=request.user,
+                before=stock_item.bin_number, after=None, container=stock_item.container_id,
+            )
             stock_item.bin_number = None
             stock_item.save(update_fields=["bin_number"])
             messages.success(request, "Cleared bin number.")
@@ -231,6 +277,10 @@ def update_stock_bin(request, pk):
         except ValueError:
             messages.error(request, "Bin number must be 1-16.")
             return redirect("inventory:part_detail", pk=stock_item.part_id)
+        audit.log(
+            "stock.move", part=stock_item.part, actor=request.user,
+            before=stock_item.bin_number, after=bin_number, container=stock_item.container_id,
+        )
         stock_item.bin_number = bin_number
         stock_item.save(update_fields=["bin_number"])
         messages.success(request, f"Set bin to {bin_number} (row {stock_item.bin_row}).")
@@ -243,6 +293,10 @@ def delete_stock_item(request, pk):
     part_id = stock_item.part_id
     if request.method == "POST":
         where = stock_item.drawer or stock_item.container
+        audit.log(
+            "stock.remove", part=stock_item.part, actor=request.user,
+            container=stock_item.container_id, bin=stock_item.bin_number, quantity=stock_item.quantity,
+        )
         stock_item.delete()
         messages.success(request, f"Removed that entry (was at {where}).")
     return redirect("inventory:part_detail", pk=part_id)
@@ -275,6 +329,10 @@ def add_stock_item(request, pk):
 
         StockItem.objects.create(
             part=part, container=container, drawer=drawer, quantity=quantity, quantity_raw=str(quantity)
+        )
+        audit.log(
+            "stock.add", part=part, actor=request.user,
+            quantity=quantity, container=container.id, drawer=drawer.pk if drawer else None,
         )
         messages.success(request, f"Added {quantity}x {part.name} at {drawer or container}.")
     return redirect("inventory:part_detail", pk=part.pk)

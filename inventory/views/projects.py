@@ -12,6 +12,7 @@ from ..models import (
 )
 
 from ._shared import _consume_stock, _current_stock, _reorder_link
+from .. import audit
 
 
 
@@ -96,6 +97,10 @@ def build_project(request, pk):
         BuildConsumption.objects.create(
             build=build, part=line.part, quantity_requested=needed, quantity_consumed=consumed
         )
+        audit.log(
+            "build.consume", part=line.part, actor=request.user,
+            build=build.pk, requested=needed, consumed=consumed,
+        )
         if consumed < needed:
             any_short = True
 
@@ -110,10 +115,26 @@ def build_project(request, pk):
 
 @login_required
 def reorder(request):
+    from datetime import timedelta
+
+    from django.db.models import Sum
+    from django.utils import timezone
+
     category_id = request.GET.get("category")
     parts = Part.objects.filter(min_quantity__isnull=False).select_related("category")
     if category_id:
         parts = parts.filter(category_id=category_id)
+
+    # How much of each part has actually been consumed in the last 30 days, from
+    # build records. A part burning 50/month at a threshold of 10 is a different
+    # problem from one using 3/month — velocity is what tells them apart.
+    cutoff = timezone.now() - timedelta(days=30)
+    velocity = {
+        row["part"]: row["total"]
+        for row in BuildConsumption.objects.filter(build__built_at__gte=cutoff)
+        .values("part")
+        .annotate(total=Sum("quantity_consumed"))
+    }
 
     needs_reorder = []
     for part in parts:
@@ -124,6 +145,7 @@ def reorder(request):
                 "have": have,
                 "min_quantity": part.min_quantity,
                 "shortfall": max(1, part.min_quantity - have),
+                "used_30d": velocity.get(part.pk, 0),
                 "reorder_link": _reorder_link(part),
             })
 

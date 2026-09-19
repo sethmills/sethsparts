@@ -28,6 +28,7 @@
 {% if bins %}
 <div class="card">
   <h2>Bins ({{ bins|length }})</h2>
+  <p class="no-print"><a href="{% url 'inventory:print_bin_grid' drawer.pk %}" class="btn secondary">Print all 16 bin labels (4×4 sheet)</a></p>
   <p style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
     {% for b in bins %}
       <a class="pill" href="{% url 'inventory:bin_detail' b.pk %}" style="text-align:center;padding:10px 6px">

@@ -1,0 +1,56 @@
+{% extends "inventory/base.html" %}
+{% block title %}Edit {{ part.name }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Edit part</h1>
+  <form method="post" style="max-width:560px">
+    {% csrf_token %}
+    <p>
+      <label for="name"><strong>Name</strong></label><br>
+      <input id="name" name="name" required value="{{ part.name }}" style="width:100%">
+    </p>
+    <p>
+      <label for="category"><strong>Category</strong></label><br>
+      <select id="category" name="category" style="width:100%">
+        <option value="">— none —</option>
+        {% for c in categories %}
+          <option value="{{ c.pk }}" {% if part.category_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <label for="manufacturer"><strong>Manufacturer</strong></label><br>
+      <input id="manufacturer" name="manufacturer" value="{{ part.manufacturer }}" style="width:100%">
+    </p>
+    <p>
+      <label for="description"><strong>Description</strong></label><br>
+      <textarea id="description" name="description" style="width:100%" rows="3">{{ part.description }}</textarea>
+    </p>
+    <p>
+      <label><input type="checkbox" name="is_electronic" {% if part.is_electronic %}checked{% endif %}> Electronic</label>
+    </p>
+    <p>
+      <label for="reorder_url"><strong>Buy / product page link</strong></label><br>
+      <input id="reorder_url" type="url" name="reorder_url" value="{{ part.reorder_url }}" style="width:100%">
+    </p>
+    <p>
+      <label for="datasheet_url"><strong>Datasheet link</strong></label><br>
+      <input id="datasheet_url" type="url" name="datasheet_url" value="{{ part.datasheet_url }}" style="width:100%">
+    </p>
+    <p>
+      <label for="price"><strong>Price</strong></label><br>
+      <input id="price" type="text" name="price" value="{{ part.price }}" placeholder="£0.42" style="width:200px">
+      <br><span class="muted">Typical price as text — e.g. “£0.42” or “£3.50 / 100”. Filled automatically from web research when known.</span>
+    </p>
+    <p>
+      <label for="min_quantity"><strong>Reorder threshold</strong></label><br>
+      <input id="min_quantity" type="text" name="min_quantity" value="{{ part.min_quantity|default_if_none:'' }}" inputmode="numeric" style="width:100px">
+      <br><span class="muted">Leave blank for no threshold.</span>
+    </p>
+    <p>
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="{% url 'inventory:part_detail' part.pk %}">Cancel</a>
+    </p>
+  </form>
+</div>
+{% endblock %}

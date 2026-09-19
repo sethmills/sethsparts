@@ -94,10 +94,12 @@ def _apply_research(part, data):
         part.reorder_url = data["product_url"]
     if data.get("datasheet_url"):
         part.datasheet_url = data["datasheet_url"]
+    if data.get("price"):
+        part.price = data["price"]
     confident = data.get("confidence") == "high" and bool(data.get("product_url") or data.get("manufacturer"))
     part.enrichment_status = Part.ENRICHMENT_DONE if confident else Part.ENRICHMENT_NEEDS_REVIEW
     part.save(
-        update_fields=["category", "description", "manufacturer", "is_electronic", "reorder_url", "datasheet_url", "enrichment_status"]
+        update_fields=["category", "description", "manufacturer", "is_electronic", "reorder_url", "datasheet_url", "price", "enrichment_status"]
     )
 
 

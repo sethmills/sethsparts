@@ -1,0 +1,61 @@
+{% extends "inventory/base.html" %}
+{% block title %}Pick parts — {{ project.name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Pick parts — {{ project.name }}</h1>
+  {% if not done %}
+    <p class="muted">Part {{ index }} of {{ total }} · {{ pulled_count }} pulled, {{ missing_count }} missing</p>
+  {% else %}
+    <p class="muted">Done — {{ pulled_count }} pulled, {{ missing_count }} missing.</p>
+  {% endif %}
+</div>
+
+{% if done %}
+<div class="card">
+  <h2>Summary</h2>
+  {% if missing %}
+    <p><strong>Couldn't find:</strong></p>
+    <ul>
+      {% for line in missing %}
+      <li><a href="{% url 'inventory:part_detail' line.part_pk %}">{{ line.name }}</a> &times; {{ line.quantity }}</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'inventory:pick' project.pk %}">
+      {% csrf_token %}
+      <button class="btn" type="submit" name="action" value="add_missing_to_list">Add missing to shopping list</button>
+    </form>
+  {% else %}
+    <p class="muted">Nothing missing — every part was found.</p>
+  {% endif %}
+  <form method="post" action="{% url 'inventory:pick' project.pk %}" style="margin-top:12px">
+    {% csrf_token %}
+    <button class="btn secondary" type="submit" name="action" value="start">Start over</button>
+  </form>
+</div>
+{% else %}
+<div class="card">
+  <h2 style="font-size:1.5rem">{{ current.name }}</h2>
+  <p>Need <strong>{{ current.quantity }}</strong></p>
+  {% if locations %}
+    <p class="muted">Where it lives:</p>
+    <ul class="muted">
+      {% for loc in locations %}
+      <li>Container #{{ loc.container }}{% if loc.drawer %} / {{ loc.drawer }}{% endif %}{% if loc.bin %} · bin {{ loc.bin }}{% endif %} ({{ loc.quantity }})</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="msg-warn">No stock location recorded for this part yet.</p>
+  {% endif %}
+  <div style="display:flex;gap:10px;margin-top:16px">
+    <form method="post" action="{% url 'inventory:pick' project.pk %}">
+      {% csrf_token %}
+      <button class="btn" type="submit" name="action" value="pulled">Pulled ✓</button>
+    </form>
+    <form method="post" action="{% url 'inventory:pick' project.pk %}">
+      {% csrf_token %}
+      <button class="btn secondary" type="submit" name="action" value="missing">Missing</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

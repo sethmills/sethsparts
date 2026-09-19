@@ -14,7 +14,7 @@ from ..models import (
     SubBin,
 )
 
-from ._shared import _drawer_number
+from ._shared import _drawer_number, _slugify_drawer_code
 
 
 
@@ -216,3 +216,24 @@ def delete_sub_bin(request, pk):
         sub_bin.delete()
         messages.success(request, "Sub-bin removed.")
     return redirect("inventory:bin_detail", pk=bin_pk)
+
+
+@login_required
+def print_bin_grid(request, pk):
+    """Print all 16 bin barcodes for a drawer, laid out in a 4x4 grid matching the
+    physical layout. Any bin without a barcode gets a deterministic one assigned first,
+    so the printed sheet links straight back to the bins."""
+    drawer = get_object_or_404(Drawer, pk=pk)
+    if not _ensure_bins_for_drawer(drawer):
+        messages.error(request, "This drawer isn't one of the 16-bin cabinets, so there are no bins to label.")
+        return redirect("inventory:drawer_detail", pk=drawer.pk)
+
+    drawer_code = _slugify_drawer_code(drawer.container.number, drawer.label)
+    bins = sorted(drawer.bins.all(), key=lambda b: b.bin_number)
+    for b in bins:
+        if not b.barcode_id:
+            b.barcode_id = f"{drawer_code}-{b.bin_number:02d}"
+            b.save(update_fields=["barcode_id"])
+
+    rows = [[b for b in bins if b.bin_row == r] for r in range(1, 5)]
+    return render(request, "inventory/bin_grid_print.html", {"drawer": drawer, "rows": rows})

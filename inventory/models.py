@@ -1,5 +1,6 @@
 import secrets
 
+from django.conf import settings
 from django.db import models
 
 from .community import PIN_VERSION, generate_keypair
@@ -156,6 +157,7 @@ class Part(models.Model):
     min_quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Reorder threshold (Phase 5)")
     reorder_url = models.URLField(blank=True)
     datasheet_url = models.URLField(blank=True, help_text="Quick reference link — not a locally cached copy, see Attachments for that")
+    price = models.CharField(max_length=80, blank=True, help_text="Typical price as text, e.g. '£0.42' or '£3.50 / 100' — filled from web research when known.")
     enrichment_status = models.CharField(max_length=20, choices=ENRICHMENT_CHOICES, default=ENRICHMENT_NOT_NEEDED)
 
     class Meta:
@@ -1169,3 +1171,27 @@ class SiteSettings(models.Model):
         from .site_config import apply_site_branding
 
         apply_site_branding()
+
+
+class AuditEvent(models.Model):
+    """A timestamped record of a stock or inventory change.
+
+    Answers "where did it go?" — a part's stock history, bin moves, and build
+    consumptions. A flat JSON payload rather than a generic FK: events span parts,
+    stock rows, builds and containers, and the payload keeps the model small while
+    remaining searchable by verb and part.
+    """
+
+    verb = models.CharField(max_length=40, db_index=True)
+    part = models.ForeignKey(
+        "Part", null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_events"
+    )
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.verb} {self.part_id or ''}"

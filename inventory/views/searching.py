@@ -45,12 +45,15 @@ def parts_search(request):
         Part.objects.exclude(manufacturer="").order_by("manufacturer").values_list("manufacturer", flat=True).distinct()
     )
 
+    parts = list(parts[:150])
+    _attach_thumbnails(parts)
+
     return render(
         request,
         "inventory/parts_search.html",
         {
             "query": query,
-            "parts": parts[:150],
+            "parts": parts,
             "matched_extra_terms": matched_extra_terms,
             "categories": Category.objects.all(),
             "manufacturers": manufacturers,
@@ -59,6 +62,21 @@ def parts_search(request):
             "selected_has_docs": has_docs,
         },
     )
+
+
+def _attach_thumbnails(parts):
+    """Give each part a `thumb` attribute pointing at its first image attachment, so
+    search results can show the shape without a per-part query."""
+    from ..models import Attachment
+
+    part_ids = [p.pk for p in parts]
+    if not part_ids:
+        return
+    thumbs = {}
+    for a in Attachment.objects.filter(part_id__in=part_ids, doc_type=Attachment.IMAGE).order_by("part_id", "fetched_at"):
+        thumbs.setdefault(a.part_id, a.file.url)
+    for p in parts:
+        p.thumb = thumbs.get(p.pk)
 
 
 def api_locate_part(request):

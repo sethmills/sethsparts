@@ -2,7 +2,7 @@
 {% block title %}{{ part.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>{{ part.name }}</h1>
+  <h1>{{ part.name }} <a class="btn secondary btn-sm" href="{% url 'inventory:part_edit' part.pk %}" style="margin-left:8px">Edit</a></h1>
   <p class="muted">
     {% if part.category %}{{ part.category }}{% endif %}
     {% if part.manufacturer %} · {{ part.manufacturer }}{% endif %}

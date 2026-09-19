@@ -37,12 +37,14 @@ from .browse import (
 from .parts import (
     part_intake,
     part_detail,
+    part_edit,
     add_part_photo,
     update_stock_quantity,
     update_stock_bin,
     delete_stock_item,
     add_stock_item,
 )
+from .audit_log import audit_log
 from .searching import (
     parts_search,
     api_locate_part,
@@ -67,6 +69,7 @@ from .bins import (
     add_sub_bin,
     register_sub_bin_barcode,
     delete_sub_bin,
+    print_bin_grid,
 )
 from .labels import (
     labels,
@@ -92,6 +95,7 @@ from .projects import (
     build_project,
     reorder,
 )
+from .pick import pick
 from .enrichment import (
     enrichment_queue,
     run_enrichment_classification,
@@ -199,11 +203,13 @@ __all__ = [
     "register_drawer_barcode",
     "part_intake",
     "part_detail",
+    "part_edit",
     "add_part_photo",
     "update_stock_quantity",
     "update_stock_bin",
     "delete_stock_item",
     "add_stock_item",
+    "audit_log",
     "parts_search",
     "api_locate_part",
     "api_add_intake_note",
@@ -223,6 +229,7 @@ __all__ = [
     "add_sub_bin",
     "register_sub_bin_barcode",
     "delete_sub_bin",
+    "print_bin_grid",
     "labels",
     "generate_and_print_labels",
     "print_labels",
@@ -240,6 +247,7 @@ __all__ = [
     "create_project",
     "project_detail",
     "build_project",
+    "pick",
     "reorder",
     "enrichment_queue",
     "run_enrichment_classification",
